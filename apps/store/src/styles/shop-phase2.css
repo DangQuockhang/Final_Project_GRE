@@ -1,0 +1,47 @@
+/* Sprint 2 Phase 2.1 */
+.kd-toolbar{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:22px}
+.kd-toolbar>div{display:flex;gap:12px;align-items:center;font-size:11px;letter-spacing:.12em}
+.kd-toolbar span{font-size:11px;color:#6c796c;letter-spacing:0}
+.kd-clear{border:0;background:none;color:#344b3a;display:flex;align-items:center;gap:8px;font-size:10px;font-weight:700;cursor:pointer}
+.kd-filters{display:grid;grid-template-columns:minmax(210px,2fr) repeat(5,minmax(120px,1fr));gap:12px;padding:22px;background:#ecefe9}
+.kd-filters label{font-size:9px;font-weight:800;letter-spacing:.12em;display:flex;flex-direction:column;gap:9px;min-width:0;color:#536151}
+.kd-filters select,.kd-search div{height:43px;background:white;border:1px solid #d1dcd2;font-size:12px;letter-spacing:0;color:#243327}
+.kd-filters select{width:100%;padding:0 10px}
+.kd-search div{display:flex;align-items:center;gap:8px;padding:0 12px}
+.kd-search input{border:0;outline:none;width:100%;min-width:0;font-size:12px}
+.kd-stock{display:inline-flex;align-items:center;gap:8px;font-size:12px;color:#5a6d5c;margin:20px 0 28px}
+.kd-stock input{accent-color:#334d39}
+.kd-empty{text-align:center;background:#f0f2ed;padding:60px 20px;display:flex;align-items:center;flex-direction:column;gap:12px}
+.kd-empty h2{font:400 34px 'Playfair Display',Georgia,serif;margin:0}
+.kd-empty p{font-size:13px;color:#687569}
+.kd-page-footer{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-top:28px;border-top:1px solid #dce1d9;padding-top:24px;font-size:12px;color:#6d7b6c}
+.kd-pagination{display:flex;align-items:center;gap:16px}
+.kd-pagination button{display:flex;align-items:center;gap:7px;border:1px solid #cbd6cb;padding:10px;background:white;cursor:pointer}
+.kd-pagination button:disabled{opacity:.35;cursor:not-allowed}
+.kd-catalog-note{font-size:11px;color:#879486;margin-top:28px}
+.kd-crumb{flex-wrap:wrap}
+.kd-product-gallery>.visual,.kd-product-gallery>.kd-photo{width:100%}
+.kd-photo{width:100%;display:block;aspect-ratio:4/4.6;object-fit:cover}
+.kd-caption{font-size:10px;color:#788576;letter-spacing:.13em;margin-top:12px}
+.kd-selection-title{display:flex;justify-content:space-between;gap:8px}
+.kd-selection-title>span{font-size:11px;color:#697769}
+.kd-variants{flex-wrap:wrap}
+.kd-variants button{height:auto;min-height:60px;min-width:78px;padding:8px;display:flex;flex-direction:column;align-items:center;gap:5px}
+.kd-variants button small{font-size:9px;opacity:.7}
+.kd-warning{font-size:12px;color:#8c4d2a;padding:12px;background:#fff0de}
+.kd-qty{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:5px 0 22px}
+.kd-qty>label{font-size:10px;letter-spacing:.12em;font-weight:800}
+.kd-qty>span{font-size:11px;color:#758475}
+.kd-qty-widget{display:flex;border:1px solid #c9d4c7;height:42px}
+.kd-qty-widget button{width:42px;border:0;background:transparent;display:grid;place-items:center;cursor:pointer}
+.kd-qty-widget button:disabled{opacity:.35}
+.kd-qty-widget input{width:48px;text-align:center;border:0;border-inline:1px solid #e2e8df;appearance:textfield}
+.kd-qty-widget input::-webkit-inner-spin-button{-webkit-appearance:none}
+.kd-related{border-top:1px solid #e2e8df}
+.kd-missing{padding:90px clamp(20px,5vw,88px);min-height:360px}
+.kd-missing h1{font:400 48px 'Playfair Display',Georgia,serif}
+.kd-missing a{display:inline-flex;align-items:center;gap:8px;text-decoration:underline}
+.kd-filters select:focus-visible,.kd-filters input:focus-visible,.kd-product button:focus-visible{outline:2px solid #658667;outline-offset:3px}
+@media(max-width:1300px){.kd-filters{grid-template-columns:repeat(3,minmax(0,1fr))}.kd-search{grid-column:span 3}}
+@media(max-width:700px){.kd-filters{grid-template-columns:repeat(2,minmax(0,1fr));padding:13px}.kd-search{grid-column:span 2}.kd-page-footer{flex-direction:column;align-items:start}}
+@media(max-width:420px){.kd-filters{grid-template-columns:1fr}.kd-search{grid-column:span 1}.kd-variants button{min-width:68px}}

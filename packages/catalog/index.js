@@ -17,3 +17,5 @@ export const demoProducts = [
 ];
 export const money=n=>new Intl.NumberFormat('vi-VN',{style:'currency',currency:'VND',maximumFractionDigits:0}).format(n);
 export const apiBase='http://localhost:4000/api';
+
+export {filterProducts,paginateProducts} from './filters.js';

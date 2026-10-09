@@ -42,4 +42,9 @@ jobs:
             exit 1
           fi
           echo "React homepage rendered successfully in Chrome"
+          "$BROWSER" --headless --no-sandbox --disable-dev-shm-usage --disable-gpu --virtual-time-budget=8000 --dump-dom http://127.0.0.1:5173/shop > /tmp/kd-shop.html 2>/tmp/kd-shop.log
+          grep -q "EXPLORE THE EDIT" /tmp/kd-shop.html || { echo "Shop did not render"; tail -n 30 /tmp/kd-shop.log; exit 1; }
+          "$BROWSER" --headless --no-sandbox --disable-dev-shm-usage --disable-gpu --virtual-time-budget=8000 --dump-dom http://127.0.0.1:5173/product/essential-sculpt-tee > /tmp/kd-product.html 2>/tmp/kd-product.log
+          grep -q "SIZE / COLOR" /tmp/kd-product.html || { echo "Product detail did not render"; tail -n 30 /tmp/kd-product.log; exit 1; }
+          echo "Shop and product detail rendered successfully in Chrome"
 
