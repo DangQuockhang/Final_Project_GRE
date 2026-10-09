@@ -1,7 +1,7 @@
 import React,{createContext,useContext,useEffect,useMemo,useState} from 'react';
 import {createRoot} from 'react-dom/client';
 import {BrowserRouter,Link,NavLink,Navigate,Route,Routes,useNavigate,useParams,useSearchParams} from 'react-router-dom';
-import {ArrowRight,ArrowUpRight,Bag,Check,ChevronRight,CircleUserRound,Heart,Instagram,Menu,Minus,Plus,Search,ShieldCheck,ShoppingBag,SlidersHorizontal,Sparkles,Trash2,Truck,X} from 'lucide-react';
+import {ArrowRight,ArrowUpRight,Check,ChevronRight,CircleUserRound,Heart,Instagram,Menu,Minus,Plus,Search,ShieldCheck,ShoppingBag,SlidersHorizontal,Sparkles,Trash2,Truck,X} from 'lucide-react';
 import {TryOnStudio} from '@kd/virtual-fitting';
 import {apiBase,demoProducts,demoBrands,money} from '@kd/catalog';
 import './style.css';
