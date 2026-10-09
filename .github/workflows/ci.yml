@@ -16,3 +16,30 @@ jobs:
       - run: npm test
       - run: npm run build
       - run: node --check server/src/index.js
+      - name: Smoke-test store in headless Chrome
+        run: |
+          set -eu
+          npm run dev:store > /tmp/kd-vite.log 2>&1 &
+          VITE_PID=$!
+          trap 'kill $VITE_PID || true' EXIT
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:5173/ >/dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:5173/ >/dev/null
+          BROWSER=$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)
+          if [ -z "$BROWSER" ]; then
+            echo "Chrome/Chromium not installed on runner"; exit 1
+          fi
+          "$BROWSER" --headless --no-sandbox --disable-dev-shm-usage --disable-gpu --virtual-time-budget=8000 --dump-dom http://127.0.0.1:5173/ > /tmp/kd-dom.html 2>/tmp/kd-browser.log || { cat /tmp/kd-browser.log; exit 1; }
+          if ! grep -q 'Wear what' /tmp/kd-dom.html; then
+            echo "Homepage was not rendered by React:"
+            head -c 6000 /tmp/kd-dom.html
+            echo "Browser log:"
+            tail -n 50 /tmp/kd-browser.log
+            echo "Vite log:"
+            cat /tmp/kd-vite.log
+            exit 1
+          fi
+          echo "React homepage rendered successfully in Chrome"
+
