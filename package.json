@@ -1,0 +1,16 @@
+{
+  "name": "kd-desgin-monorepo",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "workspaces": ["apps/*", "packages/*", "server"],
+  "scripts": {
+    "dev:store": "npm run dev -w @kd/store",
+    "dev:studio": "npm run dev -w @kd/studio",
+    "dev:api": "npm run dev -w @kd/api",
+    "db:init": "npm run db:init -w @kd/api",
+    "db:seed": "npm run db:seed -w @kd/api",
+    "test": "node --test tests/*.test.js",
+    "build": "npm run build -w @kd/store && npm run build -w @kd/studio"
+  }
+}
