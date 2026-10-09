@@ -1,0 +1,11 @@
+/* Sprint 2: homepage categories, semantic links and mobile accessibility */
+.kd-category-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+.kd-category-tile{min-height:260px;padding:24px;display:flex;justify-content:space-between;flex-direction:column;background:#3a4c3e;color:#f4f5f1;position:relative;overflow:hidden;transition:transform .2s ease,box-shadow .2s ease}
+.kd-category-tile:after{content:'';position:absolute;border:35px solid #ffffff16;width:200px;height:200px;border-radius:50%;right:-110px;bottom:-105px}
+.kd-cat-tops{background:linear-gradient(140deg,#293e30,#637763)}.kd-cat-outerwear{background:linear-gradient(140deg,#353c41,#6b7f82)}.kd-cat-bottoms{background:linear-gradient(140deg,#51463d,#917b6b)}.kd-cat-accessories{background:linear-gradient(140deg,#354239,#788371)}
+.kd-category-tile:hover{transform:translateY(-4px);box-shadow:0 16px 35px #1f2b2326}
+.kd-category-tile small{font-size:10px;letter-spacing:.16em;font-weight:700}.kd-category-tile div{display:grid;gap:8px;position:relative;z-index:1}
+.kd-category-tile strong{font-family:'Playfair Display',Georgia,serif;font-size:clamp(24px,2.8vw,39px);font-weight:400}.kd-category-tile span{font-size:10px;font-weight:700;letter-spacing:.09em;display:flex;align-items:center;gap:8px}
+.kd-category-tile:focus-visible,.menu-toggle:focus-visible,.site-nav a:focus-visible{outline:3px solid #a2b49e;outline-offset:3px}
+@media(max-width:1100px){.kd-category-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:550px){.kd-category-grid{gap:10px}.kd-category-tile{min-height:190px;padding:14px}.kd-category-tile strong{font-size:23px}.kd-category-tile small,.kd-category-tile span{font-size:8px}}
+@media(prefers-reduced-motion:reduce){.kd-category-tile{transition:none}}
