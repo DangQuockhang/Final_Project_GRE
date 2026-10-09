@@ -12,7 +12,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: npm install --no-audit --no-fund
+      - run: npm install --no-package-lock --include=optional --no-audit --no-fund
       - run: npm test
       - run: npm run build
       - run: node --check server/src/index.js
