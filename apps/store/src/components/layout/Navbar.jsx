@@ -17,7 +17,7 @@ export default function Navbar({user, count, fittingUrl}) {
    <Link to="/" className="logo" aria-label="KD Desgin home"><strong>KD</strong><span>DESGIN</span><small>CURATED FASHION</small></Link>
    <nav id="kd-main-nav" aria-label="Main navigation" className={open?'site-nav nav-open':'site-nav'}>
     <NavLink to="/shop">SHOP ALL</NavLink><NavLink to="/shop?category=tops">CLOTHING</NavLink>
-    <NavLink to="/shop?category=accessories">ACCESSORIES</NavLink><NavLink to="/brands">OUR BRANDS</NavLink>
+    <NavLink to="/shop?category=accessories">ACCESSORIES</NavLink><NavLink to="/brands">OUR BRANDS</NavLink>{user?.role==='admin'&&<NavLink to="/admin">ADMIN</NavLink>}
     <a className="studio-nav" href={fittingUrl} target="_blank" rel="noreferrer">3D FITTING STUDIO <ArrowUpRight size={12}/></a>
    </nav>
    <div className="header-actions">

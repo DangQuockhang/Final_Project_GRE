@@ -47,4 +47,8 @@ jobs:
           "$BROWSER" --headless --no-sandbox --disable-dev-shm-usage --disable-gpu --virtual-time-budget=8000 --dump-dom http://127.0.0.1:5173/product/essential-sculpt-tee > /tmp/kd-product.html 2>/tmp/kd-product.log
           grep -q "SIZE / COLOR" /tmp/kd-product.html || { echo "Product detail did not render"; tail -n 30 /tmp/kd-product.log; exit 1; }
           echo "Shop and product detail rendered successfully in Chrome"
+          "$BROWSER" --headless --no-sandbox --disable-dev-shm-usage --disable-gpu --virtual-time-budget=8000 --dump-dom http://127.0.0.1:5173/admin > /tmp/kd-admin-guard.html 2>/tmp/kd-admin-guard.log
+          grep -q 'SIGN IN' /tmp/kd-admin-guard.html || grep -q 'Sign in' /tmp/kd-admin-guard.html || { echo "Admin route did not guard unauthenticated access"; tail -n 40 /tmp/kd-admin-guard.log; exit 1; }
+          echo "Admin route redirects unauthenticated users"
+
 
