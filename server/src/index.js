@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import {pool,query} from './db.js';
 import 'dotenv/config';
+import {imageDir,detectImage,imageUpload,saveImage,removeImage} from './productImages.js';
 
 const app=express();
 const PORT=Number(process.env.PORT||4000);
@@ -11,6 +12,7 @@ const JWT_SECRET=process.env.JWT_SECRET||'';
 if (JWT_SECRET.length<32) console.warn('Cảnh báo: JWT_SECRET phải từ 32 ký tự, không nên dùng trong production.');
 app.use(cors({origin:(process.env.ALLOWED_ORIGINS||'http://localhost:5173,http://localhost:5174').split(',').map(x=>x.trim())}));
 app.use(express.json({limit:'100kb'}));
+app.use('/media/products',express.static(imageDir,{fallthrough:false,setHeaders(res){res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Cache-Control','public,max-age=86400');}}));
 const route=express.Router();app.use('/api',route);
 const wrap=fn=>(req,res,next)=>Promise.resolve(fn(req,res,next)).catch(next);
 const fail=(res,msg,status=400)=>res.status(status).json({error:msg});
@@ -108,6 +110,28 @@ route.delete('/products/:id',authorize,admin,wrap(async(req,res)=>{
  const r=await query(`UPDATE products SET status='archived' WHERE id=$1 RETURNING id`,[req.params.id]);
  if(!r.rows[0])return fail(res,'Không tìm thấy sản phẩm.',404);res.json({ok:true,method:'soft-delete'});
 }));
+route.post('/admin/products/:id/image',authorize,admin,imageUpload,wrap(async(req,res)=>{
+ if(!isId(req.params.id))return fail(res,'Invalid product id.');
+ if(!req.file)return fail(res,'Choose a product photo.');
+ const ext=detectImage(req.file.buffer,req.file.mimetype);
+ if(!ext)return fail(res,'Only valid JPG, PNG or WebP are supported.');
+ const record=await query('SELECT image_url FROM products WHERE id=$1',[req.params.id]);
+ if(!record.rows.length)return fail(res,'Product not found.',404);
+ const url=await saveImage(req.file.buffer,ext);
+ try{await query('UPDATE products SET image_url=$1 WHERE id=$2',[url,req.params.id]);}
+ catch(err){await removeImage(url).catch(()=>{});throw err;}
+ await removeImage(record.rows[0].image_url).catch(err=>console.error('Image cleanup failed',err));
+ res.status(201).json({image_url:url});
+}));
+route.delete('/admin/products/:id/image',authorize,admin,wrap(async(req,res)=>{
+ if(!isId(req.params.id))return fail(res,'Invalid product id.');
+ const record=await query('SELECT image_url FROM products WHERE id=$1',[req.params.id]);
+ if(!record.rows.length)return fail(res,'Product not found.',404);
+ await query('UPDATE products SET image_url=NULL WHERE id=$1',[req.params.id]);
+ await removeImage(record.rows[0].image_url).catch(err=>console.error('Image cleanup failed',err));
+ res.json({image_url:null});
+}));
+
 route.post('/products/:id/variants',authorize,admin,wrap(async(req,res)=>{
  if(!isId(req.params.id)||!clean(req.body.sku)||!clean(req.body.size)||!Number.isSafeInteger(Number(req.body.stock))||Number(req.body.stock)<0)return fail(res,'Thông tin biến thể không hợp lệ.');
  try {const r=await query(`INSERT INTO product_variants(product_id,sku,size,color,chest_cm,stock) VALUES($1,$2,$3,$4,$5,$6) RETURNING *`,[

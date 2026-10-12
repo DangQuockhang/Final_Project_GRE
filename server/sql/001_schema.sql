@@ -60,3 +60,6 @@ CREATE TABLE IF NOT EXISTS order_items (
 CREATE INDEX IF NOT EXISTS products_brand_idx ON products(brand_id);
 CREATE INDEX IF NOT EXISTS orders_user_idx ON orders(user_id);
 CREATE INDEX IF NOT EXISTS order_items_order_idx ON order_items(order_id);
+
+-- Safe additive schema upgrade for existing KD Design databases.
+ALTER TABLE products ADD COLUMN IF NOT EXISTS image_url TEXT;

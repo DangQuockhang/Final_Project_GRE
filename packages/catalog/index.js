@@ -19,3 +19,5 @@ export const money=n=>new Intl.NumberFormat('vi-VN',{style:'currency',currency:'
 export const apiBase='http://localhost:4000/api';
 
 export {filterProducts,paginateProducts} from './filters.js';
+
+export {productImageUrl} from './media.js';
