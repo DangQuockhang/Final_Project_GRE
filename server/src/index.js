@@ -134,8 +134,11 @@ route.delete('/admin/products/:id/image',authorize,admin,wrap(async(req,res)=>{
 
 route.post('/products/:id/variants',authorize,admin,wrap(async(req,res)=>{
  if(!isId(req.params.id)||!clean(req.body.sku)||!clean(req.body.size)||!Number.isSafeInteger(Number(req.body.stock))||Number(req.body.stock)<0)return fail(res,'Thông tin biến thể không hợp lệ.');
+ const rawChest=req.body.chest_cm;
+ const hasChest=rawChest!==undefined&&rawChest!==null&&rawChest!=='';
+ if(hasChest&&(!Number.isSafeInteger(Number(rawChest))||Number(rawChest)<=0))return fail(res,'Vòng ngực phải là số nguyên dương.');
  try {const r=await query(`INSERT INTO product_variants(product_id,sku,size,color,chest_cm,stock) VALUES($1,$2,$3,$4,$5,$6) RETURNING *`,[
- req.params.id,clean(req.body.sku),clean(req.body.size),clean(req.body.color)||'Onyx',req.body.chest_cm===null||req.body.chest_cm===''?null:Number(req.body.chest_cm),Number(req.body.stock)]);res.status(201).json(r.rows[0]);}
+ req.params.id,clean(req.body.sku),clean(req.body.size),clean(req.body.color)||'Onyx',hasChest?Number(rawChest):null,Number(req.body.stock)]);res.status(201).json(r.rows[0]);}
  catch(e){if(e.code==='23505')return fail(res,'Biến thể hoặc SKU đã tồn tại.',409);if(e.code==='23503')return fail(res,'Sản phẩm không tồn tại.',404);throw e;}
 }));
 route.patch('/variants/:id',authorize,admin,wrap(async(req,res)=>{
