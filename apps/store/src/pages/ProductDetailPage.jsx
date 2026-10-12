@@ -2,15 +2,9 @@ import React,{useEffect,useState} from 'react';
 import {Link,useParams} from 'react-router-dom';
 import {ChevronRight,ShoppingBag,Sparkles,ArrowUpRight,ShieldCheck,Truck,Minus,Plus,ArrowLeft} from 'lucide-react';
 import {money,apiBase} from '@kd/catalog';
-import {Visual,ProductCard} from '../components/product/ProductCard.jsx';
+import {ProductMedia,ProductCard} from '../components/product/ProductCard.jsx';
 import Eyebrow from '../components/common/Eyebrow.jsx';
 const API=import.meta.env.VITE_API_URL||apiBase;
-function ProductPhoto({item}){
- const [broken,setBroken]=useState(false);
- useEffect(()=>setBroken(false),[item?.image_url]);
- const url=typeof item.image_url==='string'&&/^https?:\/\//i.test(item.image_url)?item.image_url:null;
- return url&&!broken?<img className="kd-photo" src={url} alt={item.name} onError={()=>setBroken(true)}/>:<Visual product={item} large/>;
-}
 export default function ProductDetailPage({products=[],online=false,loading=false,addToCart,fittingUrl}){
  const {slug}=useParams();
  const [remote,setRemote]=useState(null),[selected,setSelected]=useState(''),[quantity,setQuantity]=useState(1);
@@ -33,7 +27,7 @@ export default function ProductDetailPage({products=[],online=false,loading=fals
  return <>
   <div className="crumb kd-crumb"><Link to="/shop">SHOP ALL</Link><ChevronRight size={13}/>{item.brand_name}<ChevronRight size={13}/>{item.name}</div>
   <section className="pdp kd-product">
-    <div className="kd-product-gallery"><ProductPhoto item={item}/><div className="kd-caption">{item.image_url?'PRODUCT PREVIEW':'CONCEPT VISUAL — NOT A BRAND PHOTOGRAPH'}</div></div>
+    <div className="kd-product-gallery"><ProductMedia product={item} large/><div className="kd-caption">{item.image_url?'PRODUCT PREVIEW':'CONCEPT VISUAL — NOT A BRAND PHOTOGRAPH'}</div></div>
     <div className="pdp-details">
       <Eyebrow>{item.brand_name}</Eyebrow><h1>{item.name}</h1><div className="pdp-price">{money(item.price)}</div><p>{item.description}</p>
       <div className="small-divider"/><div className="kd-selection-title"><label className="pdp-label">SIZE / COLOR</label><span>{variant?.size||'N/A'} · {variant?.color||'Default'}</span></div>

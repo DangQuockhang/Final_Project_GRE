@@ -15,12 +15,14 @@ import ShopPage from './pages/ShopPage.jsx';
 import ProductDetailPage from './pages/ProductDetailPage.jsx';
 import './styles/shop-phase2.css';
 import './styles/admin-phase2.css';
+import './styles/product-images.css';
 import AdminPage from './pages/admin/AdminPage.jsx';
 
 const API=import.meta.env.VITE_API_URL||apiBase;
 const FITTING_URL=import.meta.env.VITE_STUDIO_URL||'http://localhost:5174';
 const request=async(path,{method='GET',body,token}={})=>{
- const res=await fetch(`${API}${path}`,{method,headers:{...(body?{'Content-Type':'application/json'}:{}),...(token?{Authorization:`Bearer ${token}`}:{})},body:body?JSON.stringify(body):undefined});
+ const multipart=typeof FormData!=='undefined'&&body instanceof FormData;
+ const res=await fetch(`${API}${path}`,{method,headers:{...(body&&!multipart?{'Content-Type':'application/json'}:{}),...(token?{Authorization:`Bearer ${token}`}:{})},body:multipart?body:body?JSON.stringify(body):undefined});
  const data=await res.json().catch(()=>({}));if(!res.ok)throw new Error(data.error||`HTTP ${res.status}`);return data;
 };
 const authContext=createContext(null),cartContext=createContext(null),catalogContext=createContext(null);

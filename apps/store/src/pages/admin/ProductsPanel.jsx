@@ -1,6 +1,6 @@
 import React,{useState} from 'react';
-import {Pencil,Archive,RotateCcw,PackagePlus} from 'lucide-react';
-import {money} from '@kd/catalog';
+import {Pencil,Archive,RotateCcw,PackagePlus,ImagePlus,Trash2} from 'lucide-react';
+import {money,apiBase,productImageUrl} from '@kd/catalog';
 import {validateProduct,validateVariant,validateStock,PRODUCT_CATEGORIES,PRODUCT_STATUSES} from '../../utils/adminValidation.js';
 const EMPTY={name:'',brand_id:'',category:'tops',price:'',description:'',color:'#758073',status:'draft',tryon_enabled:false};
 const NEW_VARIANT={sku:'',size:'',color:'Onyx',stock:'0',chest_cm:''};
@@ -9,6 +9,7 @@ export default function ProductsPanel({products,brands,api,perform,busy,report})
   const [draft,setDraft]=useState({...EMPTY});
   const [search,setSearch]=useState(''),[statusFilter,setStatusFilter]=useState('all');
   const [variantDrafts,setVariantDrafts]=useState({}),[stockDrafts,setStockDrafts]=useState({});
+  const [pendingImages,setPendingImages]=useState({});
   const rows=products.filter(p=>(statusFilter==='all'||p.status===statusFilter)&&[p.name,p.brand_name,p.slug].join(' ').toLowerCase().includes(search.toLowerCase()));
   function update(field,value){setDraft(old=>({...old,[field]:value}));}
   function reset(){setEditing(null);setDraft({...EMPTY});}
@@ -37,6 +38,23 @@ export default function ProductsPanel({products,brands,api,perform,busy,report})
     const problem=validateStock(stock);if(problem){report(problem);return;}
     const ok=await perform(()=>api('/variants/'+v.id,{method:'PATCH',body:{stock:Number(stock)}}),'Inventory updated.');
     if(ok)setStockDrafts(old=>{const next={...old};delete next[v.id];return next;});
+  }
+  function choosePhoto(id,file){
+    if(!file){setPendingImages(old=>{const next={...old};delete next[id];return next;});return;}
+    if(!['image/jpeg','image/png','image/webp'].includes(file.type)){report('Select a PNG, JPG or WebP image.');return;}
+    if(file.size>3*1024*1024){report('Product photo must be under 3 MB.');return;}
+    setPendingImages(old=>({...old,[id]:file}));
+  }
+  async function uploadPhoto(product){
+    const file=pendingImages[product.id];
+    if(!file){report('Choose an image before uploading.');return;}
+    const form=new FormData();form.append('image',file);
+    const ok=await perform(()=>api('/admin/products/'+product.id+'/image',{method:'POST',body:form}),'Product photo uploaded.');
+    if(ok)setPendingImages(old=>{const next={...old};delete next[product.id];return next;});
+  }
+  async function deletePhoto(product){
+    if(!window.confirm('Remove the image for '+product.name+'?'))return;
+    await perform(()=>api('/admin/products/'+product.id+'/image',{method:'DELETE'}),'Product photo removed.');
   }
   return <section className="kd-admin-panel" aria-labelledby="product-title">
     <div className="kd-admin-panel-header"><div><h2 id="product-title">Product & Inventory</h2><p>Control the published catalog, draft products and exact SKU stock levels.</p></div><span>{products.length} products</span></div>
@@ -67,6 +85,22 @@ export default function ProductsPanel({products,brands,api,perform,busy,report})
             <select aria-label={'Change status for '+p.name} value={p.status} disabled={busy} onChange={e=>updateStatus(p,e.target.value)}>{PRODUCT_STATUSES.map(s=><option key={s} value={s}>{s.toUpperCase()}</option>)}</select>
             <button className="border-button" type="button" disabled={busy} onClick={()=>begin(p)}><Pencil size={13}/> EDIT</button>
             {p.status!=='archived'&&<button className="border-button" type="button" disabled={busy} onClick={()=>updateStatus(p,'archived')}><Archive size={13}/> ARCHIVE</button>}
+          </div>
+        </div>
+        <div className="kd-admin-image-panel">
+          <div className="kd-admin-image-preview">
+            {productImageUrl(p.image_url,import.meta.env.VITE_API_URL||apiBase)?
+              <img src={productImageUrl(p.image_url,import.meta.env.VITE_API_URL||apiBase)} alt={p.name+' image'}/>:
+              <div><ImagePlus size={23}/><small>No photo</small></div>}
+          </div>
+          <div className="kd-admin-image-controls">
+            <strong>PRODUCT PHOTO</strong>
+            <p>JPG, PNG or WebP · up to 3 MB. Only upload licensed or original photography.</p>
+            <input type="file" accept="image/png,image/jpeg,image/webp" aria-label={'Choose image for '+p.name} onChange={e=>choosePhoto(p.id,e.target.files?.[0])}/>
+            <div className="kd-admin-image-actions">
+              <button className="border-button" type="button" disabled={busy||!pendingImages[p.id]} onClick={()=>uploadPhoto(p)}><ImagePlus size={14}/> UPLOAD PHOTO</button>
+              {p.image_url&&<button className="border-button" type="button" disabled={busy} onClick={()=>deletePhoto(p)}><Trash2 size={14}/> REMOVE PHOTO</button>}
+            </div>
           </div>
         </div>
         <div className="kd-variants-table">
