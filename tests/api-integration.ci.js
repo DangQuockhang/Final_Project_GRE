@@ -35,6 +35,29 @@ test('Admin permissions and COD stock transactions against disposable PostgreSQL
    name:'Test Tee '+id,brand_id:brands[0].id,category:'tops',price:1200000,status:'active'
   },token);
   assert.equal(product.status,201);
+  const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6TuYAAAAASUVORK5CYII=','base64');
+  const makeForm=()=>{
+    const form=new FormData();
+    form.append('image',new Blob([png],{type:'image/png'}),'ci-photo.png');
+    return form;
+  };
+  const uploadPath='/api/admin/products/'+product.data.id+'/image';
+  const deniedImage=await fetch(base+uploadPath,{
+    method:'POST',headers:{Authorization:'Bearer '+user.data.token},body:makeForm()
+  });
+  assert.equal(deniedImage.status,403);
+  const uploaded=await fetch(base+uploadPath,{
+    method:'POST',headers:{Authorization:'Bearer '+token},body:makeForm()
+  });
+  assert.equal(uploaded.status,201);
+  const image=await uploaded.json();
+  assert.match(image.image_url,/^\/media\/products\/[a-f0-9-]{36}\.png$/);
+  const download=await fetch(base+image.image_url);
+  assert.equal(download.status,200);
+  assert.match(download.headers.get('content-type'),/image\/png/);
+  assert.deepEqual(Buffer.from(await download.arrayBuffer()),png);
+  const photographed=await fetch(base+'/api/products/'+product.data.slug).then(r=>r.json());
+  assert.equal(photographed.image_url,image.image_url);
   const variant=await request('/api/products/'+product.data.id+'/variants',{
    sku:'CI-'+id,size:'M',color:'Black',stock:5
   },token);
@@ -54,5 +77,9 @@ test('Admin permissions and COD stock transactions against disposable PostgreSQL
   assert.equal(cancelled.status,200);
   const restored=await fetch(base+productUrl).then(r=>r.json());
   assert.equal(restored.variants[0].stock,5);
+  const cleared=await request('/api/admin/products/'+product.data.id+'/image',undefined,token,'DELETE');
+  assert.equal(cleared.status,200);
+  const unphotographed=await fetch(base+productUrl).then(r=>r.json());
+  assert.equal(unphotographed.image_url,null);
  }finally{server.kill();}
 });
