@@ -7,11 +7,24 @@ import {join} from 'node:path';
 export const imageDir=fileURLToPath(new URL('../uploads/products/',import.meta.url));
 export const MAX_IMAGE_BYTES=3*1024*1024;
 const validPath=/^\/media\/products\/[a-f0-9-]{36}\.(png|jpg|webp)$/i;
-export function detectImage(buffer,mime){
- if(!Buffer.isBuffer(buffer)||buffer.length<12)return null;
- if(buffer.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10]))&&mime==='image/png')return 'png';
- if(buffer[0]===255&&buffer[1]===216&&buffer[2]===255&&mime==='image/jpeg')return 'jpg';
- if(buffer.toString('ascii',0,4)==='RIFF'&&buffer.toString('ascii',8,12)==='WEBP'&&mime==='image/webp')return 'webp';
+/**
+ * Determine the real stored extension from image bytes.
+ * Browser MIME/type is metadata inferred from the filename and is not a
+ * trustworthy way to recognize the file. We never use a client filename as
+ * the final stored extension. SVG/HTML/AVIF/HEIC are not supported here.
+ */
+export function detectImage(buffer,_mime){
+ if(!Buffer.isBuffer(buffer)||buffer.length<20)return null;
+ if(
+  buffer.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])) &&
+  buffer.toString('ascii',12,16)==='IHDR'
+ )return 'png';
+ if(buffer[0]===255&&buffer[1]===216&&buffer[2]===255)return 'jpg';
+ if(
+  buffer.toString('ascii',0,4)==='RIFF' &&
+  buffer.toString('ascii',8,12)==='WEBP' &&
+  ['VP8 ','VP8L','VP8X'].includes(buffer.toString('ascii',12,16))
+ )return 'webp';
  return null;
 }
 const upload=multer({storage:multer.memoryStorage(),limits:{fileSize:MAX_IMAGE_BYTES,files:1,fields:0,parts:1}}).single('image');

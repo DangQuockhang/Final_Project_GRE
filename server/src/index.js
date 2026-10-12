@@ -114,7 +114,9 @@ route.post('/admin/products/:id/image',authorize,admin,imageUpload,wrap(async(re
  if(!isId(req.params.id))return fail(res,'Invalid product id.');
  if(!req.file)return fail(res,'Choose a product photo.');
  const ext=detectImage(req.file.buffer,req.file.mimetype);
- if(!ext)return fail(res,'Only valid JPG, PNG or WebP are supported.');
+ if(!ext)return fail(res,'Ảnh tải lên không có dữ liệu JPG, PNG hoặc WebP hợp lệ. Hãy mở ảnh bằng Paint và chọn Save As → PNG/JPEG, sau đó thử lại.');
+ const detectedType={png:'image/png',jpg:'image/jpeg',webp:'image/webp'}[ext];
+ if(req.file.mimetype!==detectedType)console.warn('Product image MIME mismatch; detected from bytes instead:',{declared:req.file.mimetype,detected:detectedType});
  const record=await query('SELECT image_url FROM products WHERE id=$1',[req.params.id]);
  if(!record.rows.length)return fail(res,'Product not found.',404);
  const url=await saveImage(req.file.buffer,ext);

@@ -96,6 +96,7 @@ export default function ProductsPanel({products,brands,api,perform,busy,report})
           <div className="kd-admin-image-controls">
             <strong>PRODUCT PHOTO</strong>
             <p>JPG, PNG or WebP · up to 3 MB. Only upload licensed or original photography.</p>
+            {pendingImages[p.id]&&<small className="kd-selected-photo">Selected: {pendingImages[p.id].name} ({Math.round(pendingImages[p.id].size/1024)} KB)</small>}
             <input type="file" accept="image/png,image/jpeg,image/webp" aria-label={'Choose image for '+p.name} onChange={e=>choosePhoto(p.id,e.target.files?.[0])}/>
             <div className="kd-admin-image-actions">
               <button className="border-button" type="button" disabled={busy||!pendingImages[p.id]} onClick={()=>uploadPhoto(p)}><ImagePlus size={14}/> UPLOAD PHOTO</button>

@@ -38,7 +38,8 @@ test('Admin permissions and COD stock transactions against disposable PostgreSQL
   const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6TuYAAAAASUVORK5CYII=','base64');
   const makeForm=()=>{
     const form=new FormData();
-    form.append('image',new Blob([png],{type:'image/png'}),'ci-photo.png');
+    // Exercise a valid PNG whose filename/MIME declares JPEG, simulating misleading browser metadata.
+    form.append('image',new Blob([png],{type:'image/jpeg'}),'ci-photo.jpg');
     return form;
   };
   const uploadPath='/api/admin/products/'+product.data.id+'/image';

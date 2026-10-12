@@ -23,3 +23,6 @@ Image bytes are stored under \`server/uploads/products/\` and excluded from Git.
 Security: only authenticated Admin can upload/remove, 3MB max, file signatures checked for PNG/JPG/WebP, UUID file names, no SVG/HTML. Production requires persistent storage, image processing/scanning, quotas and operational safeguards.
 
 COD Checkout uses fictional sample information only. 3D Studio is still a geometric demo, not AI sizing or textile simulation.
+
+## PNG/JPG detection compatibility fix (2026-10-12)
+The original upload handler rejected genuine PNG/JPEG/WebP binary content when the browser-supplied MIME differed from the signature. Now image type is detected by supported binary headers, not the original filename or declared MIME, and the detected extension is used for storage. SVG/HTML and unknown bytes continue to be rejected. If files still fail, re-export them using Windows Paint → Save As → PNG/JPEG (a filename rename is not image conversion). Full image decoding, malware scanning and image transformations are still required for production.
