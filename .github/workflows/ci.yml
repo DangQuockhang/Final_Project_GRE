@@ -51,4 +51,34 @@ jobs:
           grep -q 'SIGN IN' /tmp/kd-admin-guard.html || grep -q 'Sign in' /tmp/kd-admin-guard.html || { echo "Admin route did not guard unauthenticated access"; tail -n 40 /tmp/kd-admin-guard.log; exit 1; }
           echo "Admin route redirects unauthenticated users"
 
-
+  integration-db:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: kd_test
+          POSTGRES_USER: kd
+          POSTGRES_PASSWORD: local_ci_demo_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U kd -d kd_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 15
+    env:
+      DATABASE_URL: postgresql://kd:local_ci_demo_only@localhost:5432/kd_test
+      JWT_SECRET: integration-only-long-secret-value-for-demo-tests
+      ADMIN_EMAIL: ci-admin@example.test
+      ADMIN_PASSWORD: CiAdminPasswordForTests2026
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-package-lock --include=optional --no-audit --no-fund
+      - run: npm run db:init
+      - run: npm run db:init
+      - run: npm run db:seed
+      - run: node --test tests/api-integration.ci.js
