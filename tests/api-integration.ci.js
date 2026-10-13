@@ -82,5 +82,47 @@ test('Admin permissions and COD stock transactions against disposable PostgreSQL
   assert.equal(cleared.status,200);
   const unphotographed=await fetch(base+productUrl).then(r=>r.json());
   assert.equal(unphotographed.image_url,null);
+  // User cannot preflight or permanently remove products.
+  const deniedDelete=await request('/api/admin/products/'+product.data.id+'/permanent',undefined,user.data.token,'DELETE');
+  assert.equal(deniedDelete.status,403);
+  const deniedPreflight=await request('/api/admin/products/'+product.data.id+'/delete-check',undefined,user.data.token,'GET');
+  assert.equal(deniedPreflight.status,403);
+  // Active product is protected even if inventory is later zeroed.
+  const activeCheck=await request('/api/admin/products/'+product.data.id+'/delete-check',undefined,token,'GET');
+  assert.equal(activeCheck.status,200);
+  assert.equal(activeCheck.data.eligible,false);
+  assert.equal((await request('/api/admin/products/'+product.data.id+'/permanent',undefined,token,'DELETE')).status,409);
+  // Cancelled orders are still history, so Archive is the correct action.
+  assert.equal((await request('/api/products/'+product.data.id,{status:'archived'},token,'PATCH')).status,200);
+  assert.equal((await request('/api/admin/products/'+product.data.id+'/permanent',undefined,token,'DELETE')).status,409);
+  assert.equal((await request('/api/variants/'+variant.data.id,{stock:0},token,'PATCH')).status,200);
+  const historicCheck=await request('/api/admin/products/'+product.data.id+'/delete-check',undefined,token,'GET');
+  assert.equal(historicCheck.data.stock,0);
+  assert.equal(historicCheck.data.orderItems,1);
+  assert.equal(historicCheck.data.eligible,false);
+  assert.equal((await request('/api/admin/products/'+product.data.id+'/permanent',undefined,token,'DELETE')).status,409);
+  // Separate disposable draft: a stock/permission-protected deletion.
+  const draft=await request('/api/products',{
+   name:'Disposable Tee '+id,brand_id:brands[0].id,category:'tops',price:800000,status:'draft'
+  },token);
+  assert.equal(draft.status,201);
+  const draftSku=await request('/api/products/'+draft.data.id+'/variants',{
+    sku:'TODELETE-'+id,size:'L',color:'Grey',stock:2
+  },token);
+  assert.equal(draftSku.status,201);
+  assert.equal((await request('/api/admin/products/'+draft.data.id+'/permanent',undefined,token,'DELETE')).status,409);
+  assert.equal((await request('/api/variants/'+draftSku.data.id,{stock:0},token,'PATCH')).status,200);
+  const allowed=await request('/api/admin/products/'+draft.data.id+'/delete-check',undefined,token,'GET');
+  assert.equal(allowed.status,200);
+  assert.equal(allowed.data.eligible,true);
+  const erased=await request('/api/admin/products/'+draft.data.id+'/permanent',undefined,token,'DELETE');
+  assert.equal(erased.status,200);
+  assert.equal(erased.data.method,'permanent-delete');
+  assert.ok(erased.data.audit_id);
+  const all=await request('/api/admin/products',undefined,token,'GET');
+  assert.equal(all.status,200);
+  assert.equal(all.data.some(p=>p.id===draft.data.id),false);
+  assert.equal((await request('/api/admin/products/'+draft.data.id+'/permanent',undefined,token,'DELETE')).status,404);
+
  }finally{server.kill();}
 });
