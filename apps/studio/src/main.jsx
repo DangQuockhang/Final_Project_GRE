@@ -3,6 +3,7 @@ import {createRoot} from 'react-dom/client';
 import { TryOnStudio } from '@kd/virtual-fitting';
 import {demoProducts,apiBase} from '@kd/catalog';
 import './style.css';
+import './styles/readability.css';
 
 function App(){
  const [products,setProducts]=useState(demoProducts);

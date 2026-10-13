@@ -1,3 +1,4 @@
+import Reveal from '../components/common/Reveal.jsx';
 import React from 'react';
 import {useSearchParams} from 'react-router-dom';
 import {Search,SlidersHorizontal,RotateCcw,ArrowLeft,ArrowRight} from 'lucide-react';
@@ -20,7 +21,7 @@ export default function ShopPage({products=[],brands=[]}){
  }
  function choosePage(n){setParams(old=>{const next=new URLSearchParams(old);next.set('page',String(n));return next;});window.scrollTo({top:0,behavior:'smooth'});}
  const select=(label,key,options)=><label>{label}<select value={filters[key]||''} onChange={e=>change(key,e.target.value)}>{options.map(([value,name])=><option key={value} value={value}>{name}</option>)}</select></label>;
- return <><section className="page-intro"><Eyebrow>CURATED / PREMIUM FASHION</Eyebrow><h1>The <em>collection.</em></h1><p>Discover contemporary clothing and accessories. Explore by brand, size, budget and availability.</p></section>
+ return <><Reveal as="section" className="page-intro"><Eyebrow>CURATED / PREMIUM FASHION</Eyebrow><h1>The <em>collection.</em></h1><p>Discover contemporary clothing and accessories. Explore by brand, size, budget and availability.</p></Reveal>
  <section className="shop-content kd-shop" aria-label="Shop catalog">
   <div className="kd-toolbar"><div><SlidersHorizontal size={18}/><strong>EXPLORE THE EDIT</strong><span>{result.length} products</span></div>{active&&<button className="kd-clear" type="button" onClick={()=>setParams({})}><RotateCcw size={14}/> CLEAR FILTERS</button>}</div>
   <div className="kd-filters">
