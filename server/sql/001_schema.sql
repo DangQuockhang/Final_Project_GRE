@@ -63,3 +63,15 @@ CREATE INDEX IF NOT EXISTS order_items_order_idx ON order_items(order_id);
 
 -- Safe additive schema upgrade for existing KD Design databases.
 ALTER TABLE products ADD COLUMN IF NOT EXISTS image_url TEXT;
+
+-- Additive, idempotent audit log; product_id is deliberately not a foreign key.
+CREATE TABLE IF NOT EXISTS product_deletion_audit (
+ id BIGSERIAL PRIMARY KEY,
+ product_id INTEGER NOT NULL,
+ product_name VARCHAR(160) NOT NULL,
+ product_slug VARCHAR(180) NOT NULL,
+ deleted_by INTEGER NOT NULL REFERENCES users(id),
+ deleted_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+ snapshot JSONB NOT NULL
+);
+CREATE INDEX IF NOT EXISTS product_deletion_audit_actor_idx ON product_deletion_audit(deleted_by);

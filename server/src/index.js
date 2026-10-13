@@ -5,6 +5,7 @@ import jwt from 'jsonwebtoken';
 import {pool,query} from './db.js';
 import 'dotenv/config';
 import {imageDir,detectImage,imageUpload,saveImage,removeImage} from './productImages.js';
+import {evaluateProductDeletion} from './productDeletion.js';
 
 const app=express();
 const PORT=Number(process.env.PORT||4000);
@@ -110,6 +111,50 @@ route.delete('/products/:id',authorize,admin,wrap(async(req,res)=>{
  const r=await query(`UPDATE products SET status='archived' WHERE id=$1 RETURNING id`,[req.params.id]);
  if(!r.rows[0])return fail(res,'Không tìm thấy sản phẩm.',404);res.json({ok:true,method:'soft-delete'});
 }));
+// A preflight check is informative only; the DELETE route rechecks under locks.
+route.get('/admin/products/:id/delete-check',authorize,admin,wrap(async(req,res)=>{
+ if(!isId(req.params.id))return fail(res,'Invalid product ID.');
+ const result=await query('SELECT p.id,p.name,p.status, (SELECT COALESCE(SUM(v.stock),0)::int FROM product_variants v WHERE v.product_id=p.id) AS stock, (SELECT COUNT(*)::int FROM order_items oi JOIN product_variants v ON v.id=oi.variant_id WHERE v.product_id=p.id) AS order_items FROM products p WHERE p.id=$1',[req.params.id]);
+ const p=result.rows[0];
+ if(!p)return fail(res,'Product not found.',404);
+ res.json({id:p.id,name:p.name,status:p.status,stock:p.stock,orderItems:p.order_items,...evaluateProductDeletion({status:p.status,stock:p.stock,orderItems:p.order_items})});
+}));
+route.delete('/admin/products/:id/permanent',authorize,admin,wrap(async(req,res)=>{
+ if(!isId(req.params.id))return fail(res,'Invalid product ID.');
+ const client=await pool.connect();
+ let removed=null;
+ let auditId=null;
+ try{
+  await client.query('BEGIN');
+  // Lock parent row first: prevents new variant foreign-key inserts.
+  const found=await client.query('SELECT * FROM products WHERE id=$1 FOR UPDATE',[req.params.id]);
+  const product=found.rows[0];
+  if(!product){await client.query('ROLLBACK');return fail(res,'Product not found.',404);}
+  // Serializes checkout reservations and concurrent stock edits on variants.
+  const variants=await client.query('SELECT * FROM product_variants WHERE product_id=$1 ORDER BY id FOR UPDATE',[product.id]);
+  const stock=variants.rows.reduce((n,v)=>n+Number(v.stock),0);
+  const ordered=await client.query('SELECT COUNT(*)::int AS n FROM order_items oi JOIN product_variants v ON v.id=oi.variant_id WHERE v.product_id=$1',[product.id]);
+  const orderItems=ordered.rows[0].n;
+  const decision=evaluateProductDeletion({status:product.status,stock,orderItems});
+  if(!decision.eligible){await client.query('ROLLBACK');return res.status(409).json({error:decision.reason,...decision,stock,orderItems});}
+  const audit=await client.query('INSERT INTO product_deletion_audit (product_id,product_name,product_slug,deleted_by,snapshot) VALUES($1,$2,$3,$4,$5::jsonb) RETURNING id',[
+   product.id,product.name,product.slug,req.user.id,JSON.stringify({product,variants:variants.rows})
+  ]);
+  auditId=audit.rows[0].id;
+  // Only unused SKU rows cascade; order_items FK protects history.
+  await client.query('DELETE FROM products WHERE id=$1',[product.id]);
+  await client.query('COMMIT');
+  removed=product;
+ }catch(error){
+  await client.query('ROLLBACK').catch(()=>{});
+  if(error.code==='23503')return fail(res,'Product is linked to order data. Archive it instead.',409);
+  throw error;
+ }finally{client.release();}
+ // Never touch the product image before database commit succeeds.
+ await removeImage(removed.image_url).catch(e=>console.error('Product image cleanup failed:',e));
+ res.json({ok:true,method:'permanent-delete',id:removed.id,audit_id:auditId});
+}));
+
 route.post('/admin/products/:id/image',authorize,admin,imageUpload,wrap(async(req,res)=>{
  if(!isId(req.params.id))return fail(res,'Invalid product id.');
  if(!req.file)return fail(res,'Choose a product photo.');
