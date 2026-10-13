@@ -1,0 +1,22 @@
+/* Safe permanent product deletion dialog */
+.kd-admin-actions .kd-delete-product-button{border-color:#bd7777;color:#923e3e}
+.kd-admin-actions .kd-delete-product-button:not(:disabled):hover{background:#f8e7e7}
+.kd-delete-backdrop{position:fixed;inset:0;background:rgba(18,28,22,.65);z-index:3000;display:grid;place-items:center;padding:18px}
+.kd-delete-dialog{width:min(100%,480px);max-height:90vh;overflow-y:auto;background:#fff;border:1px solid #ded9d3;box-shadow:0 25px 70px rgba(0,0,0,.28);padding:25px}
+.kd-delete-heading{display:flex;align-items:center;gap:12px;color:#9e393b}
+.kd-delete-heading h2{font:400 clamp(22px,3vw,30px) Georgia,serif;margin:0;flex:1}
+.kd-delete-heading>button{border:0;background:transparent;cursor:pointer;color:#46544a}
+.kd-delete-dialog>p{font-size:13px;line-height:1.8;color:#4e5e51;margin:21px 0}
+.kd-delete-counts{display:flex;gap:15px;flex-wrap:wrap;margin:17px 0;padding:13px;background:#f0f3ed;font-size:12px}
+.kd-delete-dialog form{display:grid;gap:13px}
+.kd-delete-dialog form>label{font-size:12px}
+.kd-delete-dialog input{border:1px solid #b7c5b8;min-height:44px;padding:10px 12px;font-size:14px;width:100%}
+.kd-delete-dialog input:focus-visible{outline:2px solid #6b8a70;outline-offset:2px}
+.kd-delete-footer{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-top:8px}
+.kd-delete-footer button{cursor:pointer;padding:12px 15px;min-height:43px}
+.kd-delete-footer button:disabled{opacity:.45;cursor:not-allowed}
+.kd-permanent-confirm{background:#9b3639;color:#fff;border:1px solid #9b3639;font-size:11px;font-weight:800;display:flex;gap:8px;align-items:center}
+.kd-delete-blocked{background:#fff0e9;border:1px solid #e2c1b5;padding:14px;display:flex;gap:12px;color:#753d32;font-size:12px;line-height:1.7}
+.kd-delete-blocked span{display:grid;gap:4px}
+.kd-delete-loading{color:#586b5b}
+@media(max-width:500px){.kd-delete-dialog{padding:17px}.kd-delete-footer{flex-direction:column}.kd-delete-footer>button{width:100%;justify-content:center}}

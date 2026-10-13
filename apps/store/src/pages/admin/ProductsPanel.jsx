@@ -1,6 +1,7 @@
 import React,{useState} from 'react';
 import {Pencil,Archive,RotateCcw,PackagePlus,ImagePlus,Trash2} from 'lucide-react';
 import {money,apiBase,productImageUrl} from '@kd/catalog';
+import PermanentDeleteDialog from '../../components/admin/PermanentDeleteDialog.jsx';
 import {validateProduct,validateVariant,validateStock,PRODUCT_CATEGORIES,PRODUCT_STATUSES} from '../../utils/adminValidation.js';
 const EMPTY={name:'',brand_id:'',category:'tops',price:'',description:'',color:'#758073',status:'draft',tryon_enabled:false};
 const NEW_VARIANT={sku:'',size:'',color:'Onyx',stock:'0',chest_cm:''};
@@ -10,6 +11,9 @@ export default function ProductsPanel({products,brands,api,perform,busy,report})
   const [search,setSearch]=useState(''),[statusFilter,setStatusFilter]=useState('all');
   const [variantDrafts,setVariantDrafts]=useState({}),[stockDrafts,setStockDrafts]=useState({});
   const [pendingImages,setPendingImages]=useState({});
+  const [deleting,setDeleting]=useState(null);
+  const [deletionCheck,setDeletionCheck]=useState(null);
+  const [checkingDelete,setCheckingDelete]=useState(false);
   const rows=products.filter(p=>(statusFilter==='all'||p.status===statusFilter)&&[p.name,p.brand_name,p.slug].join(' ').toLowerCase().includes(search.toLowerCase()));
   function update(field,value){setDraft(old=>({...old,[field]:value}));}
   function reset(){setEditing(null);setDraft({...EMPTY});}
@@ -56,6 +60,26 @@ export default function ProductsPanel({products,brands,api,perform,busy,report})
     if(!window.confirm('Remove the image for '+product.name+'?'))return;
     await perform(()=>api('/admin/products/'+product.id+'/image',{method:'DELETE'}),'Product photo removed.');
   }
+  async function openDelete(product){
+    setDeleting(product);setDeletionCheck(null);setCheckingDelete(true);
+    try{setDeletionCheck(await api('/admin/products/'+product.id+'/delete-check'));}
+    catch(error){report(error.message||'Deletion check failed.');setDeleting(null);}
+    finally{setCheckingDelete(false);}
+  }
+  async function confirmPermanentDelete(){
+    if(!deleting||!deletionCheck?.eligible)return;
+    const id=deleting.id;
+    const ok=await perform(()=>api('/admin/products/'+id+'/permanent',{method:'DELETE'}),'Product permanently deleted. Other management actions are unchanged.');
+    if(ok){
+      if(editing===id)reset();
+      setPendingImages(old=>{const next={...old};delete next[id];return next;});
+      setDeleting(null);setDeletionCheck(null);
+    }else{
+      // The server validates under row locks even if preflight was eligible.
+      try{setDeletionCheck(await api('/admin/products/'+id+'/delete-check'));}
+      catch{setDeleting(null);}
+    }
+  }
   return <section className="kd-admin-panel" aria-labelledby="product-title">
     <div className="kd-admin-panel-header"><div><h2 id="product-title">Product & Inventory</h2><p>Control the published catalog, draft products and exact SKU stock levels.</p></div><span>{products.length} products</span></div>
     <form className="kd-admin-editor" onSubmit={submit}>
@@ -85,6 +109,12 @@ export default function ProductsPanel({products,brands,api,perform,busy,report})
             <select aria-label={'Change status for '+p.name} value={p.status} disabled={busy} onChange={e=>updateStatus(p,e.target.value)}>{PRODUCT_STATUSES.map(s=><option key={s} value={s}>{s.toUpperCase()}</option>)}</select>
             <button className="border-button" type="button" disabled={busy} onClick={()=>begin(p)}><Pencil size={13}/> EDIT</button>
             {p.status!=='archived'&&<button className="border-button" type="button" disabled={busy} onClick={()=>updateStatus(p,'archived')}><Archive size={13}/> ARCHIVE</button>}
+            <button className="border-button kd-delete-product-button" type="button"
+              disabled={busy||p.status==='active'||(p.variants||[]).some(v=>Number(v.stock)>0)}
+              onClick={()=>openDelete(p)}
+              title={p.status==='active'?'Archive product before deleting':(p.variants||[]).some(v=>Number(v.stock)>0)?'Set all SKU stock to zero':'Check deletion eligibility'}>
+              <Trash2 size={13}/> DELETE
+            </button>
           </div>
         </div>
         <div className="kd-admin-image-panel">
@@ -125,5 +155,7 @@ export default function ProductsPanel({products,brands,api,perform,busy,report})
         </div>
       </article>)}
     </div>
+    {deleting&&<PermanentDeleteDialog product={deleting} check={deletionCheck} checking={checkingDelete} busy={busy}
+      onConfirm={confirmPermanentDelete} onClose={()=>{setDeleting(null);setDeletionCheck(null);}}/>}
   </section>;
 }
