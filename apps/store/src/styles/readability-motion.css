@@ -1,0 +1,216 @@
+/* Sprint 2.6 — readable premium fashion UI and intentional motion
+ * Overrides the original 8–12px editorial micro-type without redesigning
+ * data-driven features or changing their underlying behavior.
+ */
+:root{--kd-ink:#243528;--kd-muted:#536753;--kd-focus:#88ad8b;--kd-motion-ease:cubic-bezier(.22,1,.36,1)}
+html{scroll-behavior:smooth;scroll-padding-top:96px}
+body{font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font-size:inherit}
+button,a,input,select,textarea{touch-action:manipulation}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{
+ outline:3px solid var(--kd-focus);outline-offset:3px
+}
+::selection{background:#b8cdb7;color:#1a3020}
+
+/* Header, navigation and primary actions */
+.announcement{font-size:12px;line-height:1.4;letter-spacing:.1em;padding:9px 18px}
+.header{height:88px;position:sticky;top:0;z-index:60;transition:height .3s var(--kd-motion-ease),box-shadow .3s ease;background:rgba(255,255,255,.97);backdrop-filter:blur(16px)}
+.header-scrolled{height:74px;box-shadow:0 9px 26px rgba(25,42,28,.10)}
+.logo{font-size:27px;min-width:172px}
+.logo small{font-size:11px;letter-spacing:.1em;bottom:-11px;color:#566454}
+.site-nav{gap:clamp(14px,1.5vw,26px)}
+.site-nav a{font-size:14px;letter-spacing:.045em;line-height:1.35;padding:12px 0;position:relative}
+.site-nav a:after{content:'';position:absolute;bottom:7px;left:0;width:100%;height:2px;background:currentColor;transform:scaleX(0);transform-origin:left;transition:transform .25s ease}
+.site-nav a:hover:after,.site-nav a:focus-visible:after,.site-nav a.active:after{transform:scaleX(1)}
+.site-nav .studio-nav{color:#37643f}
+.header-actions{gap:12px}
+.header-actions>a,.menu-toggle{min-width:44px;min-height:44px;display:grid;place-items:center;border-radius:4px}
+.header-actions a:hover,.menu-toggle:hover{background:#edf2eb}
+.bag-trigger b{font-size:11px;width:20px;height:20px;top:-2px;right:-4px}
+.button{min-height:50px;padding:14px 23px;font-size:14px;line-height:1.4;letter-spacing:.05em;transition:background .25s ease,transform .3s var(--kd-motion-ease),box-shadow .25s ease}
+.button:not(:disabled):hover{transform:translateY(-2px);box-shadow:0 9px 20px rgba(16,34,20,.14)}
+.text-link,.inline-link{font-size:14px;letter-spacing:.04em;line-height:1.5;min-height:44px;transition:color .2s ease}
+.text-link svg,.inline-link svg,.button svg{flex:none;transition:transform .25s var(--kd-motion-ease)}
+.text-link:hover svg,.inline-link:hover svg,.button:hover svg{transform:translate(3px,-1px)}
+.eyebrow{font-size:13px;letter-spacing:.13em;line-height:1.5}
+.dot{height:8px;width:8px;flex:none}
+.demo-banner{font-size:15px}
+
+/* Home — readable hero, visual emphasis and breathing room */
+.hero{min-height:650px}
+.hero-top,.hero-bottom{font-size:12px;letter-spacing:.095em;line-height:1.5}
+.hero-copy{width:min(720px,61vw)}
+.hero h1{font-size:clamp(68px,7.7vw,126px);line-height:1.02}
+.hero-copy p{max-width:530px;font-size:18px;line-height:1.75;color:#f0f5ef}
+.hero-actions{gap:22px;margin-top:32px}
+.hero-figure{pointer-events:none}
+.benefits{gap:12px;padding-block:23px}
+.benefits div{font-size:13px;letter-spacing:.06em;line-height:1.45;gap:15px;text-align:center}
+.benefits svg{flex:none}
+.section{padding-block:clamp(75px,7vw,112px)}
+.section-head{margin-bottom:38px}
+.section h2,.studio-feature h2,.closing-banner h2{font-size:clamp(42px,5.5vw,78px);line-height:1.12}
+.products-grid{gap:clamp(14px,1.8vw,28px)}
+.kd-reveal-card{min-width:0;will-change:opacity,transform}
+.product-card{display:block}
+.product-card-photo{isolation:isolate}
+.product-card-photo .kd-product-photo,.product-card-photo .visual{transition:transform .6s var(--kd-motion-ease)}
+.product-card:hover .kd-product-photo,.product-card:hover .visual{transform:scale(1.055)}
+.product-arrow{transition:transform .3s,background .3s}
+.product-card:hover .product-arrow{transform:rotate(45deg);background:#eff4ec}
+.photo-index{font-size:12px;padding:10px 12px;color:#2f3b30;background:rgba(255,255,255,.9)}
+.product-card-meta{padding-top:18px;gap:14px}
+.product-card-meta small{font-size:13px;letter-spacing:.075em;color:#526450}
+.product-card-meta b{font-size:clamp(20px,1.7vw,25px);line-height:1.3}
+.product-card-meta>span{font-size:16px;font-weight:700;white-space:normal}
+.visual-label{font-size:11px}
+.kd-category-tile{min-height:285px;padding:27px;transition:transform .35s var(--kd-motion-ease),box-shadow .35s}
+.kd-category-tile:hover{transform:translateY(-5px);box-shadow:0 20px 40px rgba(24,44,28,.23)}
+.kd-category-tile:after{transition:transform .65s var(--kd-motion-ease)}
+.kd-category-tile:hover:after{transform:translate(-10px,-10px) scale(1.09)}
+.kd-category-tile small,.kd-category-tile span{font-size:12px;letter-spacing:.08em}
+.kd-category-tile strong{font-size:clamp(28px,2.5vw,40px)}
+.studio-feature p{font-size:17px;line-height:1.8;color:#455945}
+.studio-feature .subnote{font-size:13px;color:#526552}
+.art-marker{font-size:13px}
+.brand-tile{min-height:320px;transition:transform .35s var(--kd-motion-ease),box-shadow .35s}
+.brand-tile:hover{transform:translateY(-5px);box-shadow:0 15px 35px rgba(35,51,38,.11)}
+.brand-tile small{font-size:12px;color:#526350}
+.brand-tile p{font-size:16px;line-height:1.7;color:#495949}
+.closing-banner span{font-size:13px}
+.footer p,.footer a,.footer-main span{font-size:15px;line-height:1.75}
+.footer b{font-size:13px;letter-spacing:.09em}
+.footer-base{font-size:12px;line-height:1.7}
+
+/* Catalog, details and forms */
+.page-intro p{font-size:17px;max-width:680px;line-height:1.8;color:#455b49}
+.kd-toolbar>div,.kd-toolbar span{font-size:14px}
+.kd-clear{font-size:13px;min-height:44px}
+.kd-filters{gap:14px;padding:24px}
+.kd-filters label{font-size:13px;letter-spacing:.055em;color:#3f5844}
+.kd-filters select,.kd-search div{font-size:15px;min-height:49px;height:auto}
+.kd-filters select{padding:12px}
+.kd-search input{font-size:15px;min-height:46px}
+.kd-stock{font-size:15px}
+.kd-empty p,.kd-page-footer,.kd-pagination button{font-size:15px}
+.kd-pagination button{min-height:44px;padding-inline:15px}
+.kd-catalog-note,.kd-caption{font-size:13px;line-height:1.7}
+.crumb{font-size:13px;line-height:1.5}
+.pdp-details>p{font-size:17px;line-height:1.8;color:#4d6150}
+.pdp-price{font-size:24px}
+.pdp-label,.kd-qty>label{font-size:13px}
+.kd-selection-title>span,.kd-qty>span,.inventory-note,.pdp-benefits{font-size:14px}
+.kd-variants button{min-width:80px;min-height:66px;font-size:15px}
+.kd-variants button small{font-size:12px}
+.kd-qty-widget{height:48px}
+.kd-qty-widget button{width:48px}
+.kd-qty-widget input{font-size:16px}
+.kd-warning{font-size:14px}
+.fitting-link b,.fitting-link small{font-size:14px}
+.fitting-link{min-height:76px}
+.cart-info small,.cart-info>span,.cart-info strong{font-size:15px}
+.cart-quantity button{min-width:44px;min-height:44px}
+.order-summary h3,.order-summary>div,.order-summary>p,.order-summary p{font-size:15px}
+.auth-form p,.auth-form input,.checkout-form input,.checkout-form textarea{font-size:16px}
+.auth-form label,.checkout-form label,.admin-form label{font-size:13px}
+.auth-form input,.checkout-form input,.checkout-form textarea{min-height:48px}
+.auth-form .text-button,.message-error,.message-success{font-size:15px}
+.checkout-form small,.account-orders span,.order-line small,.order-status{font-size:13px}
+.admin-top p,.admin-chip{font-size:14px}
+.admin-tabs button{font-size:14px;min-height:48px}
+.border-button{font-size:13px;min-height:44px;padding:10px 14px}
+.admin-row b,.admin-product-head b,.admin-order b{font-size:17px}
+.admin-row small,.admin-product-head small,.admin-order small{font-size:13px}
+.admin-row span,.variant-row span,.variant-row small,.variant-row label,.admin-order select{font-size:14px}
+.order-record b,.order-record span{font-size:15px}
+
+/* Admin remains information-dense but not microscopic */
+.kd-admin-stat-grid span{font-size:13px;letter-spacing:.055em}
+.kd-admin-stat-grid small{font-size:12px;line-height:1.6}
+.kd-admin-overview p,.kd-admin-panel-header p,.kd-admin-record p,.kd-no-skus{font-size:15px}
+.kd-admin-quick button{font-size:15px;min-height:68px}
+.kd-admin-panel-header>span,.kd-admin-editor-heading strong{font-size:13px}
+.kd-admin-editor-heading button,.kd-editor-footer span{font-size:14px}
+.kd-admin-fields>label,.kd-admin-filter-row label,.kd-stock-row label{font-size:13px}
+.kd-admin-fields input,.kd-admin-fields textarea,.kd-admin-fields select{font-size:15px;min-height:48px}
+.kd-admin-filter-row input,.kd-admin-filter-row select,.kd-admin-actions select{font-size:15px;min-height:46px}
+.kd-status{font-size:12px}
+.kd-stock-row strong{font-size:15px}
+.kd-stock-row small{font-size:13px}
+.kd-stock-row input{font-size:15px;min-height:44px}
+.kd-add-variant>span{font-size:13px}
+.kd-add-variant-grid input{font-size:15px;min-height:46px}
+.kd-admin-image-controls strong,.kd-admin-image-controls p,.kd-admin-image-controls input,.kd-selected-photo{font-size:13px}
+.kd-delete-dialog>p,.kd-delete-counts,.kd-delete-dialog form>label,.kd-delete-blocked{font-size:15px}
+.kd-permanent-confirm{font-size:13px}
+
+/* Subtle decorative movement, with no compulsory animation */
+@keyframes kd-breathe{0%{transform:translateY(0) scale(1)}100%{transform:translateY(9px) scale(1.035)}}
+@keyframes kd-art-orbit{0%{transform:rotate(27deg)}100%{transform:rotate(31deg)}}
+.hero-figure-circle{animation:kd-breathe 7s ease-in-out infinite alternate}
+.studio-feature-art .art-ring{animation:kd-art-orbit 10s ease-in-out infinite alternate}
+
+/* Keep wide labels readable by using the mobile nav sooner. */
+@media(max-width:1200px){
+ .menu-toggle{display:grid}
+ .site-nav{display:none;position:absolute;top:100%;left:0;right:0;background:#fff;padding:20px clamp(20px,5vw,88px);flex-direction:column;align-items:stretch;gap:6px;box-shadow:0 16px 26px rgba(20,40,24,.15);max-height:calc(100dvh - 74px);overflow-y:auto}
+ .site-nav.nav-open{display:flex}
+ .site-nav a{font-size:16px;padding:11px 4px;white-space:normal}
+ .site-nav a:after{bottom:5px}
+}
+@media(max-width:800px){
+ .header,.header-scrolled{height:76px}
+ .hero{height:650px;min-height:650px}
+ .hero-copy{width:min(80vw,580px)}
+ .hero-copy p{font-size:17px}
+ .benefits div{font-size:13px}
+ .studio-feature-content{padding:50px 28px}
+}
+@media(max-width:550px){
+ .announcement{font-size:11px;letter-spacing:.04em;line-height:1.45}
+ .header{padding-inline:16px}
+ .logo{font-size:23px;min-width:137px}
+ .logo small{font-size:10px}
+ .header-actions{gap:4px}
+ .hero{height:640px;min-height:640px;padding:22px 20px}
+ .hero-top,.hero-bottom{font-size:11px;letter-spacing:.04em}
+ .hero-copy{left:20px;width:calc(100% - 40px);top:48%}
+ .hero h1{font-size:clamp(53px,13vw,70px);margin:22px 0}
+ .hero-copy p{font-size:16px;max-width:340px;line-height:1.65}
+ .hero-figure{opacity:.24;width:110%;right:-60%}
+ .hero-actions{gap:14px;align-items:flex-start}
+ .button{font-size:13px;min-height:48px;padding:13px 16px;white-space:normal}
+ .text-link,.inline-link{font-size:13px}
+ .section{padding:65px 20px}
+ .section h2{font-size:clamp(43px,11vw,58px)}
+ .products-grid{gap:16px}
+ .product-card-meta{flex-direction:column;gap:8px}
+ .product-card-meta b{font-size:19px}
+ .product-card-meta>span{font-size:15px}
+ .kd-category-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+ .kd-category-tile{min-height:220px;padding:16px}
+ .kd-category-tile strong{font-size:clamp(23px,6vw,30px)}
+ .kd-category-tile small,.kd-category-tile span{font-size:12px;letter-spacing:0}
+ .visual-label{font-size:10px}
+ .closing-banner{padding:54px 20px}
+ .footer-main{grid-template-columns:1fr 1fr;gap:27px}
+ .footer-main>div:first-child{grid-column:1/-1}
+ .footer-main>div:last-child{grid-column:1/-1}
+ .footer-base{font-size:12px}
+ .auth-form{padding:55px 22px}
+ .cart-info small,.cart-info>span,.cart-info strong{font-size:14px}
+ .admin-tabs button{font-size:14px}
+ .kd-admin-editor{padding:18px}
+ .kd-admin-stat-grid strong{font-size:29px}
+ .kd-admin-actions{gap:7px}
+}
+@media(max-width:370px){
+ .kd-category-grid{grid-template-columns:1fr}
+ .hero-actions{gap:6px}
+ .hero .button{padding-inline:12px}
+}
+@media(prefers-reduced-motion:reduce){
+ html{scroll-behavior:auto}
+ *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+ .kd-reveal-card{will-change:auto}
+}

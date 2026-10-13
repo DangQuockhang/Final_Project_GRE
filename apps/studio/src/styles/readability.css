@@ -1,0 +1,22 @@
+/* Sprint 2.6 — accessibility and readability parity for 3D fitting studio */
+.studio-header{min-height:86px;gap:20px}
+.studio-header .brand{font-size:27px}
+.brand small{font-size:12px;letter-spacing:.12em}
+.studio-header nav{font-size:16px}
+.studio-header nav a{display:inline-flex;align-items:center;min-height:44px}
+.studio-canvas{padding-block:clamp(40px,5vw,70px)}
+.intro span{font-size:13px;letter-spacing:.12em}
+.intro div{line-height:1.15}
+.products-switch{font-size:16px;flex-wrap:wrap}
+.products-switch select{font-size:16px;min-height:48px;padding:12px 15px}
+.studio-canvas footer{font-size:13px;line-height:1.7;letter-spacing:.04em}
+.studio-app a:focus-visible,.studio-app select:focus-visible,.studio-app button:focus-visible{outline:3px solid #7bb083;outline-offset:3px}
+@media(max-width:600px){
+ .studio-header{padding:18px 20px;min-height:78px}
+ .studio-header .brand{font-size:22px}
+ .studio-header nav{font-size:14px}
+ .intro span{font-size:12px}
+ .intro div{font-size:clamp(37px,9vw,60px)}
+ .products-switch select{max-width:100%}
+}
+@media(prefers-reduced-motion:reduce){.studio-app *,.studio-app *::before,.studio-app *::after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}
