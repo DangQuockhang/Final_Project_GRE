@@ -1,9 +1,16 @@
-import Reveal from '../common/Reveal.jsx';
 import React from 'react';
-import {Link} from 'react-router-dom';
-import {ArrowRight,ArrowUpRight,ShieldCheck,Sparkles,Truck} from 'lucide-react';
-import Eyebrow from '../common/Eyebrow.jsx';
-import {ProductCard} from '../product/ProductCard.jsx';
-export default function StoreBenefits(){return (
-<Reveal as="section" className="benefits"><div><ShieldCheck size={22}/><span>SUPPLIER TRANSPARENCY</span></div><div><Sparkles size={22}/><span>INTERACTIVE 3D FITTING</span></div><div><Truck size={22}/><span>CURATED SHOPPING EXPERIENCE</span></div></Reveal>
-)}
+import {BadgeCheck,Layers3,ScanFace} from 'lucide-react';
+
+export default function StoreBenefits(){
+ const items=[
+  {Icon:Layers3,title:'Curated collections',caption:'Discover considered everyday style'},
+  {Icon:BadgeCheck,title:'Multi-brand discovery',caption:'Explore distinctive fashion labels'},
+  {Icon:ScanFace,title:'Interactive 3D preview',caption:'Discover selected pieces in 3D'}
+ ];
+ return <section className="kd26-benefits" aria-label="Shopping experience">
+  {items.map(({Icon,title,caption})=><div className="kd26-benefit" key={title}>
+   <Icon size={25} strokeWidth={1.45} aria-hidden="true"/>
+   <div><strong>{title}</strong><span>{caption}</span></div>
+  </div>)}
+ </section>;
+}

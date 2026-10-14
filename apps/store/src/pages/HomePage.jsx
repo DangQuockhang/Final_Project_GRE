@@ -1,17 +1,21 @@
 import React from 'react';
 import HeroSection from '../components/home/HeroSection.jsx';
 import StoreBenefits from '../components/home/StoreBenefits.jsx';
-import FeaturedProducts from '../components/home/FeaturedProducts.jsx';
 import ShopByCategory from '../components/home/ShopByCategory.jsx';
-import VirtualTryOnBanner from '../components/home/VirtualTryOnBanner.jsx';
+import FeaturedProducts from '../components/home/FeaturedProducts.jsx';
+import EditorialStory from '../components/home/EditorialStory.jsx';
 import FeaturedBrands from '../components/home/FeaturedBrands.jsx';
+import VirtualTryOnBanner from '../components/home/VirtualTryOnBanner.jsx';
 import ClosingBanner from '../components/home/ClosingBanner.jsx';
-export default function HomePage({products,brands,fittingUrl}){return <>
- <HeroSection fittingUrl={fittingUrl}/>
- <StoreBenefits/>
- <FeaturedProducts products={products}/>
- <ShopByCategory/>
- <VirtualTryOnBanner fittingUrl={fittingUrl}/>
- <FeaturedBrands brands={brands}/>
- <ClosingBanner/>
-</>}
+export default function HomePage({products,brands,fittingUrl}){
+ return <div className="kd26-home">
+  <HeroSection/>
+  <StoreBenefits/>
+  <ShopByCategory/>
+  <FeaturedProducts products={products}/>
+  <EditorialStory/>
+  <FeaturedBrands brands={brands}/>
+  <VirtualTryOnBanner fittingUrl={fittingUrl}/>
+  <ClosingBanner/>
+ </div>;
+}

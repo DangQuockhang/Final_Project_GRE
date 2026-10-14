@@ -1,9 +1,10 @@
-import Reveal from '../common/Reveal.jsx';
 import React from 'react';
 import {Link} from 'react-router-dom';
-import {ArrowRight,ArrowUpRight,ShieldCheck,Sparkles,Truck} from 'lucide-react';
-import Eyebrow from '../common/Eyebrow.jsx';
-import {ProductCard} from '../product/ProductCard.jsx';
-export default function ClosingBanner(){return (
-<Reveal as="section" className="closing-banner"><div><span>YOUR STYLE IS NOT A CATEGORY.</span><h2>Make it <em>yours.</em></h2></div><Link className="button button-light" to="/shop">SHOP THE COLLECTION <ArrowRight size={18}/></Link></Reveal>
-)}
+import {ArrowUpRight} from 'lucide-react';
+import Reveal from '../common/Reveal.jsx';
+export default function ClosingBanner(){
+ return <Reveal as="section" className="kd26-close" amount={.1}>
+  <div><span>THE KD DESIGN EDIT</span><h2>Good style is <em>personal.</em></h2><p>Discover your next favorite and make the everyday yours.</p></div>
+  <Link to="/shop" className="kd26-btn kd26-btn-dark">Explore the shop <ArrowUpRight size={19}/></Link>
+ </Reveal>;
+}

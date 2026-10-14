@@ -1,9 +1,22 @@
-import Reveal from '../common/Reveal.jsx';
 import React from 'react';
 import {Link} from 'react-router-dom';
-import {ArrowRight,ArrowUpRight,ShieldCheck,Sparkles,Truck} from 'lucide-react';
-import Eyebrow from '../common/Eyebrow.jsx';
-import {ProductCard} from '../product/ProductCard.jsx';
-export default function FeaturedBrands({brands}){return (
-<Reveal as="section" className="section brands-home"><div className="section-head"><div><Eyebrow>002 / CURATED LABELS</Eyebrow><h2>Meet the <em>brands.</em></h2></div><Link className="inline-link" to="/brands">EXPLORE ALL <ArrowUpRight size={18}/></Link></div><div className="brand-tiles">{brands.slice(0,3).map((b,i)=><Link to={`/shop?brand=${b.slug}`} className={`brand-tile brand-tile-${i}`} key={b.id}><small>0{i+1} — SELECTED LABEL</small><b>{b.name}</b><p>{b.description}</p><ArrowUpRight size={18}/></Link>)}</div></Reveal>
-)}
+import {ArrowUpRight} from 'lucide-react';
+import Reveal from '../common/Reveal.jsx';
+export default function FeaturedBrands({brands=[]}){
+ return <Reveal as="section" className="kd26-section kd26-brands" amount={.05}>
+  <div className="kd26-section-head">
+   <div><span className="kd26-kicker"><span/> THE LABELS</span><h2>Brands worth <em>discovering.</em></h2></div>
+   <Link to="/brands" className="kd26-link">Explore all brands <ArrowUpRight size={19}/></Link>
+  </div>
+  <div className="kd26-brand-grid">
+   {brands.slice(0,3).map((b,i)=><Link to={'/shop?brand='+encodeURIComponent(b.slug)} className="kd26-brand-card" key={b.id}>
+    <span className="kd26-brand-index">0{i+1} / SELECTED LABEL</span>
+    <strong>{b.name}</strong>
+    <p>{b.description||'Explore the collection and find your next signature piece.'}</p>
+    <span className="kd26-brand-foot">Explore collection <ArrowUpRight size={18}/></span>
+   </Link>)}
+   {!brands.length&&<div className="kd26-brand-placeholder">Explore a growing collection of fashion labels.</div>}
+  </div>
+  <p className="kd26-demo-note">Curated demo labels. No affiliation with international fashion brands is implied.</p>
+ </Reveal>;
+}

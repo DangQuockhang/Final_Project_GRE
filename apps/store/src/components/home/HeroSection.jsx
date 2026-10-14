@@ -1,11 +1,34 @@
 import React from 'react';
 import {motion,useReducedMotion} from 'framer-motion';
 import {Link} from 'react-router-dom';
-import {ArrowRight,ArrowUpRight,ShieldCheck,Sparkles,Truck} from 'lucide-react';
-import Eyebrow from '../common/Eyebrow.jsx';
-import {ProductCard} from '../product/ProductCard.jsx';
-export default function HeroSection({fittingUrl}){
+import {ArrowDownRight,ArrowUpRight} from 'lucide-react';
+import {editorialImages} from './editorialMedia.js';
+
+export default function HeroSection(){
  const reduced=useReducedMotion();
- return (
-<section className="hero"><div className="hero-grain"/><div className="hero-top"><span>THE NEW STANDARD OF PERSONAL STYLE</span><span>ISSUE 001 / 2026</span></div><div className="hero-copy"><motion.div className="kd-hero-content" initial={reduced?false:{opacity:0,y:25}} animate={{opacity:1,y:0}} transition={{duration:reduced?0:0.75,ease:[0.22,1,0.36,1]}}><Eyebrow>FASHION, RECONSIDERED</Eyebrow><h1>Wear what<br/><em>moves you.</em></h1><p>A considered edit of contemporary clothing and accessories. Discover pieces made for your own definition of style.</p><div className="hero-actions"><Link className="button button-light" to="/shop">DISCOVER THE EDIT <ArrowUpRight size={17}/></Link><a href={fittingUrl} className="text-link" target="_blank" rel="noreferrer">EXPLORE 3D FITTING <ArrowRight size={17}/></a></div></motion.div></div><motion.div className="hero-figure" initial={reduced?false:{opacity:0,x:24}} animate={{opacity:1,x:0}} transition={{duration:reduced?0:1,delay:0.12}}><div className="hero-figure-circle"/><div className="hero-figure-body"/><div className="hero-figure-jacket"/><div className="hero-figure-head"/></motion.div><div className="hero-bottom">NOT JUST WHAT YOU WEAR — HOW YOU FEEL. <span>SCROLL TO EXPLORE ↓</span></div></section>
-)}
+ return <section className="kd26-hero" aria-labelledby="kd26-hero-title">
+  <div className="kd26-hero-copy">
+   <motion.div initial={reduced?false:{opacity:0,y:24}} animate={{opacity:1,y:0}}
+    transition={{duration:reduced?0:.72,ease:[.22,1,.36,1]}}>
+    <span className="kd26-kicker"><span/> THE NEW EXPRESSION OF STYLE</span>
+    <h1 id="kd26-hero-title">Discover your<br/><em>signature style.</em></h1>
+    <p>Clothing, footwear-inspired styling and accessories for every way you show up. Discover distinctive labels, thoughtful details and pieces worth keeping.</p>
+    <div className="kd26-hero-cta">
+     <Link to="/shop" className="kd26-btn kd26-btn-dark">Shop the collection <ArrowUpRight size={20}/></Link>
+     <Link to="/brands" className="kd26-link">Explore brands <ArrowUpRight size={18}/></Link>
+    </div>
+   </motion.div>
+   <div className="kd26-hero-bottom">
+    <span>CURATED FASHION · KD DESIGN</span>
+    <a href="#kd26-categories">DISCOVER MORE <ArrowDownRight size={16}/></a>
+   </div>
+  </div>
+  <motion.div className="kd26-hero-media"
+   initial={reduced?false:{opacity:0,scale:1.045}} animate={{opacity:1,scale:1}}
+   transition={{duration:reduced?0:1.05,delay:reduced?0:.15,ease:[.22,1,.36,1]}}>
+   <img src={editorialImages.hero} alt="Contemporary editorial fashion outfit" fetchPriority="high" decoding="async"
+    onError={e=>{e.currentTarget.style.opacity='0'}}/>
+   <div className="kd26-hero-photo-caption"><span>THE EVERYDAY EDIT</span><span>01 / 04</span></div>
+  </motion.div>
+ </section>;
+}

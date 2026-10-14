@@ -1,9 +1,20 @@
-import Reveal from '../common/Reveal.jsx';
 import React from 'react';
-import {Link} from 'react-router-dom';
-import {ArrowRight,ArrowUpRight,ShieldCheck,Sparkles,Truck} from 'lucide-react';
-import Eyebrow from '../common/Eyebrow.jsx';
-import {ProductCard} from '../product/ProductCard.jsx';
-export default function VirtualTryOnBanner({fittingUrl}){return (
-<Reveal as="section" className="studio-feature"><div className="studio-feature-art"><span className="art-ring"/><span className="art-head"/><span className="art-torso"/><span className="art-marker">3D / 360°</span></div><div className="studio-feature-content"><Eyebrow>INTRODUCING / KD FITTING STUDIO</Eyebrow><h2>Your fit.<br/><em>Before the fit.</em></h2><p>Explore a 3D mannequin, switch silhouettes and compare garment size on screen. A new way to explore your look, before adding anything to your bag.</p><p className="subnote">Early prototype: visual geometry and size guidance, not AI fit certification.</p><a className="button button-dark" href={fittingUrl} target="_blank" rel="noreferrer">ENTER THE FITTING STUDIO <ArrowUpRight size={18}/></a></div></Reveal>
-)}
+import {ArrowUpRight,Move3D} from 'lucide-react';
+import Reveal from '../common/Reveal.jsx';
+export default function VirtualTryOnBanner({fittingUrl}){
+ return <Reveal as="section" className="kd26-studio" amount={.08}>
+  <div className="kd26-studio-copy">
+   <span className="kd26-kicker"><span/> DISCOVER MORE WITH KD DESIGN</span>
+   <h2>See the fit.<br/><em>Find your style.</em></h2>
+   <p>Explore selected silhouettes on a 3D mannequin and discover proportions in an interactive fitting experience.</p>
+   <p className="kd26-studio-disclaimer">Prototype preview only; it does not guarantee real-world sizing or garment fit.</p>
+   <a className="kd26-btn kd26-btn-light" href={fittingUrl} target="_blank" rel="noreferrer">Explore 3D Fitting <ArrowUpRight size={19}/></a>
+  </div>
+  <div className="kd26-studio-visual" aria-hidden="true">
+   <div className="kd26-studio-orbit"><span/><span/></div>
+   <div className="kd26-studio-outline"><div className="kd26-studio-head"/><div className="kd26-studio-torso"/></div>
+   <span className="kd26-studio-corner">KD / 3D STUDIO</span>
+   <Move3D className="kd26-studio-icon" size={31} strokeWidth={1}/>
+  </div>
+ </Reveal>;
+}
