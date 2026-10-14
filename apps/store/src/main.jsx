@@ -18,6 +18,7 @@ import './styles/admin-phase2.css';
 import './styles/product-images.css';
 import './styles/admin-delete.css';
 import './styles/readability-motion.css';
+import './styles/editorial-home.css';
 import AdminPage from './pages/admin/AdminPage.jsx';
 
 const API=import.meta.env.VITE_API_URL||apiBase;
