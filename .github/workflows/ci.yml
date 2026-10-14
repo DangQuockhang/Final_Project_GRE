@@ -32,7 +32,7 @@ jobs:
             echo "Chrome/Chromium not installed on runner"; exit 1
           fi
           "$BROWSER" --headless --no-sandbox --disable-dev-shm-usage --disable-gpu --virtual-time-budget=8000 --dump-dom http://127.0.0.1:5173/ > /tmp/kd-dom.html 2>/tmp/kd-browser.log || { cat /tmp/kd-browser.log; exit 1; }
-          if ! grep -q 'Wear what' /tmp/kd-dom.html; then
+          if ! grep -q 'Discover your' /tmp/kd-dom.html; then
             echo "Homepage was not rendered by React:"
             head -c 6000 /tmp/kd-dom.html
             echo "Browser log:"
@@ -41,7 +41,9 @@ jobs:
             cat /tmp/kd-vite.log
             exit 1
           fi
-          echo "React homepage rendered successfully in Chrome"
+          grep -q "Shop by" /tmp/kd-dom.html || { echo "Homepage category discovery section missing"; exit 1; }
+          grep -q "Brands worth" /tmp/kd-dom.html || { echo "Homepage brands section missing"; exit 1; }
+          echo "React redesigned homepage rendered successfully in Chrome"
           "$BROWSER" --headless --no-sandbox --disable-dev-shm-usage --disable-gpu --virtual-time-budget=8000 --dump-dom http://127.0.0.1:5173/shop > /tmp/kd-shop.html 2>/tmp/kd-shop.log
           grep -q "EXPLORE THE EDIT" /tmp/kd-shop.html || { echo "Shop did not render"; tail -n 30 /tmp/kd-shop.log; exit 1; }
           "$BROWSER" --headless --no-sandbox --disable-dev-shm-usage --disable-gpu --virtual-time-budget=8000 --dump-dom http://127.0.0.1:5173/product/essential-sculpt-tee > /tmp/kd-product.html 2>/tmp/kd-product.log

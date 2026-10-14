@@ -296,3 +296,24 @@
  }
  .kd26-hero-media img,.kd26-category-image img,.kd26-editorial-image img{transform:none!important}
 }
+
+
+/* ProductCard is reused by Shop/Related Products: keep its action badge
+   positioned everywhere, not only on the homepage. */
+.product-card-photo .kd26-card-action{
+ position:absolute;bottom:17px;left:17px;right:17px;
+ background:rgba(255,253,248,.97);padding:13px 15px;
+ display:flex;justify-content:space-between;align-items:center;
+ font-size:13px;font-weight:750;z-index:2;
+ opacity:0;transform:translateY(8px);
+ transition:opacity .25s ease,transform .25s ease;
+}
+.product-card:hover .kd26-card-action,.product-card:focus-visible .kd26-card-action{
+ opacity:1;transform:translateY(0);
+}
+@media(hover:none){
+ .product-card-photo .kd26-card-action{display:none}
+}
+@media(prefers-reduced-motion:reduce){
+ .product-card-photo .kd26-card-action{transition:none}
+}

@@ -12,7 +12,7 @@ export default function HeroSection(){
     transition={{duration:reduced?0:.72,ease:[.22,1,.36,1]}}>
     <span className="kd26-kicker"><span/> THE NEW EXPRESSION OF STYLE</span>
     <h1 id="kd26-hero-title">Discover your<br/><em>signature style.</em></h1>
-    <p>Clothing, footwear-inspired styling and accessories for every way you show up. Discover distinctive labels, thoughtful details and pieces worth keeping.</p>
+    <p>Discover contemporary clothing and accessories from distinctive fashion labels. Thoughtful pieces for every way you show up.</p>
     <div className="kd26-hero-cta">
      <Link to="/shop" className="kd26-btn kd26-btn-dark">Shop the collection <ArrowUpRight size={20}/></Link>
      <Link to="/brands" className="kd26-link">Explore brands <ArrowUpRight size={18}/></Link>
