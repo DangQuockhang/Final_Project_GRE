@@ -3,7 +3,7 @@ import {Pencil,Archive,RotateCcw,PackagePlus,ImagePlus,Trash2} from 'lucide-reac
 import {money,apiBase,productImageUrl} from '@kd/catalog';
 import PermanentDeleteDialog from '../../components/admin/PermanentDeleteDialog.jsx';
 import {validateProduct,validateVariant,validateStock,PRODUCT_CATEGORIES,PRODUCT_STATUSES} from '../../utils/adminValidation.js';
-const EMPTY={name:'',brand_id:'',category:'tops',price:'',description:'',color:'#758073',status:'draft',tryon_enabled:false};
+const EMPTY={name:'',brand_id:'',category:'tops',product_type:'',price:'',sale_price:'',description:'',color:'#758073',status:'draft',tryon_enabled:false};
 const NEW_VARIANT={sku:'',size:'',color:'Onyx',stock:'0',chest_cm:''};
 export default function ProductsPanel({products,brands,api,perform,busy,report}){
   const [editing,setEditing]=useState(null);
@@ -11,17 +11,18 @@ export default function ProductsPanel({products,brands,api,perform,busy,report})
   const [search,setSearch]=useState(''),[statusFilter,setStatusFilter]=useState('all');
   const [variantDrafts,setVariantDrafts]=useState({}),[stockDrafts,setStockDrafts]=useState({});
   const [pendingImages,setPendingImages]=useState({});
+  const [pendingGalleries,setPendingGalleries]=useState({});
   const [deleting,setDeleting]=useState(null);
   const [deletionCheck,setDeletionCheck]=useState(null);
   const [checkingDelete,setCheckingDelete]=useState(false);
   const rows=products.filter(p=>(statusFilter==='all'||p.status===statusFilter)&&[p.name,p.brand_name,p.slug].join(' ').toLowerCase().includes(search.toLowerCase()));
   function update(field,value){setDraft(old=>({...old,[field]:value}));}
   function reset(){setEditing(null);setDraft({...EMPTY});}
-  function begin(p){setEditing(p.id);setDraft({name:p.name,brand_id:String(p.brand_id),category:p.category,price:String(p.price),description:p.description||'',color:p.color||'#758073',status:p.status,tryon_enabled:Boolean(p.tryon_enabled)});window.scrollTo({top:0,behavior:'smooth'});}
+  function begin(p){setEditing(p.id);setDraft({name:p.name,brand_id:String(p.brand_id),category:p.category,product_type:p.product_type||'',price:String(p.price),sale_price:p.sale_price==null?'':String(p.sale_price),description:p.description||'',color:p.color||'#758073',status:p.status,tryon_enabled:Boolean(p.tryon_enabled)});window.scrollTo({top:0,behavior:'smooth'});}
   async function submit(e){
     e.preventDefault();
     const problem=validateProduct(draft);if(problem){report(problem);return;}
-    const payload={...draft,brand_id:Number(draft.brand_id),price:Number(draft.price)};
+    const payload={...draft,brand_id:Number(draft.brand_id),price:Number(draft.price),sale_price:draft.sale_price===''?null:Number(draft.sale_price),product_type:draft.product_type||null};
     const ok=await perform(()=>api(editing?'/products/'+editing:'/products',{method:editing?'PATCH':'POST',body:payload}),editing?'Product updated.':'Product created. Add SKU variants below.');
     if(ok)reset();
   }
@@ -60,6 +61,25 @@ export default function ProductsPanel({products,brands,api,perform,busy,report})
     if(!window.confirm('Remove the image for '+product.name+'?'))return;
     await perform(()=>api('/admin/products/'+product.id+'/image',{method:'DELETE'}),'Product photo removed.');
   }
+  function chooseGallery(id,files){
+    const allowed=Array.from(files||[]);
+    if(allowed.length>6){report('Upload up to 6 photos at once.');return;}
+    if(allowed.some(f=>!['image/jpeg','image/png','image/webp'].includes(f.type)||f.size>3*1024*1024)){
+      report('Choose JPG, PNG or WebP images, each under 3 MB.');return;
+    }
+    setPendingGalleries(old=>({...old,[id]:allowed}));
+  }
+  async function uploadGallery(product){
+    const files=pendingGalleries[product.id]||[];
+    if(!files.length){report('Select images first.');return;}
+    const form=new FormData();files.forEach(file=>form.append('images',file));
+    const ok=await perform(()=>api('/admin/products/'+product.id+'/images',{method:'POST',body:form}),'Product gallery images added.');
+    if(ok)setPendingGalleries(old=>{const next={...old};delete next[product.id];return next;});
+  }
+  async function deleteGalleryImage(product,image){
+    if(!window.confirm('Remove this photo from '+product.name+'?'))return;
+    await perform(()=>api('/admin/products/'+product.id+'/images/'+image.id,{method:'DELETE'}),'Gallery photo deleted.');
+  }
   async function openDelete(product){
     setDeleting(product);setDeletionCheck(null);setCheckingDelete(true);
     try{setDeletionCheck(await api('/admin/products/'+product.id+'/delete-check'));}
@@ -89,6 +109,8 @@ export default function ProductsPanel({products,brands,api,perform,busy,report})
         <label>BRAND<select required value={draft.brand_id} onChange={e=>update('brand_id',e.target.value)}><option value="">Choose brand</option>{brands.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
         <label>CATEGORY<select value={draft.category} onChange={e=>update('category',e.target.value)}>{PRODUCT_CATEGORIES.map(c=><option key={c} value={c}>{c.toUpperCase()}</option>)}</select></label>
         <label>PRICE (VND)<input type="number" min="0" step="1" required value={draft.price} onChange={e=>update('price',e.target.value)}/></label>
+        <label>SALE PRICE (VND, optional)<input type="number" min="0" step="1" value={draft.sale_price} onChange={e=>update('sale_price',e.target.value)} placeholder="Leave blank for no sale"/></label>
+        <label>PRODUCT TYPE (e.g. T-Shirt, Jacket, Sneakers)<input type="text" maxLength={60} value={draft.product_type} onChange={e=>update('product_type',e.target.value)} placeholder="T-Shirt"/></label>
         <label>STATUS<select value={draft.status} onChange={e=>update('status',e.target.value)}>{PRODUCT_STATUSES.map(s=><option key={s} value={s}>{s.toUpperCase()}</option>)}</select></label>
         <label>DISPLAY COLOR<input type="color" value={draft.color} onChange={e=>update('color',e.target.value)}/></label>
         <label className="kd-admin-checkbox"><input type="checkbox" checked={draft.tryon_enabled} onChange={e=>update('tryon_enabled',e.target.checked)}/> Enable mannequin demo</label>
@@ -103,7 +125,7 @@ export default function ProductsPanel({products,brands,api,perform,busy,report})
     <div className="admin-table">{rows.length===0&&<div className="kd-admin-placeholder">No products match the selection.</div>}
       {rows.map(p=><article key={p.id} className="admin-product kd-admin-product">
         <div className="admin-product-head">
-          <div><b>{p.name}</b><small>{p.brand_name} · {money(p.price)} · {p.variants?.length||0} SKUs</small></div>
+          <div><b>{p.name}</b><small>{p.brand_name} · {p.sale_price!=null?<><del>{money(p.price)}</del> {money(p.sale_price)} SALE</>:money(p.price)} · {p.variants?.length||0} SKUs</small></div>
           <div className="kd-admin-actions">
             <span className={'kd-status kd-status-'+p.status}>{p.status.toUpperCase()}</span>
             <select aria-label={'Change status for '+p.name} value={p.status} disabled={busy} onChange={e=>updateStatus(p,e.target.value)}>{PRODUCT_STATUSES.map(s=><option key={s} value={s}>{s.toUpperCase()}</option>)}</select>
@@ -133,6 +155,20 @@ export default function ProductsPanel({products,brands,api,perform,busy,report})
               {p.image_url&&<button className="border-button" type="button" disabled={busy} onClick={()=>deletePhoto(p)}><Trash2 size={14}/> REMOVE PHOTO</button>}
             </div>
           </div>
+        </div>
+        <div className="kd-retail-gallery-admin">
+          <strong>MULTI-IMAGE GALLERY</strong>
+          <p>Upload up to 6 JPG/PNG/WebP images per batch, with a limit of 8 extra images per product. Maximum 3 MB each.</p>
+          <div className="kd-retail-gallery-thumbs">
+            {(p.images||[]).map(image=><div className="kd-retail-gallery-thumb" key={image.id}>
+             <img src={productImageUrl(image.image_url,import.meta.env.VITE_API_URL||apiBase)||''} alt={'Gallery image for '+p.name}/>
+             <button type="button" className="border-button" disabled={busy} onClick={()=>deleteGalleryImage(p,image)}><Trash2 size={13}/> REMOVE</button>
+            </div>)}
+            {!p.images?.length&&<p>No gallery photos yet.</p>}
+          </div>
+          <input aria-label={'Select gallery images for '+p.name} type="file" multiple accept="image/png,image/jpeg,image/webp" onChange={e=>chooseGallery(p.id,e.target.files)}/>
+          {(pendingGalleries[p.id]||[]).length>0&&<p>{pendingGalleries[p.id].length} photo(s) selected.</p>}
+          <button type="button" className="border-button" disabled={busy||!pendingGalleries[p.id]?.length} onClick={()=>uploadGallery(p)}><ImagePlus size={15}/> UPLOAD GALLERY PHOTOS</button>
         </div>
         <div className="kd-variants-table">
           {(p.variants||[]).length===0&&<p className="kd-no-skus">No SKU yet. Add a size/color variant below to enable cart and checkout.</p>}

@@ -24,6 +24,11 @@ export function validateProduct(product={}){
     return 'Danh mục sản phẩm không hợp lệ.';
   if(!/^\d+$/.test(String(product.price??'')) || !Number.isSafeInteger(Number(product.price)))
     return 'Giá sản phẩm phải là số nguyên VND không âm.';
+  if(product.sale_price!==''&&product.sale_price!==null&&product.sale_price!==undefined&&
+    (!/^\d+$/.test(String(product.sale_price))||!Number.isSafeInteger(Number(product.sale_price))||Number(product.sale_price)>=Number(product.price)))
+    return 'Sale price must be lower than original price.';
+  if(String(product.product_type??'').length>60)
+    return 'Product type must be 60 characters or fewer.';
   if(!/^#[a-f0-9]{6}$/i.test(String(product.color??'')))
     return 'Mã màu phải đúng định dạng #RRGGBB.';
   if(!PRODUCT_STATUSES.includes(product.status))
