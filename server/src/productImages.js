@@ -45,3 +45,11 @@ export async function removeImage(path){
  try{await unlink(join(imageDir,String(path).split('/').pop()));}
  catch(e){if(e.code!=='ENOENT')throw e;}
 }
+
+const galleryMulter=multer({storage:multer.memoryStorage(),limits:{fileSize:MAX_IMAGE_BYTES,files:6,parts:6}}).array('images',6);
+export function galleryUpload(req,res,next){
+ galleryMulter(req,res,error=>{
+  if(!error)return next();
+  res.status(error.code==='LIMIT_FILE_SIZE'?413:400).json({error:error.code==='LIMIT_FILE_SIZE'?'Each image must be under 3 MB.':'Invalid image gallery request (max 6 images per upload).'});
+ });
+}

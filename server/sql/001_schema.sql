@@ -75,3 +75,18 @@ CREATE TABLE IF NOT EXISTS product_deletion_audit (
  snapshot JSONB NOT NULL
 );
 CREATE INDEX IF NOT EXISTS product_deletion_audit_actor_idx ON product_deletion_audit(deleted_by);
+
+
+-- Experimental retail features; additive and safe to run repeatedly.
+ALTER TABLE products ADD COLUMN IF NOT EXISTS sale_price INTEGER;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS product_type VARCHAR(60);
+ALTER TABLE products DROP CONSTRAINT IF EXISTS products_sale_price_guard;
+ALTER TABLE products ADD CONSTRAINT products_sale_price_guard CHECK (sale_price IS NULL OR (sale_price >= 0 AND sale_price < price));
+CREATE TABLE IF NOT EXISTS product_images(
+ id BIGSERIAL PRIMARY KEY,
+ product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+ image_url TEXT NOT NULL UNIQUE,
+ position INTEGER NOT NULL DEFAULT 0 CHECK(position>=0),
+ created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS product_images_product_position_idx ON product_images(product_id,position,id);

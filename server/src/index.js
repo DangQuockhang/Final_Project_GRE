@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import {pool,query} from './db.js';
 import 'dotenv/config';
-import {imageDir,detectImage,imageUpload,saveImage,removeImage} from './productImages.js';
+import {imageDir,detectImage,imageUpload,galleryUpload,saveImage,removeImage} from './productImages.js';
 import {evaluateProductDeletion} from './productDeletion.js';
 
 const app=express();
@@ -21,6 +21,7 @@ const isId=v=>/^\d+$/.test(String(v))&&Number(v)>0;
 const clean=v=>String(v||'').trim();
 const slugify=v=>clean(v).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
 const validPrice=n=>Number.isSafeInteger(Number(n))&&Number(n)>=0;
+const validSale=(value,price)=>value===null||(Number.isSafeInteger(Number(value))&&Number(value)>=0&&Number(value)<Number(price));
 
 function authorize(req,res,next){
   const token=(req.headers.authorization||'').replace(/^Bearer\s+/i,'');
@@ -69,7 +70,7 @@ route.delete('/brands/:id',authorize,admin,wrap(async(req,res)=>{
  const r=await query('DELETE FROM brands WHERE id=$1 RETURNING id',[req.params.id]);if(!r.rows[0])return fail(res,'Không tìm thấy brand.',404);res.json({ok:true});
 }));
 
-const baseSelect=`SELECT p.*,b.name AS brand_name, COALESCE((SELECT json_agg(json_build_object('id',v.id,'sku',v.sku,'size',v.size,'color',v.color,'chest_cm',v.chest_cm,'stock',v.stock) ORDER BY v.id) FROM product_variants v WHERE v.product_id=p.id),'[]'::json) AS variants FROM products p JOIN brands b ON b.id=p.brand_id`;
+const baseSelect=`SELECT p.*,b.name AS brand_name, COALESCE((SELECT json_agg(json_build_object('id',v.id,'sku',v.sku,'size',v.size,'color',v.color,'chest_cm',v.chest_cm,'stock',v.stock) ORDER BY v.id) FROM product_variants v WHERE v.product_id=p.id),'[]'::json) AS variants, COALESCE((SELECT json_agg(json_build_object('id',i.id,'image_url',i.image_url,'position',i.position) ORDER BY i.position,i.id) FROM product_images i WHERE i.product_id=p.id),'[]'::json) AS images FROM products p JOIN brands b ON b.id=p.brand_id`;
 route.get('/products',wrap(async(req,res)=>{
  const where=[`p.status='active'`],params=[];
  if(req.query.brand){params.push(clean(req.query.brand));where.push(`b.slug=$${params.length}`);}
@@ -87,19 +88,32 @@ route.post('/products',authorize,admin,wrap(async(req,res)=>{
  const {name,category,description,brand_id}=req.body;
  if(clean(name).length<3||!isId(brand_id)||!['tops','bottoms','outerwear','accessories'].includes(category)||!validPrice(req.body.price))return fail(res,'Thông tin sản phẩm không hợp lệ.');
  const slug=slugify(req.body.slug||name);if(!slug)return fail(res,'Slug không hợp lệ.');
+ const sale=req.body.sale_price==null||req.body.sale_price===''?null:Number(req.body.sale_price);
+ if(!validSale(sale,req.body.price))return fail(res,'Sale price must be lower than original price.');
+ const type=clean(req.body.product_type);if(type.length>60)return fail(res,'Product type is too long.');
  try {
- const r=await query(`INSERT INTO products(name,slug,brand_id,category,price,description,color,status,tryon_enabled)
- VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,[
+ const r=await query(`INSERT INTO products(name,slug,brand_id,category,price,description,color,status,tryon_enabled,sale_price,product_type)
+ VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,[
  clean(name),slug,brand_id,category,Number(req.body.price),clean(description),/^#[0-9a-f]{6}$/i.test(req.body.color||'')?req.body.color:'#7b807a',
- req.body.status==='draft'?'draft':'active',Boolean(req.body.tryon_enabled)]);
+ req.body.status==='draft'?'draft':'active',Boolean(req.body.tryon_enabled),sale,type||null]);
  res.status(201).json(r.rows[0]);
  } catch(e){if(e.code==='23505')return fail(res,'Slug sản phẩm đã tồn tại.',409);if(e.code==='23503')return fail(res,'Brand không tồn tại.',400);throw e;}
 }));
 route.patch('/products/:id',authorize,admin,wrap(async(req,res)=>{
  if(!isId(req.params.id))return fail(res,'ID không hợp lệ.');
- const allowed=['name','description','price','status','color','tryon_enabled','brand_id','category'];
+ const allowed=['name','description','price','status','color','tryon_enabled','brand_id','category','sale_price','product_type'];
  const fields=allowed.filter(k=>Object.hasOwn(req.body,k));if(!fields.length)return fail(res,'Không có trường cần cập nhật.');
  if('price'in req.body&&!validPrice(req.body.price))return fail(res,'Giá không hợp lệ.');
+ if('product_type'in req.body&&clean(req.body.product_type).length>60)return fail(res,'Product type is too long.');
+ if('sale_price'in req.body||'price'in req.body){
+  const existing=await query('SELECT price,sale_price FROM products WHERE id=$1',[req.params.id]);
+  if(!existing.rows[0])return fail(res,'Product not found.',404);
+  const price='price'in req.body?Number(req.body.price):existing.rows[0].price;
+  const sale='sale_price'in req.body?(req.body.sale_price==null||req.body.sale_price===''?null:Number(req.body.sale_price)):existing.rows[0].sale_price;
+  if(!validSale(sale,price))return fail(res,'Sale price must be lower than the original price.');
+  if('sale_price'in req.body)req.body.sale_price=sale;
+ }
+ if('product_type'in req.body)req.body.product_type=clean(req.body.product_type)||null;
  if('status'in req.body&&!['active','draft','archived'].includes(req.body.status))return fail(res,'Trạng thái không hợp lệ.');
  if('category'in req.body&&!['tops','bottoms','outerwear','accessories'].includes(req.body.category))return fail(res,'Danh mục không hợp lệ.');
  if('color'in req.body&&!/^#[0-9a-f]{6}$/i.test(req.body.color))return fail(res,'Màu không hợp lệ.');
@@ -137,6 +151,7 @@ route.delete('/admin/products/:id/permanent',authorize,admin,wrap(async(req,res)
   const orderItems=ordered.rows[0].n;
   const decision=evaluateProductDeletion({status:product.status,stock,orderItems});
   if(!decision.eligible){await client.query('ROLLBACK');return res.status(409).json({error:decision.reason,...decision,stock,orderItems});}
+  const galleryImages=(await client.query('SELECT image_url FROM product_images WHERE product_id=$1',[product.id])).rows.map(r=>r.image_url);
   const audit=await client.query('INSERT INTO product_deletion_audit (product_id,product_name,product_slug,deleted_by,snapshot) VALUES($1,$2,$3,$4,$5::jsonb) RETURNING id',[
    product.id,product.name,product.slug,req.user.id,JSON.stringify({product,variants:variants.rows})
   ]);
@@ -144,15 +159,66 @@ route.delete('/admin/products/:id/permanent',authorize,admin,wrap(async(req,res)
   // Only unused SKU rows cascade; order_items FK protects history.
   await client.query('DELETE FROM products WHERE id=$1',[product.id]);
   await client.query('COMMIT');
-  removed=product;
+  removed={...product,allImageUrls:[product.image_url,...galleryImages]};
  }catch(error){
   await client.query('ROLLBACK').catch(()=>{});
   if(error.code==='23503')return fail(res,'Product is linked to order data. Archive it instead.',409);
   throw error;
  }finally{client.release();}
  // Never touch the product image before database commit succeeds.
- await removeImage(removed.image_url).catch(e=>console.error('Product image cleanup failed:',e));
+ await Promise.all([...new Set(removed.allImageUrls)].filter(Boolean).map(url=>removeImage(url).catch(e=>console.error('Product image cleanup failed:',e))));
  res.json({ok:true,method:'permanent-delete',id:removed.id,audit_id:auditId});
+}));
+
+// Product galleries: Admin-only multipart uploads, maximum 8 extra pictures.
+route.post('/admin/products/:id/images',authorize,admin,galleryUpload,wrap(async(req,res)=>{
+ if(!isId(req.params.id))return fail(res,'Invalid product ID.');
+ if(!req.files?.length)return fail(res,'Choose at least one product image.');
+ const prepared=req.files.map(file=>({buffer:file.buffer,ext:detectImage(file.buffer,file.mimetype)}));
+ if(prepared.some(x=>!x.ext))return fail(res,'Only valid PNG, JPG and WebP images are supported.');
+ const client=await pool.connect(),saved=[];let committed=false;
+ try{
+  await client.query('BEGIN');
+  const product=(await client.query('SELECT id,image_url FROM products WHERE id=$1 FOR UPDATE',[req.params.id])).rows[0];
+  if(!product){await client.query('ROLLBACK');return fail(res,'Product not found.',404);}
+  const count=await client.query('SELECT COUNT(*)::int AS n FROM product_images WHERE product_id=$1',[product.id]);
+  if(count.rows[0].n+prepared.length>8){await client.query('ROLLBACK');return fail(res,'Gallery limited to 8 uploaded images.',409);}
+  const rows=[];
+  for(const [i,file] of prepared.entries()){
+   const url=await saveImage(file.buffer,file.ext);saved.push(url);
+   const inserted=await client.query('INSERT INTO product_images(product_id,image_url,position) VALUES($1,$2,$3) RETURNING *',[product.id,url,count.rows[0].n+i]);
+   rows.push(inserted.rows[0]);
+  }
+  if(!product.image_url)await client.query('UPDATE products SET image_url=$1 WHERE id=$2',[rows[0].image_url,product.id]);
+  await client.query('COMMIT');committed=true;
+  res.status(201).json({images:rows});
+ }catch(error){
+  await client.query('ROLLBACK').catch(()=>{});
+  throw error;
+ }finally{
+  client.release();
+  if(!committed)await Promise.all(saved.map(url=>removeImage(url).catch(()=>{})));
+ }
+}));
+route.delete('/admin/products/:id/images/:imageId',authorize,admin,wrap(async(req,res)=>{
+ if(!isId(req.params.id)||!isId(req.params.imageId))return fail(res,'Invalid image ID.');
+ const client=await pool.connect();let deleted=null;
+ try{
+  await client.query('BEGIN');
+  const product=(await client.query('SELECT image_url FROM products WHERE id=$1 FOR UPDATE',[req.params.id])).rows[0];
+  if(!product){await client.query('ROLLBACK');return fail(res,'Product not found.',404);}
+  const removed=await client.query('DELETE FROM product_images WHERE id=$1 AND product_id=$2 RETURNING *',[req.params.imageId,req.params.id]);
+  if(!removed.rows[0]){await client.query('ROLLBACK');return fail(res,'Image not found.',404);}
+  deleted=removed.rows[0].image_url;
+  if(product.image_url===deleted){
+   const next=await client.query('SELECT image_url FROM product_images WHERE product_id=$1 ORDER BY position,id LIMIT 1',[req.params.id]);
+   await client.query('UPDATE products SET image_url=$1 WHERE id=$2',[next.rows[0]?.image_url||null,req.params.id]);
+  }
+  await client.query('COMMIT');
+ }catch(error){await client.query('ROLLBACK').catch(()=>{});throw error;}
+ finally{client.release();}
+ await removeImage(deleted).catch(e=>console.error('Gallery cleanup failed:',e));
+ res.json({ok:true});
 }));
 
 route.post('/admin/products/:id/image',authorize,admin,imageUpload,wrap(async(req,res)=>{
@@ -204,7 +270,7 @@ route.post('/orders',authorize,wrap(async(req,res)=>{
   // Row locks held for the entire transaction; sorted order reduces deadlock risk.
   const sorted=[...items].sort((a,b)=>a.variant_id-b.variant_id);
   for(const item of sorted){
-   const r=await client.query(`SELECT v.*,p.name AS product_name,p.price,p.status FROM product_variants v
+   const r=await client.query(`SELECT v.*,p.name AS product_name,COALESCE(p.sale_price,p.price) AS price,p.status FROM product_variants v
        JOIN products p ON p.id=v.product_id WHERE v.id=$1 FOR UPDATE OF v`,[item.variant_id]);
    const v=r.rows[0];if(!v||v.status!=='active'||v.stock<item.quantity) {const err=new Error('Hết hàng hoặc số lượng không đủ.');err.status=409;throw err;}
    total+=v.price*item.quantity;lines.push({variant:v,quantity:item.quantity});
