@@ -233,16 +233,22 @@ route.post('/admin/products/:id/image',authorize,admin,imageUpload,wrap(async(re
  const url=await saveImage(req.file.buffer,ext);
  try{await query('UPDATE products SET image_url=$1 WHERE id=$2',[url,req.params.id]);}
  catch(err){await removeImage(url).catch(()=>{});throw err;}
- await removeImage(record.rows[0].image_url).catch(err=>console.error('Image cleanup failed',err));
+ if(record.rows[0].image_url){
+  const used=await query('SELECT 1 FROM product_images WHERE image_url=$1 LIMIT 1',[record.rows[0].image_url]);
+  if(!used.rowCount)await removeImage(record.rows[0].image_url).catch(err=>console.error('Image cleanup failed',err));
+ }
  res.status(201).json({image_url:url});
 }));
 route.delete('/admin/products/:id/image',authorize,admin,wrap(async(req,res)=>{
  if(!isId(req.params.id))return fail(res,'Invalid product id.');
  const record=await query('SELECT image_url FROM products WHERE id=$1',[req.params.id]);
  if(!record.rows.length)return fail(res,'Product not found.',404);
- await query('UPDATE products SET image_url=NULL WHERE id=$1',[req.params.id]);
- await removeImage(record.rows[0].image_url).catch(err=>console.error('Image cleanup failed',err));
- res.json({image_url:null});
+ const next=await query('SELECT image_url FROM product_images WHERE product_id=$1 ORDER BY position,id LIMIT 1',[req.params.id]);
+ const cover=next.rows[0]?.image_url||null;
+ await query('UPDATE products SET image_url=$1 WHERE id=$2',[cover,req.params.id]);
+ const used=record.rows[0].image_url&&await query('SELECT 1 FROM product_images WHERE image_url=$1 LIMIT 1',[record.rows[0].image_url]);
+ if(record.rows[0].image_url&&!used?.rowCount)await removeImage(record.rows[0].image_url).catch(err=>console.error('Image cleanup failed',err));
+ res.json({image_url:cover});
 }));
 
 route.post('/products/:id/variants',authorize,admin,wrap(async(req,res)=>{
