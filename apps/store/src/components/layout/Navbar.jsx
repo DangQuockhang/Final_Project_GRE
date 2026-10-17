@@ -1,56 +1,68 @@
 import React,{useEffect,useState} from 'react';
-import {Link,NavLink,useLocation,useNavigate} from 'react-router-dom';
-import {ArrowUpRight,CircleUserRound,Menu,Search,ShoppingBag,X} from 'lucide-react';
+import {Link,useLocation,useNavigate} from 'react-router-dom';
+import {ArrowUpRight,ChevronDown,CircleUserRound,Menu,Search,Settings,ShoppingBag,X} from 'lucide-react';
 
-export default function Navbar({user,count,fittingUrl}){
- const [open,setOpen]=useState(false);
- const [searchOpen,setSearchOpen]=useState(false);
- const [query,setQuery]=useState('');
- const [scrolled,setScrolled]=useState(false);
- const location=useLocation(),navigate=useNavigate();
+const collections={
+ ACCESSORIES:[['Glasses','accessories'],['Cap','accessories'],['Bag','accessories'],['Belt','accessories'],['Watches','accessories']],
+ BAGS:[['Crossbody','accessories'],['Tote Bag','accessories'],['Mini Bag','accessories'],['Backpack','accessories']],
+ CLOTHING:[['T-Shirt','tops'],['Polo','tops'],['Shirt','tops'],['Hoodie','tops'],['Sweater','tops'],['Jacket','outerwear'],['Cardigan','outerwear'],['Jeans','bottoms'],['Pants','bottoms']],
+ SHOES:[['Sneakers','footwear'],['Slides','footwear'],['Loafers','footwear'],['Boots','footwear'],['Sandals','footwear']]
+};
+const bandDefs=[['A – B',/^[A-B]/i],['C – F',/^[C-F]/i],['G – L',/^[G-L]/i],['M – P',/^[M-P]/i],['R – Z',/^[R-Z]/i],['0 – 9',/^\d/]];
+export default function Navbar({user,count,fittingUrl,brands=[]}){
+ const [menu,setMenu]=useState(''),[mobile,setMobile]=useState(false),[searchOpen,setSearchOpen]=useState(false),[query,setQuery]=useState(''),[scrolled,setScrolled]=useState(false);
+ const location=useLocation(),nav=useNavigate();
+ useEffect(()=>{setMenu('');setMobile(false);setSearchOpen(false)},[location.pathname,location.search]);
  useEffect(()=>{
   const scroll=()=>setScrolled(window.scrollY>24);
-  scroll();window.addEventListener('scroll',scroll,{passive:true});
-  return ()=>window.removeEventListener('scroll',scroll);
+  const esc=e=>{if(e.key==='Escape'){setMenu('');setSearchOpen(false);setMobile(false);}};
+  scroll();window.addEventListener('scroll',scroll,{passive:true});window.addEventListener('keydown',esc);
+  return ()=>{window.removeEventListener('scroll',scroll);window.removeEventListener('keydown',esc)};
  },[]);
- useEffect(()=>{setOpen(false);setSearchOpen(false)},[location.pathname,location.search]);
- useEffect(()=>{
-  const close=e=>{if(e.key==='Escape'){setOpen(false);setSearchOpen(false)}};
-  window.addEventListener('keydown',close);
-  return ()=>window.removeEventListener('keydown',close);
- },[]);
- function submitSearch(e){
-  e.preventDefault();
-  const trimmed=query.trim();
-  if(!trimmed)return;
-  navigate('/shop?q='+encodeURIComponent(trimmed));
-  setSearchOpen(false);setOpen(false);
- }
+ const go=url=>{nav(url);setMenu('');setMobile(false);setSearchOpen(false)};
+ const toggle=which=>{setSearchOpen(false);setMenu(prev=>prev===which?'':which)};
+ const brandGroups=bandDefs.map(([label,pattern])=>({label,items:brands.filter(b=>pattern.test(b.name))})).filter(g=>g.items.length);
+ function submitSearch(e){e.preventDefault();if(!query.trim())return;go('/shop?q='+encodeURIComponent(query.trim()));}
  return <>
-  <div className="announcement kd26-announcement">
-   <span>THE EVERYDAY EDIT</span><span className="kd26-announcement-center">CONTEMPORARY STYLE, THOUGHTFULLY CURATED</span><span>EST. KD DESIGN / 2026</span>
-  </div>
-  <header className={scrolled?'header header-scrolled kd26-header':'header kd26-header'}>
-   <Link to="/" className="logo kd26-logo" aria-label="KD DESIGN homepage"><strong>KD</strong><span>DESIGN</span><small>CURATED FASHION</small></Link>
-   <nav id="kd-main-nav" aria-label="Main navigation" className={open?'site-nav nav-open':'site-nav'}>
-    <NavLink to="/shop">SHOP ALL</NavLink>
-    <NavLink to="/shop?category=tops">CLOTHING</NavLink>
-    <NavLink to="/shop?category=outerwear">OUTERWEAR</NavLink>
-    <NavLink to="/shop?category=accessories">ACCESSORIES</NavLink>
-    <NavLink to="/brands">BRANDS</NavLink>
-    {user?.role==='admin'&&<NavLink to="/admin">ADMIN</NavLink>}
-    <a className="studio-nav" href={fittingUrl} target="_blank" rel="noreferrer">3D FITTING <ArrowUpRight size={17}/></a>
-   </nav>
-   <div className="header-actions kd26-header-actions">
-    <button type="button" className="kd26-icon-button" onClick={()=>{setSearchOpen(v=>!v);setOpen(false)}} aria-label={searchOpen?'Close search':'Search products'} aria-expanded={searchOpen} aria-controls="kd26-header-search">{searchOpen?<X size={23}/>:<Search size={23}/>}</button>
-    <Link to={user?'/account':'/login'} aria-label="Account"><CircleUserRound size={23}/></Link>
-    <Link to="/cart" className="bag-trigger" aria-label={'Shopping bag with '+count+' items'}><ShoppingBag size={23}/><b>{count}</b></Link>
-    <button type="button" className="menu-toggle" aria-label={open?'Close menu':'Open menu'} aria-controls="kd-main-nav" aria-expanded={open} onClick={()=>{setOpen(o=>!o);setSearchOpen(false)}}>{open?<X size={25}/>:<Menu size={25}/>}</button>
+  <div className="announcement kd-retail-announcement"><span>THE EVERYDAY EDIT</span><span>CONTEMPORARY STYLE, THOUGHTFULLY CURATED</span><span>KD DESIGN / 2026</span></div>
+  <header className={'header kd-retail-header'+(scrolled?' header-scrolled':'')}>
+   <div className="kd-retail-header-row">
+    <Link className="logo kd-retail-logo" to="/" aria-label="KD DESIGN homepage"><strong>KD</strong> DESIGN <small>CURATED FASHION</small></Link>
+    <nav className={'kd-retail-nav'+(mobile?' is-mobile-open':'')} aria-label="Main navigation">
+      <button type="button" aria-expanded={menu==='collections'} aria-controls="kd-retail-collections" className={menu==='collections'?'on':''} onClick={()=>toggle('collections')}>COLLECTIONS <ChevronDown size={17}/></button>
+      <button type="button" aria-expanded={menu==='brands'} aria-controls="kd-retail-brands" className={menu==='brands'?'on':''} onClick={()=>toggle('brands')}>BRANDS <ChevronDown size={17}/></button>
+      <Link to="/shop">ALL PRODUCTS</Link>
+      <Link className="kd-retail-sale-link" to="/shop?sale=1">SALE</Link>
+      {user?.role==='admin'&&<Link to="/admin">ADMIN</Link>}
+      <a className="kd-retail-studio" href={fittingUrl} target="_blank" rel="noreferrer">3D FITTING <ArrowUpRight size={16}/></a>
+    </nav>
+    <div className="kd-retail-actions">
+      <button type="button" className="kd-retail-icon" aria-label={searchOpen?'Close search':'Search products'} aria-expanded={searchOpen} onClick={()=>{setSearchOpen(s=>!s);setMenu('')}}>{searchOpen?<X size={27}/>:<Search size={27}/>}</button>
+      <Link className="kd-retail-icon" aria-label="Account" to={user?'/account':'/login'}><CircleUserRound size={27}/></Link>
+      <Link className="kd-retail-icon kd-retail-bag" aria-label={'Shopping bag with '+count+' items'} to="/cart"><ShoppingBag size={27}/><b>{count}</b></Link>
+      {user?.role==='admin'&&<Link className="kd-retail-icon kd-retail-settings" title="Admin settings" aria-label="Admin settings" to="/admin"><Settings size={25}/></Link>}
+      <button className="kd-retail-icon kd-retail-hamburger" aria-label={mobile?'Close navigation':'Open navigation'} aria-expanded={mobile} onClick={()=>{setMobile(v=>!v);setMenu('')}}>{mobile?<X size={28}/>:<Menu size={28}/>}</button>
+    </div>
    </div>
-   {searchOpen&&<form id="kd26-header-search" className="kd26-search-panel" role="search" onSubmit={submitSearch}>
-    <label htmlFor="kd26-search-input">Find your next favorite</label>
-    <div><Search size={21}/><input autoFocus id="kd26-search-input" type="search" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search products, brands or styles…" required/><button type="submit" className="kd26-search-submit">Search <ArrowUpRight size={18}/></button></div>
-   </form>}
+   {menu&&<button className="kd-retail-menu-scrim" type="button" tabIndex={-1} aria-label="Close menu" onClick={()=>setMenu('')}/>}
+   {menu==='collections'&&<div id="kd-retail-collections" className="kd-retail-mega" role="region" aria-label="Collections directory">
+     <div className="kd-retail-mega-columns">
+      {Object.entries(collections).map(([title,items])=><div className="kd-retail-mega-column" key={title}>
+       <h3>{title}</h3>
+       {items.map(([label,category])=><button key={label} type="button" onClick={()=>go('/shop?category='+encodeURIComponent(category)+'&type='+encodeURIComponent(label))}>{label}</button>)}
+      </div>)}
+     </div>
+     <button className="kd-retail-mega-all" type="button" onClick={()=>go('/shop')}>VIEW ALL PRODUCTS <ArrowUpRight size={18}/></button>
+   </div>}
+   {menu==='brands'&&<div id="kd-retail-brands" className="kd-retail-mega" role="region" aria-label="Brands A to Z">
+     <div className="kd-retail-mega-columns kd-retail-mega-brands">
+      {brandGroups.map(group=><div key={group.label} className="kd-retail-mega-column"><h3>{group.label}</h3>
+        {group.items.map(b=><button key={b.id} type="button" onClick={()=>go('/shop?brand='+encodeURIComponent(b.slug))}>{b.name}</button>)}</div>)}
+      {brandGroups.length===0&&<div className="kd-retail-mega-column">Brands will appear when the catalog loads.</div>}
+     </div>
+     <button className="kd-retail-mega-all" type="button" onClick={()=>go('/brands')}>EXPLORE BRANDS <ArrowUpRight size={18}/></button>
+   </div>}
+   {searchOpen&&<form className="kd26-search-panel kd-retail-search" role="search" onSubmit={submitSearch}><label htmlFor="kd-retail-query">Find your next favorite</label><div><Search size={22}/><input id="kd-retail-query" autoFocus type="search" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search products, brands or styles…" required/><button className="kd26-search-submit">Search <ArrowUpRight size={17}/></button></div></form>}
   </header>
  </>;
 }
