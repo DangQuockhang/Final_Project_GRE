@@ -32,7 +32,7 @@ test('Admin permissions and COD stock transactions against disposable PostgreSQL
   assert.equal(user.status,201);
   const brands=await fetch(base+'/api/brands').then(r=>r.json());
   const product=await request('/api/products',{
-   name:'Test Tee '+id,brand_id:brands[0].id,category:'tops',price:1200000,status:'active'
+   name:'Test Tee '+id,brand_id:brands[0].id,category:'tops',product_type:'T-Shirt',price:1200000,sale_price:990000,status:'active'
   },token);
   assert.equal(product.status,201);
   const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6TuYAAAAASUVORK5CYII=','base64');
@@ -59,6 +59,28 @@ test('Admin permissions and COD stock transactions against disposable PostgreSQL
   assert.deepEqual(Buffer.from(await download.arrayBuffer()),png);
   const photographed=await fetch(base+'/api/products/'+product.data.slug).then(r=>r.json());
   assert.equal(photographed.image_url,image.image_url);
+  // Multi-image gallery requires Admin permissions and stores actual image bytes.
+  const galleryForm=()=>{
+   const data=new FormData();
+   data.append('images',new Blob([png],{type:'image/png'}),'view-front.png');
+   data.append('images',new Blob([png],{type:'image/png'}),'view-side.png');
+   return data;
+  };
+  const galleryPath='/api/admin/products/'+product.data.id+'/images';
+  const deniedGallery=await fetch(base+galleryPath,{method:'POST',headers:{Authorization:'Bearer '+user.data.token},body:galleryForm()});
+  assert.equal(deniedGallery.status,403);
+  const uploadedGallery=await fetch(base+galleryPath,{method:'POST',headers:{Authorization:'Bearer '+token},body:galleryForm()});
+  assert.equal(uploadedGallery.status,201);
+  const galleryData=await uploadedGallery.json();
+  assert.equal(galleryData.images.length,2);
+  const withGallery=await fetch(base+'/api/products/'+product.data.slug).then(r=>r.json());
+  assert.equal(withGallery.images.length,2);
+  assert.equal(withGallery.product_type,'T-Shirt');
+  assert.equal(Number(withGallery.sale_price),990000);
+  const removedGallery=await request('/api/admin/products/'+product.data.id+'/images/'+galleryData.images[0].id,undefined,token,'DELETE');
+  assert.equal(removedGallery.status,200);
+  const afterRemoval=await fetch(base+'/api/products/'+product.data.slug).then(r=>r.json());
+  assert.equal(afterRemoval.images.length,1);
   const variant=await request('/api/products/'+product.data.id+'/variants',{
    sku:'CI-'+id,size:'M',color:'Black',stock:5
   },token);
@@ -70,7 +92,7 @@ test('Admin permissions and COD stock transactions against disposable PostgreSQL
    items:[{variant_id:variant.data.id,quantity:2}]
   },user.data.token);
   assert.equal(order.status,201);
-  assert.equal(Number(order.data.total),2400000);
+  assert.equal(Number(order.data.total),1980000);
   const productUrl='/api/products/'+product.data.slug;
   const reduced=await fetch(base+productUrl).then(r=>r.json());
   assert.equal(reduced.variants[0].stock,3);
