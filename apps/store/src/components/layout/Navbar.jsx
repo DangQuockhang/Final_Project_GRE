@@ -8,7 +8,7 @@ const collections={
  CLOTHING:[['T-Shirt','tops'],['Polo','tops'],['Shirt','tops'],['Hoodie','tops'],['Sweater','tops'],['Jacket','outerwear'],['Cardigan','outerwear'],['Jeans','bottoms'],['Pants','bottoms']],
  SHOES:[['Sneakers','footwear'],['Slides','footwear'],['Loafers','footwear'],['Boots','footwear'],['Sandals','footwear']]
 };
-const bandDefs=[['A – B',/^[A-B]/i],['C – F',/^[C-F]/i],['G – L',/^[G-L]/i],['M – P',/^[M-P]/i],['R – Z',/^[R-Z]/i],['0 – 9',/^\d/]];
+const bandDefs=[['A – B',/^[A-B]/i],['C – F',/^[C-F]/i],['G – L',/^[G-L]/i],['M – Q',/^[M-Q]/i],['R – Z',/^[R-Z]/i],['0 – 9',/^\d/]];
 export default function Navbar({user,count,fittingUrl,brands=[]}){
  const [menu,setMenu]=useState(''),[mobile,setMobile]=useState(false),[searchOpen,setSearchOpen]=useState(false),[query,setQuery]=useState(''),[scrolled,setScrolled]=useState(false);
  const location=useLocation(),nav=useNavigate();
@@ -20,7 +20,7 @@ export default function Navbar({user,count,fittingUrl,brands=[]}){
   return ()=>{window.removeEventListener('scroll',scroll);window.removeEventListener('keydown',esc)};
  },[]);
  const go=url=>{nav(url);setMenu('');setMobile(false);setSearchOpen(false)};
- const toggle=which=>{setSearchOpen(false);setMenu(prev=>prev===which?'':which)};
+ const toggle=which=>{setSearchOpen(false);setMobile(false);setMenu(prev=>prev===which?'':which)};
  const brandGroups=bandDefs.map(([label,pattern])=>({label,items:brands.filter(b=>pattern.test(b.name))})).filter(g=>g.items.length);
  function submitSearch(e){e.preventDefault();if(!query.trim())return;go('/shop?q='+encodeURIComponent(query.trim()));}
  return <>
