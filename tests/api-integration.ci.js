@@ -103,7 +103,8 @@ test('Admin permissions and COD stock transactions against disposable PostgreSQL
   const cleared=await request('/api/admin/products/'+product.data.id+'/image',undefined,token,'DELETE');
   assert.equal(cleared.status,200);
   const unphotographed=await fetch(base+productUrl).then(r=>r.json());
-  assert.equal(unphotographed.image_url,null);
+  // Removing the cover keeps an existing gallery photo as the new cover.
+  assert.equal(unphotographed.image_url,galleryData.images[1].image_url);
   // User cannot preflight or permanently remove products.
   const deniedDelete=await request('/api/admin/products/'+product.data.id+'/permanent',undefined,user.data.token,'DELETE');
   assert.equal(deniedDelete.status,403);
