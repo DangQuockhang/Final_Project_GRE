@@ -28,7 +28,7 @@ export default function ShopPage({products=[],brands=[]}){
     <span className="kd-retail-filter-heading"><SlidersHorizontal size={17}/> FILTER</span>
     {select('Brand','brand',[['','All brands'],...brands.map(b=>[b.slug,b.name])])}
     {select('Collection','category',categories)}
-    {select('Product type','type',[['','All types'],...types.map(t=>[t,t])]])}
+    {select('Product type','type',[['','All types'],...types.map(t=>[t,t])])}
     {select('Availability','stock',[['','All products'],['available','In stock'],['soldout','Sold out']])}
     {select('Price','price',priceBands)}
     {select('Size','size',[['','All sizes'],...sizes.map(s=>[s,s])])}
