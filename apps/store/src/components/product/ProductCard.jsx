@@ -1,13 +1,13 @@
 import React,{useEffect,useState} from 'react';
 import {motion,useReducedMotion} from 'framer-motion';
 import {Link} from 'react-router-dom';
-import {ArrowUpRight} from 'lucide-react';
+import {ArrowUpRight,Footprints} from 'lucide-react';
 import {money,apiBase,productImageUrl} from '@kd/catalog';
 
 function Visual({product,large=false}){
  const kind=product.category;return <div className={`visual visual-${kind} ${large?'visual-large':''}`} style={{'--product-color':product.color||'#797b73'}} aria-label={`Illustration of ${product.name}`} role="img">
   <div className="visual-glow"/>
-  {kind==='accessories'?(product.slug.includes('cap')?<div className="visual-cap"><span/></div>:<div className="visual-bag"><span/></div>):kind==='bottoms'?<div className="visual-pants"><span/><i/></div>:<div className={`visual-shirt ${kind==='outerwear'?'visual-outer':''}`}><span className="visual-shirt-neck"/><span className="visual-shirt-seam"/></div>}
+  {kind==='footwear'?<div className="visual-footwear"><Footprints size={86} strokeWidth={1.2}/></div>:kind==='accessories'?(product.slug.includes('cap')?<div className="visual-cap"><span/></div>:<div className="visual-bag"><span/></div>):kind==='bottoms'?<div className="visual-pants"><span/><i/></div>:<div className={`visual-shirt ${kind==='outerwear'?'visual-outer':''}`}><span className="visual-shirt-neck"/><span className="visual-shirt-seam"/></div>}
   <span className="visual-label">KD / SAMPLE VISUAL</span>
  </div>
 }

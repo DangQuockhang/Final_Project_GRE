@@ -90,3 +90,16 @@ CREATE TABLE IF NOT EXISTS product_images(
  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS product_images_product_position_idx ON product_images(product_id,position,id);
+
+-- Fill product-type filters only for known fictional seed items, without
+-- changing any existing Admin-entered product types.
+UPDATE products SET product_type = CASE slug
+ WHEN 'essential-sculpt-tee' THEN 'T-Shirt'
+ WHEN 'structured-overshirt' THEN 'Jacket'
+ WHEN 'modern-knit-polo' THEN 'Polo'
+ WHEN 'wide-leg-trousers' THEN 'Pants'
+ WHEN 'urban-crossbody' THEN 'Crossbody'
+ WHEN 'everyday-cap' THEN 'Cap'
+ ELSE product_type END
+ WHERE product_type IS NULL AND slug IN
+ ('essential-sculpt-tee','structured-overshirt','modern-knit-polo','wide-leg-trousers','urban-crossbody','everyday-cap');

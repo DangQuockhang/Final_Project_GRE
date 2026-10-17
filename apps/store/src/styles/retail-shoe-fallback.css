@@ -1,0 +1,1 @@
+.visual-footwear{position:absolute;inset:0;display:grid;place-items:center;opacity:.6;color:#3e4a40}.visual-footwear svg{transform:rotate(-24deg)}.visual-footwear:after{content:"FOOTWEAR PREVIEW";position:absolute;bottom:34px;left:0;right:0;text-align:center;font-size:13px;letter-spacing:.1em;color:#617163}
