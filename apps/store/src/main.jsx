@@ -21,6 +21,7 @@ import './styles/readability-motion.css';
 import './styles/editorial-home.css';
 import './styles/retail-merge.css';
 import './styles/retail-shoe-fallback.css';
+import './styles/admin-workspace.css';
 import AdminPage from './pages/admin/AdminPage.jsx';
 
 const API=import.meta.env.VITE_API_URL||apiBase;
