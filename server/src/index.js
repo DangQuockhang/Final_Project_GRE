@@ -105,6 +105,77 @@ route.get('/admin/products',authorize,admin,wrap(async(req,res)=>{
 route.get('/products/:slug',wrap(async(req,res)=>{
  const r=await query(`${baseSelect} WHERE p.slug=$1 AND p.status='active'`,[req.params.slug]);if(!r.rows[0])return fail(res,'Không tìm thấy sản phẩm.',404);res.json(r.rows[0]);
 }));
+// One-submit Admin workflow: details, SKU/size/color inventory and up to 6 photos.
+const saveProductBundle=wrap(async(req,res)=>{
+ const error=(message,status=400)=>{const e=new Error(message);e.status=status;throw e;};
+ let body;
+ try{body=JSON.parse(req.body.payload||'');}catch{return fail(res,'Invalid product form data.');}
+ const editing=req.params.id!==undefined;
+ if(editing&&!isId(req.params.id))return fail(res,'Invalid product ID.');
+ const name=clean(body.name),slug=slugify(body.slug||name),type=clean(body.product_type);
+ const brand_id=body.brand_id,category=body.category,price=Number(body.price);
+ const sale=body.sale_price===null||body.sale_price===undefined||body.sale_price===''?null:Number(body.sale_price);
+ const status=body.status||'draft',variants=body.variants||[];
+ const color=body.color||'#758073';
+ if(name.length<3||name.length>160||!slug||!isId(brand_id)||!['accessories','bags','clothing','shoes'].includes(category)||!validPrice(body.price)||!validSale(sale,price)||type.length>60||!['draft','active','archived'].includes(status)||!/^#[0-9a-f]{6}$/i.test(color)||clean(body.description).length>2000)return fail(res,'Invalid product information, price, sale or category.');
+ if(!Array.isArray(variants)||variants.length>80)return fail(res,'Maximum 80 size/color variants per form.');
+ const seen=new Set(),seenSku=new Set();
+ for(const v of variants){
+  const size=clean(v.size),c=clean(v.color),sku=clean(v.sku),stock=Number(v.stock),hex=v.color_hex||null;
+  const key=(size+'::'+c).toLowerCase();
+  if(!sku||sku.length>100||!size||size.length>20||!c||c.length>40||!Number.isSafeInteger(stock)||stock<0||(hex&&!/^#[0-9a-f]{6}$/i.test(hex))||seen.has(key)||seenSku.has(sku.toLowerCase())||(v.id!==undefined&&!isId(v.id)))return fail(res,'Invalid or duplicated size, color, SKU or stock.');
+  seen.add(key);seenSku.add(sku.toLowerCase());
+ }
+ const photos=(req.files||[]).map(file=>({buffer:file.buffer,ext:detectImage(file.buffer,file.mimetype)}));
+ if(photos.some(p=>!p.ext))return fail(res,'Photos must contain valid JPG, PNG or WebP data.');
+ const client=await pool.connect(),saved=[];let committed=false;
+ try{
+  await client.query('BEGIN');
+  let product;
+  if(editing){
+   const old=(await client.query('SELECT * FROM products WHERE id=$1 FOR UPDATE',[req.params.id])).rows[0];
+   if(!old)error('Product not found.',404);
+   product=(await client.query(`UPDATE products SET name=$1,brand_id=$2,category=$3,product_type=$4,price=$5,sale_price=$6,description=$7,status=$8,color=$9
+    WHERE id=$10 RETURNING *`,[name,Number(brand_id),category,type||null,price,sale,clean(body.description),status,color,old.id])).rows[0];
+  }else{
+   product=(await client.query(`INSERT INTO products(name,slug,brand_id,category,product_type,price,sale_price,description,status,color,tryon_enabled)
+    VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,false) RETURNING *`,
+    [name,slug,Number(brand_id),category,type||null,price,sale,clean(body.description),status,color])).rows[0];
+  }
+  for(const v of variants){
+   const vals=[clean(v.sku),clean(v.size),clean(v.color),v.color_hex||null,Number(v.stock)];
+   if(v.id!==undefined&&v.id!==null){
+    const r=await client.query(`UPDATE product_variants SET sku=$1,size=$2,color=$3,color_hex=$4,stock=$5
+      WHERE id=$6 AND product_id=$7 RETURNING id`,[...vals,Number(v.id),product.id]);
+    if(!r.rowCount)error('Variant does not belong to this product.',400);
+   }else{
+    await client.query(`INSERT INTO product_variants(product_id,sku,size,color,color_hex,stock)
+      VALUES($1,$2,$3,$4,$5,$6)`,[product.id,...vals]);
+   }
+  }
+  const count=(await client.query('SELECT COUNT(*)::int AS n FROM product_images WHERE product_id=$1',[product.id])).rows[0].n;
+  if(count+photos.length>8)error('Maximum 8 gallery photos per product.',409);
+  for(const [i,file] of photos.entries()){
+   const url=await saveImage(file.buffer,file.ext);saved.push(url);
+   await client.query('INSERT INTO product_images(product_id,image_url,position) VALUES($1,$2,$3)',[product.id,url,count+i]);
+  }
+  if(!product.image_url&&saved.length)await client.query('UPDATE products SET image_url=$1 WHERE id=$2',[saved[0],product.id]);
+  await client.query('COMMIT');committed=true;
+  res.status(editing?200:201).json({id:product.id,slug:product.slug,created:!editing});
+ }catch(e){
+  await client.query('ROLLBACK').catch(()=>{});
+  if(e.code==='23505')return fail(res,'Product slug, SKU or size/color is already in use.',409);
+  if(e.code==='23503')return fail(res,'Brand or product reference does not exist.');
+  if(e.code==='23514')return fail(res,'Product data violates a database constraint.');
+  throw e;
+ }finally{
+  client.release();
+  if(!committed)await Promise.all(saved.map(url=>removeImage(url).catch(()=>{})));
+ }
+});
+route.post('/admin/products/bundle',authorize,admin,bundleUpload,saveProductBundle);
+route.patch('/admin/products/:id/bundle',authorize,admin,bundleUpload,saveProductBundle);
+
 route.post('/products',authorize,admin,wrap(async(req,res)=>{
  const {name,category,description,brand_id}=req.body;
  if(clean(name).length<3||!isId(brand_id)||!['accessories','bags','clothing','shoes'].includes(category)||!validPrice(req.body.price))return fail(res,'Thông tin sản phẩm không hợp lệ.');
