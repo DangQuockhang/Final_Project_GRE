@@ -2,12 +2,11 @@ import React,{useState} from 'react';
 import {Pencil,Archive,RotateCcw,PackagePlus,ImagePlus,Trash2} from 'lucide-react';
 import {money,apiBase,productImageUrl} from '@kd/catalog';
 import PermanentDeleteDialog from '../../components/admin/PermanentDeleteDialog.jsx';
-import {validateProduct,validateVariant,validateStock,PRODUCT_CATEGORIES,PRODUCT_STATUSES} from '../../utils/adminValidation.js';
-const EMPTY={name:'',brand_id:'',category:'tops',product_type:'',price:'',sale_price:'',description:'',color:'#758073',status:'draft',tryon_enabled:false};
+import {validateVariant,validateStock,PRODUCT_STATUSES} from '../../utils/adminValidation.js';
+import ProductEditor from './ProductEditor.jsx';
 const NEW_VARIANT={sku:'',size:'',color:'Onyx',stock:'0',chest_cm:''};
 export default function ProductsPanel({products,brands,api,perform,busy,report}){
   const [editing,setEditing]=useState(null);
-  const [draft,setDraft]=useState({...EMPTY});
   const [search,setSearch]=useState(''),[statusFilter,setStatusFilter]=useState('all');
   const [variantDrafts,setVariantDrafts]=useState({}),[stockDrafts,setStockDrafts]=useState({});
   const [pendingImages,setPendingImages]=useState({});
@@ -16,16 +15,8 @@ export default function ProductsPanel({products,brands,api,perform,busy,report})
   const [deletionCheck,setDeletionCheck]=useState(null);
   const [checkingDelete,setCheckingDelete]=useState(false);
   const rows=products.filter(p=>(statusFilter==='all'||p.status===statusFilter)&&[p.name,p.brand_name,p.slug].join(' ').toLowerCase().includes(search.toLowerCase()));
-  function update(field,value){setDraft(old=>({...old,[field]:value}));}
-  function reset(){setEditing(null);setDraft({...EMPTY});}
-  function begin(p){setEditing(p.id);setDraft({name:p.name,brand_id:String(p.brand_id),category:p.category,product_type:p.product_type||'',price:String(p.price),sale_price:p.sale_price==null?'':String(p.sale_price),description:p.description||'',color:p.color||'#758073',status:p.status,tryon_enabled:Boolean(p.tryon_enabled)});window.scrollTo({top:0,behavior:'smooth'});}
-  async function submit(e){
-    e.preventDefault();
-    const problem=validateProduct(draft);if(problem){report(problem);return;}
-    const payload={...draft,brand_id:Number(draft.brand_id),price:Number(draft.price),sale_price:draft.sale_price===''?null:Number(draft.sale_price),product_type:draft.product_type||null};
-    const ok=await perform(()=>api(editing?'/products/'+editing:'/products',{method:editing?'PATCH':'POST',body:payload}),editing?'Product updated.':'Product created. Add SKU variants below.');
-    if(ok)reset();
-  }
+  function reset(){setEditing(null);}
+  function begin(p){setEditing(p.id);window.scrollTo({top:0,behavior:'smooth'});}
   async function updateStatus(p,next){
     if(next==='archived'&&!window.confirm('Archive "'+p.name+'"? Existing orders will be retained.'))return;
     await perform(()=>api('/products/'+p.id,{method:'PATCH',body:{status:next}}),'Product status updated.');
@@ -101,23 +92,9 @@ export default function ProductsPanel({products,brands,api,perform,busy,report})
     }
   }
   return <section className="kd-admin-panel" aria-labelledby="product-title">
-    <div className="kd-admin-panel-header"><div><h2 id="product-title">Product & Inventory</h2><p>Control the published catalog, draft products and exact SKU stock levels.</p></div><span>{products.length} products</span></div>
-    <form className="kd-admin-editor" onSubmit={submit}>
-      <div className="kd-admin-editor-heading"><strong>{editing?'EDIT PRODUCT #'+editing:'CREATE PRODUCT'}</strong>{editing&&<button type="button" onClick={reset}><RotateCcw size={15}/> Cancel edit</button>}</div>
-      <div className="kd-admin-fields kd-admin-fields-two">
-        <label>PRODUCT NAME<input required minLength={3} value={draft.name} onChange={e=>update('name',e.target.value)} placeholder="Contemporary Overshirt"/></label>
-        <label>BRAND<select required value={draft.brand_id} onChange={e=>update('brand_id',e.target.value)}><option value="">Choose brand</option>{brands.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
-        <label>CATEGORY<select value={draft.category} onChange={e=>update('category',e.target.value)}>{PRODUCT_CATEGORIES.map(c=><option key={c} value={c}>{c.toUpperCase()}</option>)}</select></label>
-        <label>PRICE (VND)<input type="number" min="0" step="1" required value={draft.price} onChange={e=>update('price',e.target.value)}/></label>
-        <label>SALE PRICE (VND, optional)<input type="number" min="0" step="1" value={draft.sale_price} onChange={e=>update('sale_price',e.target.value)} placeholder="Leave blank for no sale"/></label>
-        <label>PRODUCT TYPE (e.g. T-Shirt, Jacket, Sneakers)<input type="text" maxLength={60} value={draft.product_type} onChange={e=>update('product_type',e.target.value)} placeholder="T-Shirt"/></label>
-        <label>STATUS<select value={draft.status} onChange={e=>update('status',e.target.value)}>{PRODUCT_STATUSES.map(s=><option key={s} value={s}>{s.toUpperCase()}</option>)}</select></label>
-        <label>DISPLAY COLOR<input type="color" value={draft.color} onChange={e=>update('color',e.target.value)}/></label>
-        <label className="kd-admin-checkbox"><input type="checkbox" checked={draft.tryon_enabled} onChange={e=>update('tryon_enabled',e.target.checked)}/> Enable mannequin demo</label>
-        <label className="kd-span-full">DESCRIPTION<textarea rows={3} maxLength={2000} value={draft.description} onChange={e=>update('description',e.target.value)}/></label>
-      </div>
-      <div className="kd-editor-footer"><button className="button button-dark" disabled={busy||!brands.length} type="submit">{editing?'SAVE CHANGES':'CREATE PRODUCT'}</button><span>New products default to DRAFT. Activate only when ready.</span></div>
-    </form>
+    <div className="kd-admin-panel-header"><div><h2 id="product-title">Product & Inventory</h2><p>Create or edit products with all colors, sizes and images in one workflow. Existing inventory and archive controls stay available.</p></div><span>{products.length} products</span></div>
+    <ProductEditor key={editing??'new'} product={editing?products.find(p=>p.id===editing):null} brands={brands}
+      api={api} perform={perform} busy={busy} report={report} onCancel={reset}/>
     <div className="kd-admin-filter-row">
       <input aria-label="Search admin products" placeholder="Search products or brand…" value={search} onChange={e=>setSearch(e.target.value)}/>
       <select aria-label="Filter product status" value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}><option value="all">All statuses</option>{PRODUCT_STATUSES.map(s=><option key={s} value={s}>{s.toUpperCase()}</option>)}</select>
