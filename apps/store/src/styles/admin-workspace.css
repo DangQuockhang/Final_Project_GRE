@@ -146,3 +146,74 @@
 @media(prefers-reduced-motion:reduce){
  .kd-edit-modal-backdrop{backdrop-filter:none}
 }
+
+
+/* Sprint 2.11 — SKU deletion and staged undo (Product Edit modal + Create form). */
+.kd-quick-table-head,.kd-quick-sku-row{
+  grid-template-columns:minmax(112px,1fr) 80px minmax(185px,1.3fr) 100px 112px;
+  min-width:620px;
+}
+.kd-quick-sku-row{gap:12px}
+.kd-quick-sku-row .kd-remove-sku{
+  display:inline-flex;
+  justify-content:center;
+  align-items:center;
+  gap:5px;
+  width:100%;
+  min-height:42px;
+  padding:8px;
+  border:1px solid #d7bfc0;
+  border-radius:0;
+  background:#fff9f7;
+  color:#9c343a;
+  font-size:12px;
+  font-weight:800;
+  cursor:pointer;
+}
+.kd-quick-sku-row .kd-remove-sku:hover{
+  background:#fcebee;
+  border-color:#bd7a7c;
+}
+.kd-remove-sku:focus-visible,.kd-pending-sku button:focus-visible{
+  outline:3px solid #9eb5a0;
+  outline-offset:2px;
+}
+.kd-color-admin-row>button:disabled{opacity:.45}
+.kd-color-admin-row>button:not(:disabled){cursor:pointer;color:#94424b}
+.kd-color-admin-row>button:not(:disabled):hover{background:#fcebee}
+.kd-pending-sku-removals{
+  padding:18px;
+  border:1px solid #e0c5bb;
+  background:#fff9f5;
+  display:grid;
+  gap:12px;
+}
+.kd-pending-sku-removals>strong{color:#813f36;font-size:16px}
+.kd-pending-sku-removals>p{font-size:14px;line-height:1.55;color:#73544c;margin:0}
+.kd-pending-sku-removals>div{display:grid;gap:8px}
+.kd-pending-sku{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:13px;
+  border-top:1px solid #ebddd7;
+  padding:9px 0 0;
+  font-size:14px;
+}
+.kd-pending-sku span{overflow-wrap:anywhere}
+.kd-pending-sku button{
+  flex:none;
+  min-width:70px;
+  min-height:39px;
+  background:#fff;
+  color:#344839;
+  border:1px solid #b7c9b8;
+  cursor:pointer;
+  font-size:12px;
+  font-weight:800;
+}
+.kd-pending-sku button:hover{background:#eef4ed}
+@media(max-width:700px){
+  .kd-quick-variants{overflow-x:auto}
+  .kd-quick-table-head,.kd-quick-sku-row{min-width:620px}
+}
