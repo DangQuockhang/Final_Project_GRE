@@ -50,7 +50,7 @@ export default function ProductDetailPage({products=[],online=false,loading=fals
     <div className="kd-retail-pdp-info">
       <h1>{item.name}</h1><h2 className="kd-retail-brand-title">{item.brand_name}</h2>
       <div className="kd-retail-prices">{hasSale&&<del>{money(item.price)}</del>}<strong>{money(hasSale?item.sale_price:item.price)}</strong>{hasSale&&<span className="kd-retail-promo">Sale</span>}</div>
-      <p>{item.description}</p>
+      <p className="kd-retail-product-description">{item.description}</p>
       <div className="kd-retail-separator"/>
       <div className="kd-retail-label">COLOR <span style={{fontWeight:400,color:'#748077'}}>· {activeColor||'Not available'}</span></div>
       <div className="kd-retail-color-choices" role="group" aria-label="Choose product color">
