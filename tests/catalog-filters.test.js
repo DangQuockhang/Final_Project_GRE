@@ -2,7 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {demoProducts,demoBrands,filterProducts,paginateProducts} from '../packages/catalog/index.js';
 test('filter category, brand and text',()=>{
- assert.equal(filterProducts(demoProducts,demoBrands,{category:'accessories'}).length,2);
+ assert.equal(filterProducts(demoProducts,demoBrands,{category:'accessories'}).length,1);
+ assert.equal(filterProducts(demoProducts,demoBrands,{category:'bags'}).length,1);
+ assert.equal(filterProducts(demoProducts,demoBrands,{category:'clothing'}).length,4);
  assert.equal(filterProducts(demoProducts,demoBrands,{brand:'mono-object'}).length,2);
  assert.equal(filterProducts(demoProducts,demoBrands,{q:'SCULPT'}).length,1);
  assert.equal(filterProducts(demoProducts,demoBrands,{brand:'not-a-brand'}).length,0);
