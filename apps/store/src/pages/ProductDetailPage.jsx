@@ -10,16 +10,20 @@ export default function ProductDetailPage({products=[],online=false,loading=fals
  const [remote,setRemote]=useState(null),[selected,setSelected]=useState(''),[quantity,setQuantity]=useState(1);
  const [fetching,setFetching]=useState(false),[fetchError,setFetchError]=useState(''),[added,setAdded]=useState(false);
  const [zoom,setZoom]=useState(null);
+ const [selectedColor,setSelectedColor]=useState('');
  const item=(remote?.slug===slug?remote:null)||products.find(p=>p.slug===slug);
  const variants=Array.isArray(item?.variants)?item.variants:[];
- const variant=variants.find(v=>String(v.id)===selected)||variants.find(v=>Number(v.stock)>0)||variants[0];
+ const palette=[...new Map(variants.map(v=>[v.color,{name:v.color,hex:v.color_hex||({black:'#222222',red:'#c33c42',gray:'#898c91',grey:'#898c91',onyx:'#333b36'}[String(v.color).toLowerCase()]||item?.color||'#758073')}])).values()];
+ const activeColor=palette.some(c=>c.name===selectedColor)?selectedColor:(variants.find(v=>Number(v.stock)>0)?.color||variants[0]?.color||'');
+ const sizeOptions=variants.filter(v=>v.color===activeColor);
+ const variant=sizeOptions.find(v=>String(v.id)===selected)||sizeOptions.find(v=>Number(v.stock)>0)||sizeOptions[0];
  const available=Number(variant?.stock)||0,max=Math.max(0,Math.min(20,available));
- const inStock=variants.some(v=>Number(v.stock)>0);
+ const inStock=sizeOptions.some(v=>Number(v.stock)>0);
  const related=products.filter(p=>p.slug!==slug&&p.category===item?.category&&p.status!=='archived').slice(0,5);
  const hasSale=item?.sale_price!=null&&Number(item.sale_price)<Number(item.price);
  const rawUrls=[item?.image_url,...(item?.images||[]).map(i=>i.image_url)].filter(Boolean);
  const gallery=[...new Set(rawUrls)].map(url=>productImageUrl(url,API)).filter(Boolean);
- useEffect(()=>{setRemote(null);setSelected('');setQuantity(1);setAdded(false);setZoom(null);},[slug]);
+ useEffect(()=>{setRemote(null);setSelected('');setSelectedColor('');setQuantity(1);setAdded(false);setZoom(null);},[slug]);
  useEffect(()=>{
   if(!online)return;
   const controller=new AbortController();setFetching(true);setFetchError('');
@@ -48,9 +52,17 @@ export default function ProductDetailPage({products=[],online=false,loading=fals
       <div className="kd-retail-prices">{hasSale&&<del>{money(item.price)}</del>}<strong>{money(hasSale?item.sale_price:item.price)}</strong>{hasSale&&<span className="kd-retail-promo">Sale</span>}</div>
       <p>{item.description}</p>
       <div className="kd-retail-separator"/>
-      <div className="kd-retail-label">Size / Color <span style={{fontWeight:400,color:'#748077'}}>{variant?'· '+variant.size+' / '+variant.color:''}</span></div>
-      <div className="kd-retail-sizes" role="group" aria-label="Select product size">
-       {variants.map(v=><button type="button" key={v.id} className={String(variant?.id)===String(v.id)?'active':''} aria-pressed={String(variant?.id)===String(v.id)} disabled={Number(v.stock)<=0} title={v.color} onClick={()=>{setSelected(String(v.id));setQuantity(1);setAdded(false)}}>{v.size}</button>)}
+      <div className="kd-retail-label">COLOR <span style={{fontWeight:400,color:'#748077'}}>· {activeColor||'Not available'}</span></div>
+      <div className="kd-retail-color-choices" role="group" aria-label="Choose product color">
+        {palette.map(color=><button key={color.name} type="button" className={activeColor===color.name?'is-selected':''}
+          onClick={()=>{setSelectedColor(color.name);setSelected('');setQuantity(1);setAdded(false)}} aria-pressed={activeColor===color.name}
+          title={color.name} aria-label={'Choose '+color.name+' color'}>
+          <i style={{backgroundColor:color.hex}}/><span>{color.name}</span>
+        </button>)}
+      </div>
+      <div className="kd-retail-label">SIZE <span style={{fontWeight:400,color:'#748077'}}>{variant?'· '+variant.size:''}</span></div>
+      <div className="kd-retail-sizes" role="group" aria-label="Select size for chosen color">
+       {sizeOptions.map(v=><button type="button" key={v.id} className={String(variant?.id)===String(v.id)?'active':''} aria-pressed={String(variant?.id)===String(v.id)} disabled={Number(v.stock)<=0} title={v.size+' / '+v.color} onClick={()=>{setSelected(String(v.id));setQuantity(1);setAdded(false)}}>{v.size}</button>)}
       </div>
       <div className="kd-retail-stock" role="status" aria-live="polite"><span className={'kd-retail-stock-dot'+(!inStock?' out':'')}/>{inStock?'In stock':'Out of stock'}{fetching?' · Refreshing stock…':''}</div>
       {fetchError&&<p className="kd-warning" role="alert">{fetchError}</p>}
