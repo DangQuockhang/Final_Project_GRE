@@ -10,7 +10,6 @@ export default function HeroSection(){
   <div className="kd26-hero-copy">
    <motion.div initial={reduced?false:{opacity:0,y:24}} animate={{opacity:1,y:0}}
     transition={{duration:reduced?0:.72,ease:[.22,1,.36,1]}}>
-    <span className="kd26-kicker"><span/> THE NEW EXPRESSION OF STYLE</span>
     <h1 id="kd26-hero-title">Discover your<br/><em>signature style.</em></h1>
     <p>Discover contemporary clothing and accessories from distinctive fashion labels. Thoughtful pieces for every way you show up.</p>
     <div className="kd26-hero-cta">
@@ -28,7 +27,6 @@ export default function HeroSection(){
    transition={{duration:reduced?0:1.05,delay:reduced?0:.15,ease:[.22,1,.36,1]}}>
    <img src={editorialImages.hero} alt="Contemporary editorial fashion outfit" fetchPriority="high" decoding="async"
     onError={e=>{e.currentTarget.style.opacity='0'}}/>
-   <div className="kd26-hero-photo-caption"><span>THE EVERYDAY EDIT</span><span>01 / 04</span></div>
   </motion.div>
  </section>;
 }

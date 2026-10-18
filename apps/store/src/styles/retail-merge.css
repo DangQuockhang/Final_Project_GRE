@@ -198,3 +198,118 @@
  .kd-retail-mega{animation:none}
  .kd-retail-gallery-item img{transition:none}
 }
+
+
+/* Sprint 2.8: larger, fully operable retail header for the original editorial homepage.
+   The dark announcement strip was removed in React, and the benefits bar
+   was removed from HomePage. These overrides apply across all React pages. */
+.kd-retail-header{
+  background:#fffefa;
+  border-bottom:1px solid #e8e8e3;
+  box-shadow:0 3px 12px rgba(34,40,32,.045);
+}
+.kd-retail-header-row{
+  min-height:110px;
+  padding:0 clamp(24px,3.6vw,76px);
+  gap:clamp(14px,1.8vw,30px);
+}
+.kd-retail-header.header-scrolled .kd-retail-header-row{min-height:92px}
+.kd-retail-header .kd-retail-logo{
+  min-width:235px;
+  font-size:clamp(33px,2.55vw,42px);
+  line-height:1.13;
+  letter-spacing:-.055em;
+}
+.kd-retail-header .kd-retail-logo small{
+  font-size:12px;
+  line-height:1.65;
+  letter-spacing:.135em;
+  color:#4d604e;
+}
+.kd-retail-nav{
+  gap:clamp(17px,1.6vw,32px);
+}
+.kd-retail-nav>a,.kd-retail-nav>button{
+  min-height:58px;
+  padding:15px 1px;
+  gap:8px;
+  font-size:clamp(17px,1.15vw,19px);
+  font-weight:750;
+  letter-spacing:.008em;
+  border-bottom-width:3px;
+}
+.kd-retail-nav svg{flex:none}
+.kd-retail-actions{gap:5px}
+.kd-retail-icon{
+  min-width:53px;
+  min-height:53px;
+  height:53px;
+  color:#263128;
+}
+.kd-retail-icon:focus-visible,.kd-retail-nav a:focus-visible,.kd-retail-nav button:focus-visible,
+.kd-retail-mega button:focus-visible{outline:3px solid #829d83;outline-offset:3px}
+.kd-retail-bag b{min-width:23px;min-height:23px;font-size:12px}
+.kd-retail-mega{
+  padding:42px clamp(32px,7vw,150px) 35px;
+  background:#fffefa;
+  border-top:1px solid #e7e8e3;
+  max-height:min(72vh,710px);
+  box-shadow:0 24px 32px rgba(21,29,22,.16);
+}
+.kd-retail-mega-columns{gap:clamp(22px,3vw,52px)}
+.kd-retail-mega-column{gap:10px}
+.kd-retail-mega-column h3{font-size:20px;margin-bottom:12px}
+.kd-retail-mega-column button{font-size:17px;line-height:1.5;padding:5px 0}
+.kd-retail-mega-all{font-size:16px;min-height:46px}
+.kd-retail-menu-scrim{inset:0 0 0;height:100vh;background:rgba(24,31,24,.24)}
+.kd-retail-search{z-index:11}
+@media(max-width:1430px){
+  .kd-retail-hamburger{display:grid}
+  .kd-retail-header-row{min-height:97px}
+  .kd-retail-header.header-scrolled .kd-retail-header-row{min-height:86px}
+  .kd-retail-nav{
+    display:none;
+    position:absolute;
+    top:100%;
+    left:0;
+    right:0;
+    z-index:9;
+    flex-direction:column;
+    align-items:stretch;
+    gap:3px;
+    padding:20px clamp(24px,5vw,70px);
+    background:#fffefa;
+    box-shadow:0 13px 24px rgba(25,35,26,.14);
+    max-height:68vh;
+    overflow-y:auto;
+  }
+  .kd-retail-nav.is-mobile-open{display:flex}
+  .kd-retail-nav>a,.kd-retail-nav>button{
+    font-size:18px;
+    min-height:52px;
+    padding:11px 5px;
+    justify-content:space-between;
+  }
+  .kd-retail-mega{padding:30px clamp(25px,6vw,85px)}
+}
+@media(max-width:700px){
+  .kd-retail-header .kd-retail-logo{
+    min-width:138px;
+    font-size:27px;
+  }
+  .kd-retail-header .kd-retail-logo small{font-size:10px}
+  .kd-retail-header-row{min-height:85px}
+  .kd-retail-icon{min-width:42px;min-height:48px;height:48px}
+  .kd-retail-icon svg{width:25px;height:25px}
+  .kd-retail-mega-column h3{font-size:18px}
+  .kd-retail-mega-column button{font-size:16px}
+  .kd-retail-mega{max-height:72vh}
+}
+@media(max-width:410px){
+  .kd-retail-header .kd-retail-logo{min-width:122px;font-size:23px}
+  .kd-retail-icon{min-width:38px}
+  .kd-retail-header-row{padding:0 12px}
+}
+@media(prefers-reduced-motion:reduce){
+  .kd-retail-mega{animation:none}
+}

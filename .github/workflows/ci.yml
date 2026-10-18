@@ -43,6 +43,13 @@ jobs:
           fi
           grep -q "Shop by" /tmp/kd-dom.html || { echo "Homepage category discovery section missing"; exit 1; }
           grep -q "Brands worth" /tmp/kd-dom.html || { echo "Homepage brands section missing"; exit 1; }
+          grep -q "COLLECTIONS" /tmp/kd-dom.html || { echo "Collections navigation missing"; exit 1; }
+          grep -q "ALL PRODUCTS" /tmp/kd-dom.html || { echo "All Products navigation missing"; exit 1; }
+          grep -q "SALE" /tmp/kd-dom.html || { echo "Sale navigation missing"; exit 1; }
+          if grep -q "THE NEW EXPRESSION OF STYLE" /tmp/kd-dom.html; then echo "Old Hero eyebrow still visible"; exit 1; fi
+          if grep -q "01 / 04" /tmp/kd-dom.html; then echo "Old Hero photo counter still visible"; exit 1; fi
+          if grep -q "CONTEMPORARY STYLE, THOUGHTFULLY CURATED" /tmp/kd-dom.html; then echo "Old announcement strip still visible"; exit 1; fi
+          if grep -q "Discover considered everyday style" /tmp/kd-dom.html; then echo "Old benefits strip still visible"; exit 1; fi
           echo "React redesigned homepage rendered successfully in Chrome"
           "$BROWSER" --headless --no-sandbox --disable-dev-shm-usage --disable-gpu --virtual-time-budget=8000 --dump-dom http://127.0.0.1:5173/shop > /tmp/kd-shop.html 2>/tmp/kd-shop.log
           grep -q "Filter" /tmp/kd-shop.html || { echo "Shop did not render"; tail -n 30 /tmp/kd-shop.log; exit 1; }

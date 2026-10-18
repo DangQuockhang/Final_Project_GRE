@@ -3,10 +3,10 @@ import {Link,useLocation,useNavigate} from 'react-router-dom';
 import {ArrowUpRight,ChevronDown,CircleUserRound,Menu,Search,Settings,ShoppingBag,X} from 'lucide-react';
 
 const collections={
- ACCESSORIES:[['Glasses','accessories'],['Cap','accessories'],['Bag','accessories'],['Belt','accessories'],['Watches','accessories']],
- BAGS:[['Crossbody','accessories'],['Tote Bag','accessories'],['Mini Bag','accessories'],['Backpack','accessories']],
- CLOTHING:[['T-Shirt','tops'],['Polo','tops'],['Shirt','tops'],['Hoodie','tops'],['Sweater','tops'],['Jacket','outerwear'],['Cardigan','outerwear'],['Jeans','bottoms'],['Pants','bottoms']],
- SHOES:[['Sneakers','footwear'],['Slides','footwear'],['Loafers','footwear'],['Boots','footwear'],['Sandals','footwear']]
+ ACCESSORIES:[['Bracelet','accessories'],['Necklace','accessories'],['Earring','accessories'],['Bucket Hat','accessories'],['Cap','accessories'],['Belt','accessories'],['Glasses','accessories'],['Watches','accessories'],['Hair Accessories','accessories'],['Wallet','accessories']],
+ BAGS:[['Clutch','accessories'],['Crossbody Bag','accessories'],['Handle Bag','accessories'],['Messenger Bag','accessories'],['Mini Bag','accessories'],['Shoulder Bag','accessories'],['Tote Bag','accessories'],['Backpack','accessories']],
+ CLOTHING:[['Cardigan','outerwear'],['T-Shirt','tops'],['Hoodie','tops'],['Polo','tops'],['Jacket','outerwear'],['Shirt','tops'],['Shorts','bottoms'],['Skirt','bottoms'],['Sweater','tops'],['Jeans','bottoms'],['Pants','bottoms']],
+ SHOES:[['Sneakers','footwear'],['Slides','footwear'],['Slippers','footwear'],['Slip-On','footwear'],['Loafers','footwear'],['Pumps','footwear'],['Mules','footwear'],['Boots','footwear'],['Sandals','footwear']]
 };
 const bandDefs=[['A – B',/^[A-B]/i],['C – F',/^[C-F]/i],['G – L',/^[G-L]/i],['M – Q',/^[M-Q]/i],['R – Z',/^[R-Z]/i],['0 – 9',/^\d/]];
 export default function Navbar({user,count,fittingUrl,brands=[]}){
@@ -24,24 +24,23 @@ export default function Navbar({user,count,fittingUrl,brands=[]}){
  const brandGroups=bandDefs.map(([label,pattern])=>({label,items:brands.filter(b=>pattern.test(b.name))})).filter(g=>g.items.length);
  function submitSearch(e){e.preventDefault();if(!query.trim())return;go('/shop?q='+encodeURIComponent(query.trim()));}
  return <>
-  <div className="announcement kd-retail-announcement"><span>THE EVERYDAY EDIT</span><span>CONTEMPORARY STYLE, THOUGHTFULLY CURATED</span><span>KD DESIGN / 2026</span></div>
   <header className={'header kd-retail-header'+(scrolled?' header-scrolled':'')}>
    <div className="kd-retail-header-row">
     <Link className="logo kd-retail-logo" to="/" aria-label="KD DESIGN homepage"><strong>KD</strong> DESIGN <small>CURATED FASHION</small></Link>
     <nav className={'kd-retail-nav'+(mobile?' is-mobile-open':'')} aria-label="Main navigation">
-      <button type="button" aria-expanded={menu==='collections'} aria-controls="kd-retail-collections" className={menu==='collections'?'on':''} onClick={()=>toggle('collections')}>COLLECTIONS <ChevronDown size={17}/></button>
-      <button type="button" aria-expanded={menu==='brands'} aria-controls="kd-retail-brands" className={menu==='brands'?'on':''} onClick={()=>toggle('brands')}>BRANDS <ChevronDown size={17}/></button>
+      <button type="button" onMouseEnter={()=>{if(window.matchMedia('(hover:hover) and (min-width:1431px)').matches)setMenu('collections')}} aria-expanded={menu==='collections'} aria-controls="kd-retail-collections" className={menu==='collections'?'on':''} onClick={()=>toggle('collections')}>COLLECTIONS <ChevronDown size={20}/></button>
+      <button type="button" onMouseEnter={()=>{if(window.matchMedia('(hover:hover) and (min-width:1431px)').matches)setMenu('brands')}} aria-expanded={menu==='brands'} aria-controls="kd-retail-brands" className={menu==='brands'?'on':''} onClick={()=>toggle('brands')}>BRANDS <ChevronDown size={20}/></button>
       <Link to="/shop">ALL PRODUCTS</Link>
       <Link className="kd-retail-sale-link" to="/shop?sale=1">SALE</Link>
       {user?.role==='admin'&&<Link to="/admin">ADMIN</Link>}
-      <a className="kd-retail-studio" href={fittingUrl} target="_blank" rel="noreferrer">3D FITTING <ArrowUpRight size={16}/></a>
+      <a className="kd-retail-studio" href={fittingUrl} target="_blank" rel="noreferrer">3D FITTING <ArrowUpRight size={19}/></a>
     </nav>
     <div className="kd-retail-actions">
-      <button type="button" className="kd-retail-icon" aria-label={searchOpen?'Close search':'Search products'} aria-expanded={searchOpen} onClick={()=>{setSearchOpen(s=>!s);setMenu('')}}>{searchOpen?<X size={27}/>:<Search size={27}/>}</button>
-      <Link className="kd-retail-icon" aria-label="Account" to={user?'/account':'/login'}><CircleUserRound size={27}/></Link>
-      <Link className="kd-retail-icon kd-retail-bag" aria-label={'Shopping bag with '+count+' items'} to="/cart"><ShoppingBag size={27}/><b>{count}</b></Link>
-      {user?.role==='admin'&&<Link className="kd-retail-icon kd-retail-settings" title="Admin settings" aria-label="Admin settings" to="/admin"><Settings size={25}/></Link>}
-      <button className="kd-retail-icon kd-retail-hamburger" aria-label={mobile?'Close navigation':'Open navigation'} aria-expanded={mobile} onClick={()=>{setMobile(v=>!v);setMenu('')}}>{mobile?<X size={28}/>:<Menu size={28}/>}</button>
+      <button type="button" className="kd-retail-icon" aria-label={searchOpen?'Close search':'Search products'} aria-expanded={searchOpen} onClick={()=>{setSearchOpen(s=>!s);setMenu('')}}>{searchOpen?<X size={27}/>:<Search size={30}/>}</button>
+      <Link className="kd-retail-icon" aria-label="Account" to={user?'/account':'/login'}><CircleUserRound size={30}/></Link>
+      <Link className="kd-retail-icon kd-retail-bag" aria-label={'Shopping bag with '+count+' items'} to="/cart"><ShoppingBag size={30}/><b>{count}</b></Link>
+      {user?.role==='admin'&&<Link className="kd-retail-icon kd-retail-settings" title="Admin settings" aria-label="Admin settings" to="/admin"><Settings size={29}/></Link>}
+      <button className="kd-retail-icon kd-retail-hamburger" aria-label={mobile?'Close navigation':'Open navigation'} aria-expanded={mobile} onClick={()=>{setMobile(v=>!v);setMenu('')}}>{mobile?<X size={28}/>:<Menu size={30}/>}</button>
     </div>
    </div>
    {menu&&<button className="kd-retail-menu-scrim" type="button" tabIndex={-1} aria-label="Close menu" onClick={()=>setMenu('')}/>}
