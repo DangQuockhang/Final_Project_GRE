@@ -5,9 +5,9 @@ import Reveal from '../common/Reveal.jsx';
 import {editorialImages} from './editorialMedia.js';
 
 const categories=[
- {id:'tops',name:'Clothing',detail:'Tops & everyday essentials',image:editorialImages.tops},
- {id:'outerwear',name:'Outerwear',detail:'Coats, jackets & layers',image:editorialImages.outerwear},
- {id:'bottoms',name:'Bottoms',detail:'Trousers & relaxed fits',image:editorialImages.bottoms},
+ {id:'clothing',name:'Clothing',detail:'Tops, jackets & everyday essentials',image:editorialImages.tops},
+ {id:'bags',name:'Bags',detail:'Totes, crossbody bags & more',image:editorialImages.outerwear},
+ {id:'shoes',name:'Shoes',detail:'Sneakers, slides & more',image:editorialImages.bottoms},
  {id:'accessories',name:'Accessories',detail:'Finishing touches',image:editorialImages.accessories}
 ];
 export default function ShopByCategory(){

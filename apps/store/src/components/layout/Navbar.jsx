@@ -4,9 +4,9 @@ import {ArrowUpRight,ChevronDown,CircleUserRound,Menu,Search,Settings,ShoppingBa
 
 const collections={
  ACCESSORIES:[['Bracelet','accessories'],['Necklace','accessories'],['Earring','accessories'],['Bucket Hat','accessories'],['Cap','accessories'],['Belt','accessories'],['Glasses','accessories'],['Watches','accessories'],['Hair Accessories','accessories'],['Wallet','accessories']],
- BAGS:[['Clutch','accessories'],['Crossbody Bag','accessories'],['Handle Bag','accessories'],['Messenger Bag','accessories'],['Mini Bag','accessories'],['Shoulder Bag','accessories'],['Tote Bag','accessories'],['Backpack','accessories']],
- CLOTHING:[['Cardigan','outerwear'],['T-Shirt','tops'],['Hoodie','tops'],['Polo','tops'],['Jacket','outerwear'],['Shirt','tops'],['Shorts','bottoms'],['Skirt','bottoms'],['Sweater','tops'],['Jeans','bottoms'],['Pants','bottoms']],
- SHOES:[['Sneakers','footwear'],['Slides','footwear'],['Slippers','footwear'],['Slip-On','footwear'],['Loafers','footwear'],['Pumps','footwear'],['Mules','footwear'],['Boots','footwear'],['Sandals','footwear']]
+ BAGS:[['Clutch','bags'],['Crossbody Bag','bags'],['Handle Bag','bags'],['Messenger Bag','bags'],['Mini Bag','bags'],['Shoulder Bag','bags'],['Tote Bag','bags'],['Backpack','bags']],
+ CLOTHING:[['Cardigan','clothing'],['T-Shirt','clothing'],['Hoodie','clothing'],['Polo','clothing'],['Jacket','clothing'],['Shirt','clothing'],['Shorts','clothing'],['Skirt','clothing'],['Sweater','clothing'],['Jeans','clothing'],['Pants','clothing']],
+ SHOES:[['Sneakers','shoes'],['Slides','shoes'],['Slippers','shoes'],['Slip-On','shoes'],['Loafers','shoes'],['Pumps','shoes'],['Mules','shoes'],['Boots','shoes'],['Sandals','shoes']]
 };
 const bandDefs=[['A – B',/^[A-B]/i],['C – F',/^[C-F]/i],['G – L',/^[G-L]/i],['M – Q',/^[M-Q]/i],['R – Z',/^[R-Z]/i],['0 – 9',/^\d/]];
 export default function Navbar({user,count,fittingUrl,brands=[]}){

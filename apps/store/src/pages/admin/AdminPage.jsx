@@ -77,7 +77,7 @@ export default function AdminPage({user,token,request,refreshCatalog}){
             <button type="button" onClick={()=>setTab('orders')}><ClipboardList size={19}/> Process orders</button>
             <button type="button" disabled={busy} onClick={()=>perform(async()=>{},'Dashboard refreshed.')}><RefreshCw size={19}/> Refresh data</button>
           </div>
-          <p className="kd-admin-hint">Category choices are currently defined in the API (tops, bottoms, outerwear, accessories); a configurable Category CRUD module is a separate development task.</p>
+          <p className="kd-admin-hint">Categories are Accessories, Bags, Clothing and Shoes. Use Product Type to classify subcategories such as Jacket, T-Shirt or Slides.</p>
         </section>}
         {tab==='brands'&&<BrandsPanel {...common} brands={brands} products={products}/>}
         {tab==='products'&&<ProductsPanel {...common} products={products} brands={brands}/>}

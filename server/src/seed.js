@@ -7,11 +7,11 @@ const brands = [
  ['FORM / STUDIO','form-studio','Nhãn giả lập — contemporary clothing.']
 ];
 const products = [
- ['essential-sculpt-tee','Essential Sculpt Tee','atelier-north','tops',1450000,'Áo thun form relaxed để minh họa hệ thống fitting 3D.','#535c52',true,['S','M','L','XL']],
- ['structured-overshirt','Structured Overshirt','form-studio','outerwear',2750000,'Overshirt contemporary với đường nét tối giản.','#b6a994',true,['S','M','L','XL']],
- ['modern-knit-polo','Modern Knit Polo','atelier-north','tops',1950000,'Polo dệt kim trong bộ sưu tập demo.','#d4c1a1',true,['S','M','L','XL']],
- ['wide-leg-trousers','Wide Leg Trousers','form-studio','bottoms',2350000,'Quần suông thanh lịch.','#444b4a',false,['S','M','L','XL']],
- ['urban-crossbody','Urban Crossbody','mono-object','accessories',1690000,'Túi đeo chéo gọn nhẹ.','#343b40',false,['ONE SIZE']],
+ ['essential-sculpt-tee','Essential Sculpt Tee','atelier-north','clothing',1450000,'Áo thun form relaxed để minh họa hệ thống fitting 3D.','#535c52',true,['S','M','L','XL']],
+ ['structured-overshirt','Structured Overshirt','form-studio','clothing',2750000,'Overshirt contemporary với đường nét tối giản.','#b6a994',true,['S','M','L','XL']],
+ ['modern-knit-polo','Modern Knit Polo','atelier-north','clothing',1950000,'Polo dệt kim trong bộ sưu tập demo.','#d4c1a1',true,['S','M','L','XL']],
+ ['wide-leg-trousers','Wide Leg Trousers','form-studio','clothing',2350000,'Quần suông thanh lịch.','#444b4a',false,['S','M','L','XL']],
+ ['urban-crossbody','Urban Crossbody','mono-object','bags',1690000,'Túi đeo chéo gọn nhẹ.','#343b40',false,['ONE SIZE']],
  ['everyday-cap','Everyday Cap','mono-object','accessories',950000,'Mũ lưỡi trai tối giản.','#9d9587',false,['ONE SIZE']]
 ];
 try {

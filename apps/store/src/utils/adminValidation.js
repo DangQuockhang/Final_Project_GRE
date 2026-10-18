@@ -1,4 +1,4 @@
-export const PRODUCT_CATEGORIES = ['tops','bottoms','outerwear','accessories','footwear'];
+export const PRODUCT_CATEGORIES = ['accessories','bags','clothing','shoes'];
 export const PRODUCT_STATUSES = ['draft','active','archived'];
 export const ORDER_TRANSITIONS = Object.freeze({
   PENDING:['CONFIRMED','CANCELLED'],

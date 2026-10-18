@@ -4,7 +4,7 @@ import {Search,ChevronDown,RotateCcw,ArrowLeft,ArrowRight,SlidersHorizontal} fro
 import {filterProducts,paginateProducts} from '@kd/catalog';
 import {ProductCard} from '../components/product/ProductCard.jsx';
 
-const categories=[['','All categories'],['tops','Tops & shirts'],['outerwear','Outerwear'],['bottoms','Bottoms'],['accessories','Accessories'],['footwear','Shoes']];
+const categories=[['','All categories'],['accessories','Accessories'],['bags','Bags'],['clothing','Clothing'],['shoes','Shoes']];
 const sorts=[['featured','Featured'],['name','Alphabetically, A–Z'],['low','Price: Low to high'],['high','Price: High to low']];
 const priceBands=[['','Any price'],['under1500','Under 1.5 million ₫'],['mid','1.5 – 2.5 million ₫'],['over2500','Over 2.5 million ₫']];
 export default function ShopPage({products=[],brands=[]}){
