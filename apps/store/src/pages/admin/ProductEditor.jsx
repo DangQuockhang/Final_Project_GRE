@@ -20,6 +20,7 @@ export default function ProductEditor({product,brands,api,perform,busy,report,on
  const [sizes,setSizes]=useState(()=>[...new Set((product?.variants||[]).map(v=>v.size))].join(', ')||'S, M, L');
  const [rows,setRows]=useState(()=>(product?.variants||[]).map(v=>({...v,stock:String(v.stock),color_hex:v.color_hex||initialColors(product).find(c=>normal(c.name)===normal(v.color))?.hex||'#758073'})));
  const [files,setFiles]=useState([]),[defaultStock,setDefaultStock]=useState('0'),[working,setWorking]=useState(false);
+ const [removedVariants,setRemovedVariants]=useState([]);
  const limit=Math.min(6,8-(product?.images?.length||0));
  const urls=useMemo(()=>files.map(file=>({name:file.name,url:URL.createObjectURL(file)})),[files]);
  useEffect(()=>()=>urls.forEach(x=>URL.revokeObjectURL(x.url)),[urls]);
@@ -30,6 +31,40 @@ export default function ProductEditor({product,brands,api,perform,busy,report,on
  function addColor(){
   const next=shades.find(s=>!colors.some(c=>normal(c.name)===normal(s.name)))||{name:'New color',hex:'#758073'};
   setColors(c=>[...c,{...next}]);
+ }
+ // Stage removals locally; only the Save button updates PostgreSQL.
+ // A product can have historical orders, so the API must reject order-linked SKUs.
+ function stageRemove(matches,label){
+  if(!matches.length)return false;
+  const existing=matches.filter(row=>row.id!=null);
+  const originalStock=existing.reduce((n,row)=>{
+   const old=product?.variants?.find(v=>String(v.id)===String(row.id));
+   return n+Number(old?.stock||0);
+  },0);
+  const unsavedStock=matches.filter(row=>row.id==null).reduce((n,row)=>n+Number(row.stock||0),0);
+  const stock=originalStock+unsavedStock;
+  const notice=stock>0
+   ?'WARNING: '+label+' contains '+stock+' unit(s) of recorded inventory. Deleting will remove those SKU(s) and their stock count. Existing order-linked SKUs cannot be deleted. Queue removal?'
+   :'Remove '+label+'? Saved SKUs will only be deleted after you press Save. Order-linked SKUs cannot be deleted.';
+  if(!window.confirm(notice))return false;
+  const remaining=rows.filter(row=>!matches.includes(row));
+  setRows(remaining);
+  setRemovedVariants(old=>[...old,...existing.filter(row=>!old.some(prev=>String(prev.id)===String(row.id)))]);
+  setColors(old=>old.filter(color=>!matches.some(r=>normal(r.color)===normal(color.name))||remaining.some(r=>normal(r.color)===normal(color.name))));
+  return true;
+ }
+ function removeColor(color){
+  const associated=rows.filter(row=>normal(row.color)===normal(color.name));
+  if(associated.length){
+   stageRemove(associated,'color '+color.name+' and its '+associated.length+' SKU(s)');
+  }else if(window.confirm('Remove the unassigned color '+color.name+'?')){
+   setColors(old=>old.filter(c=>normal(c.name)!==normal(color.name)));
+  }
+ }
+ function undoRemoval(row){
+  setRemovedVariants(old=>old.filter(v=>String(v.id)!==String(row.id)));
+  setRows(old=>[...old,row]);
+  setColors(old=>old.some(color=>normal(color.name)===normal(row.color))?old:[...old,{name:row.color,hex:row.color_hex||'#758073'}]);
  }
  function buildMatrix(){
   const parsed=[...new Set(sizes.split(',').map(s=>s.trim()).filter(Boolean))];
@@ -62,7 +97,9 @@ export default function ProductEditor({product,brands,api,perform,busy,report,on
   if(rows.length>80){report('Maximum 80 variants.');return;}
   if(files.length>limit){report('Too many photos for this product.');return;}
   const form=new FormData();
-  form.append('payload',JSON.stringify({...data,price:Number(data.price),sale_price:data.sale_price===''?null:Number(data.sale_price),variants:rows.map(v=>({...v,stock:Number(v.stock)}))}));
+  const deletedIds=removedVariants.map(v=>v.id);
+  const hasOriginalStock=removedVariants.some(v=>(product?.variants||[]).some(original=>String(original.id)===String(v.id)&&Number(original.stock)>0));
+  form.append('payload',JSON.stringify({...data,price:Number(data.price),sale_price:data.sale_price===''?null:Number(data.sale_price),variants:rows.map(v=>({...v,stock:Number(v.stock)})),deleted_variant_ids:deletedIds,confirm_stock_discard:hasOriginalStock}));
   files.forEach(f=>form.append('images',f));
   setWorking(true);
   const ok=await perform(()=>api(product?'/admin/products/'+product.id+'/bundle':'/admin/products/bundle',{method:product?'PATCH':'POST',body:form}),product?'Product, colors, sizes and photos updated.':'Product, colors, sizes and photos created.');
@@ -83,18 +120,24 @@ export default function ProductEditor({product,brands,api,perform,busy,report,on
    <label className="kd-quick-full">DESCRIPTION<textarea rows={3} maxLength={2000} value={draft.description} onChange={e=>set('description',e.target.value)} placeholder="Product details…"/></label>
   </div>
   <section className="kd-quick-step">
-   <div className="kd-quick-step-heading"><div><h4>1. Available colors</h4><p>Add Black, Red, Gray or custom colors. Each color can have its own sizes and stock.</p></div><button type="button" className="border-button" onClick={addColor}><Plus size={15}/> ADD COLOR</button></div>
+   <div className="kd-quick-step-heading"><div><h4>1. Available colors</h4><p>Add Black, Red, Gray or custom colors. Deleting a color also queues removal of its matching SKUs; Save applies the changes.</p></div><button type="button" className="border-button" onClick={addColor}><Plus size={15}/> ADD COLOR</button></div>
    <div className="kd-color-admin-grid">{colors.map((color,i)=><div className="kd-color-admin-row" key={i}>
     <input type="color" aria-label={'Color swatch '+(i+1)} value={color.hex} onChange={e=>setColors(old=>old.map((c,j)=>i===j?{...c,hex:e.target.value}:c))}/>
     <input aria-label={'Color name '+(i+1)} value={color.name} onChange={e=>setColors(old=>old.map((c,j)=>i===j?{...c,name:e.target.value}:c))} placeholder="Black"/>
-    <button type="button" title="Remove unsaved color selection" aria-label={'Remove color '+(i+1)} disabled={colors.length===1} onClick={()=>setColors(old=>old.filter((_,j)=>j!==i))}><Trash2 size={16}/></button>
+    <button type="button" title={'Delete color '+color.name+' and its associated SKUs'} aria-label={'Delete color '+color.name} onClick={()=>removeColor(color)}><Trash2 size={16}/></button>
    </div>)}</div>
    <div className="kd-size-builder"><label>SIZE OPTIONS (COMMA-SEPARATED)<input value={sizes} onChange={e=>setSizes(e.target.value)} placeholder="S, M, L, XL"/></label><label>DEFAULT STOCK PER SKU<input type="number" min="0" value={defaultStock} onChange={e=>setDefaultStock(e.target.value)}/></label><button type="button" className="button button-dark" onClick={buildMatrix}><Layers size={16}/> GENERATE COLOR × SIZE</button></div>
-   {rows.length>0?<div className="kd-quick-variants"><div className="kd-quick-table-head"><span>COLOR</span><span>SIZE</span><span>SKU</span><span>STOCK</span></div>{rows.map((row,i)=><div className="kd-quick-sku-row" key={row.id||i}>
+   {rows.length>0?<div className="kd-quick-variants"><div className="kd-quick-table-head"><span>COLOR</span><span>SIZE</span><span>SKU</span><span>STOCK</span><span>ACTION</span></div>{rows.map((row,i)=><div className="kd-quick-sku-row" key={row.id||i}>
     <span><i style={{background:row.color_hex}}/>{row.color}</span><span>{row.size}</span>
     <input aria-label={'SKU '+(i+1)} value={row.sku} maxLength={100} onChange={e=>setRows(old=>old.map((v,j)=>i===j?{...v,sku:e.target.value}:v))}/>
     <input aria-label={'Stock '+(i+1)} type="number" min="0" value={row.stock} onChange={e=>setRows(old=>old.map((v,j)=>i===j?{...v,stock:e.target.value}:v))}/>
-   </div>)}</div>:<p className="kd-no-skus">Choose colors and sizes, then click Generate to add SKU variants before publishing.</p>}
+    <button className="kd-remove-sku" type="button" aria-label={'Delete SKU '+row.sku} title={'Delete '+row.color+' / '+row.size} onClick={()=>stageRemove([row],'SKU '+row.sku)}><Trash2 size={18}/> <span>DELETE</span></button>
+   </div>)}</div>:<p className="kd-no-skus">No SKU rows selected. Add a color and generate variants when ready.</p>}
+   {removedVariants.length>0&&<div className="kd-pending-sku-removals" role="status">
+    <strong>{removedVariants.length} SKU(s) queued for deletion</strong>
+    <p>No database rows have been removed yet. Click Save to apply; any SKU referenced by an order will be protected.</p>
+    <div>{removedVariants.map(v=><div className="kd-pending-sku" key={v.id}><span>{v.color} / {v.size} · {v.sku}</span><button type="button" onClick={()=>undoRemoval(v)}>UNDO</button></div>)}</div>
+   </div>}
   </section>
   <section className="kd-quick-step"><div className="kd-quick-step-heading"><div><h4>2. Product photographs</h4><p>Select multiple product photos before saving. The first photo becomes the cover on creation; edits append to the gallery.</p></div><ImagePlus size={27}/></div>
    {gallery.length>0&&<div className="kd-quick-photo-thumbs">{gallery.map(u=><img key={u} src={productImageUrl(u,import.meta.env.VITE_API_URL||apiBase)} alt="Existing product photo"/>)}</div>}
@@ -102,6 +145,6 @@ export default function ProductEditor({product,brands,api,perform,busy,report,on
    <p>{files.length} new photos selected · {Math.max(0,limit)} slots available per save · 3 MB maximum per photo.</p>
    {urls.length>0&&<div className="kd-quick-photo-thumbs">{urls.map(x=><img key={x.url} src={x.url} alt={x.name}/>)}</div>}
   </section>
-  <div className="kd-quick-save"><button className="button button-dark" type="submit" disabled={busy||working||!brands.length}><Save size={18}/>{working?'SAVING…':product?'SAVE ALL PRODUCT CHANGES':'CREATE PRODUCT WITH PHOTOS'}</button><span>New products default to Draft. Existing SKU/order history is preserved.</span></div>
+  <div className="kd-quick-save"><button className="button button-dark" type="submit" disabled={busy||working||!brands.length}><Save size={18}/>{working?'SAVING…':product?'SAVE ALL PRODUCT CHANGES':'CREATE PRODUCT WITH PHOTOS'}</button><span>New products default to Draft. Order-linked SKU history is protected; confirmed unreferenced SKU removals are applied on Save.</span></div>
  </form>;
 }
