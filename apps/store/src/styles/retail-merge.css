@@ -261,7 +261,7 @@
 .kd-retail-mega-column h3{font-size:20px;margin-bottom:12px}
 .kd-retail-mega-column button{font-size:17px;line-height:1.5;padding:5px 0}
 .kd-retail-mega-all{font-size:16px;min-height:46px}
-.kd-retail-menu-scrim{inset:0 0 0;height:100vh;background:rgba(24,31,24,.24)}
+.kd-retail-menu-scrim{inset:110px 0 0;height:auto;background:rgba(24,31,24,.24)}
 .kd-retail-search{z-index:11}
 @media(max-width:1430px){
   .kd-retail-hamburger{display:grid}
@@ -293,6 +293,7 @@
   .kd-retail-mega{padding:30px clamp(25px,6vw,85px)}
 }
 @media(max-width:700px){
+  .kd-retail-menu-scrim{top:85px}
   .kd-retail-header .kd-retail-logo{
     min-width:138px;
     font-size:27px;
