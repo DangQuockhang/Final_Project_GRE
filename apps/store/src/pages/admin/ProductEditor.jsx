@@ -50,7 +50,18 @@ export default function ProductEditor({product,brands,api,perform,busy,report,on
   const remaining=rows.filter(row=>!matches.includes(row));
   setRows(remaining);
   setRemovedVariants(old=>[...old,...existing.filter(row=>!old.some(prev=>String(prev.id)===String(row.id)))]);
-  setColors(old=>old.filter(color=>!matches.some(r=>normal(r.color)===normal(color.name))||remaining.some(r=>normal(r.color)===normal(color.name))));
+  setColors(old=>{
+   const kept=old.filter(color=>!matches.some(r=>normal(r.color)===normal(color.name))||remaining.some(r=>normal(r.color)===normal(color.name)));
+   // A previously removed color-chip must reappear if its saved SKU is still present.
+   const existing=new Set(kept.map(color=>normal(color.name)));
+   for(const row of remaining){
+    if(!existing.has(normal(row.color))){
+     kept.push({name:row.color,hex:row.color_hex||'#758073'});
+     existing.add(normal(row.color));
+    }
+   }
+   return kept;
+  });
   return true;
  }
  function removeColor(color){
@@ -68,7 +79,8 @@ export default function ProductEditor({product,brands,api,perform,busy,report,on
  }
  function buildMatrix(){
   const parsed=[...new Set(sizes.split(',').map(s=>s.trim()).filter(Boolean))];
-  if(!parsed.length||parsed.some(s=>s.length>20)||colors.some(c=>!c.name.trim()||!/^#[a-f0-9]{6}$/i.test(c.hex))){report('Provide valid colors and comma-separated sizes.');return;}
+  if(!parsed.length||parsed.some(s=>s.length>20)||!colors.length||colors.some(c=>!c.name.trim()||!/^#[a-f0-9]{6}$/i.test(c.hex))){report('Provide valid colors and comma-separated sizes.');return;}
+  if(new Set(colors.map(c=>normal(c.name))).size!==colors.length){report('Each color name must be unique. Remove or rename duplicate colors.');return;}
   if(parsed.length*colors.length>80){report('Maximum 80 SKU combinations per product.');return;}
   const stock=Number(defaultStock);
   if(!Number.isSafeInteger(stock)||stock<0){report('Enter a valid default stock.');return;}
