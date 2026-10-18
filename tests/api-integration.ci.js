@@ -31,11 +31,56 @@ test('Admin permissions and COD stock transactions against disposable PostgreSQL
   const user=await request('/api/auth/register',{name:'Test Customer',email:'test-'+id+'@example.test',password:'TestCustomerPassword2026'});
   assert.equal(user.status,201);
   const brands=await fetch(base+'/api/brands').then(r=>r.json());
+  // One-submit workflow and color variants: atomically persist product, photos and stock.
+  const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6TuYAAAAASUVORK5CYII=','base64');
+  const createBundle={
+   name:'Bundle Color Tee '+id,brand_id:brands[0].id,category:'clothing',
+   product_type:'T-Shirt',price:1300000,sale_price:900000,status:'active',description:'Three-color product',
+   color:'#222222',variants:[
+    {sku:'B-'+id+'-BLACK-M',size:'M',color:'Black',color_hex:'#222222',stock:5},
+    {sku:'B-'+id+'-RED-M',size:'M',color:'Red',color_hex:'#bb3344',stock:2},
+    {sku:'B-'+id+'-GRAY-M',size:'M',color:'Gray',color_hex:'#888888',stock:0}
+   ]
+  };
+  const bundleForm=body=>{
+   const form=new FormData();form.append('payload',JSON.stringify(body));
+   form.append('images',new Blob([png],{type:'image/png'}),'view1.png');
+   form.append('images',new Blob([png],{type:'image/png'}),'view2.png');
+   return form;
+  };
+  const denyBundle=await fetch(base+'/api/admin/products/bundle',{method:'POST',headers:{Authorization:'Bearer '+user.data.token},body:bundleForm(createBundle)});
+  assert.equal(denyBundle.status,403);
+  const bundle=await fetch(base+'/api/admin/products/bundle',{method:'POST',headers:{Authorization:'Bearer '+token},body:bundleForm(createBundle)});
+  assert.equal(bundle.status,201); 
+  const bundleBody=await bundle.json();
+  const bundleItem=await fetch(base+'/api/products/'+bundleBody.slug).then(r=>r.json());
+  assert.equal(bundleItem.category,'clothing');
+  assert.equal(bundleItem.images.length,2);
+  assert.equal(bundleItem.variants.length,3);
+  assert.equal(bundleItem.variants.find(v=>v.color==='Red').color_hex,'#bb3344');
+  assert.equal(bundleItem.variants.find(v=>v.color==='Gray').stock,0);
+  const editedPayload={...createBundle,name:'Bundle Color Tee '+id,price:1400000,sale_price:950000,
+   variants:bundleItem.variants.map(v=>({...v,stock:v.color==='Red'?4:v.stock}))};
+  const updateForm=new FormData();updateForm.append('payload',JSON.stringify(editedPayload));
+  const updateBundle=await fetch(base+'/api/admin/products/'+bundleBody.id+'/bundle',{method:'PATCH',headers:{Authorization:'Bearer '+token},body:updateForm});
+  assert.equal(updateBundle.status,200);
+  const edited=await fetch(base+'/api/products/'+bundleBody.slug).then(r=>r.json());
+  assert.equal(Number(edited.sale_price),950000);
+  assert.equal(edited.variants.find(v=>v.color==='Red').stock,4);
+  const logoForm=()=>{const form=new FormData();form.append('image',new Blob([png],{type:'image/png'}),'brand.png');return form;};
+  const deniedLogo=await fetch(base+'/api/admin/brands/'+brands[0].id+'/logo',{method:'POST',headers:{Authorization:'Bearer '+user.data.token},body:logoForm()});
+  assert.equal(deniedLogo.status,403);
+  const logoUpload=await fetch(base+'/api/admin/brands/'+brands[0].id+'/logo',{method:'POST',headers:{Authorization:'Bearer '+token},body:logoForm()});
+  assert.equal(logoUpload.status,201);
+  const savedBrands=await fetch(base+'/api/brands').then(r=>r.json());
+  assert.ok(savedBrands.find(b=>b.id===brands[0].id).logo_url?.startsWith('/media/products/'));
+  const logoRemoved=await request('/api/admin/brands/'+brands[0].id+'/logo',undefined,token,'DELETE');
+  assert.equal(logoRemoved.status,200);
+
   const product=await request('/api/products',{
    name:'Test Tee '+id,brand_id:brands[0].id,category:'clothing',product_type:'T-Shirt',price:1200000,sale_price:990000,status:'active'
   },token);
   assert.equal(product.status,201);
-  const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6TuYAAAAASUVORK5CYII=','base64');
   const makeForm=()=>{
     const form=new FormData();
     // Exercise a valid PNG whose filename/MIME declares JPEG, simulating misleading browser metadata.
