@@ -52,3 +52,97 @@
 .kd-retail-color-choices span{font-size:14px;font-weight:600;color:#425143}
 @media(max-width:900px){.kd-size-builder{grid-template-columns:1fr 1fr}.kd-size-builder .button{grid-column:1/-1}}
 @media(max-width:620px){.kd-quick-grid{grid-template-columns:1fr}.kd-size-builder{grid-template-columns:1fr}.kd-quick-title{flex-direction:column}.kd-brand-list-row{flex-wrap:wrap}.kd-brand-mini-photo{width:75px;height:75px}.kd-quick-step-heading{align-items:flex-start;flex-direction:column}.kd-retail-color-choices button{min-width:74px}}
+
+
+/* Sprint 2.10 — Product Edit modal: retain inline Create, never scroll to top for Edit. */
+.kd-edit-modal-backdrop{
+  position:fixed;
+  inset:0;
+  z-index:1200;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:clamp(12px,3vw,40px);
+  background:rgba(25,32,27,.64);
+  backdrop-filter:blur(3px);
+}
+.kd-edit-modal{
+  display:flex;
+  flex-direction:column;
+  width:min(1120px,100%);
+  max-height:min(92vh,100%);
+  max-height:min(92dvh,100%);
+  background:#fffefa;
+  box-shadow:0 30px 85px rgba(16,25,18,.35);
+  border:1px solid #d9e1d7;
+  overflow:hidden;
+}
+.kd-edit-modal-header{
+  display:flex;
+  flex:none;
+  justify-content:space-between;
+  align-items:center;
+  gap:20px;
+  padding:22px clamp(20px,3vw,34px);
+  border-bottom:1px solid #dce3d9;
+  background:#fffefa;
+}
+.kd-edit-modal-header span{
+  color:#586b5a;
+  font-size:12px;
+  letter-spacing:.12em;
+  font-weight:850;
+}
+.kd-edit-modal-header h2{
+  margin:5px 0 0;
+  font:500 clamp(24px,2.7vw,34px)/1.22 'Playfair Display',Georgia,serif;
+  overflow-wrap:anywhere;
+}
+.kd-edit-modal-close{
+  flex:none;
+  display:grid;
+  place-items:center;
+  width:48px;
+  height:48px;
+  border:1px solid #ccd8cb;
+  border-radius:50%;
+  background:#f5f7f1;
+  cursor:pointer;
+}
+.kd-edit-modal-close:hover{background:#e8eee5}
+.kd-edit-modal-close:focus-visible{
+  outline:3px solid #7ea484;
+  outline-offset:3px;
+}
+.kd-edit-modal-scroll{
+  flex:1;
+  min-height:0;
+  overflow:auto;
+  overscroll-behavior:contain;
+}
+.kd-edit-modal-scroll .kd-quick-editor{
+  border:0;
+  margin:0;
+  padding:clamp(18px,3vw,32px);
+}
+.kd-edit-modal-scroll .kd-quick-title h3{
+  font-size:clamp(25px,2.5vw,32px);
+}
+.kd-edit-modal-scroll .kd-quick-save{
+  position:sticky;
+  bottom:0;
+  z-index:3;
+  background:#f2f5ef;
+  border-top:1px solid #d3dfd3;
+  padding:18px 0;
+}
+@media(max-width:700px){
+ .kd-edit-modal-backdrop{padding:0}
+ .kd-edit-modal{width:100%;max-height:100vh;max-height:100dvh;min-height:100vh;min-height:100dvh}
+ .kd-edit-modal-header{padding:14px 18px}
+ .kd-edit-modal-close{height:42px;width:42px}
+ .kd-edit-modal-scroll .kd-quick-save{padding:13px 0}
+}
+@media(prefers-reduced-motion:reduce){
+ .kd-edit-modal-backdrop{backdrop-filter:none}
+}
