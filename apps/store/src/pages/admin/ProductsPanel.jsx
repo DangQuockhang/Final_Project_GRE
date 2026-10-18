@@ -1,14 +1,37 @@
-import React,{useState} from 'react';
-import {Pencil,Archive,RotateCcw,PackagePlus,ImagePlus,Trash2} from 'lucide-react';
+import React,{useEffect,useRef,useState} from 'react';
+import {createPortal} from 'react-dom';
+import {Pencil,Archive,ImagePlus,Trash2,X} from 'lucide-react';
 import {money,apiBase,productImageUrl} from '@kd/catalog';
 import PermanentDeleteDialog from '../../components/admin/PermanentDeleteDialog.jsx';
-import {validateVariant,validateStock,PRODUCT_STATUSES} from '../../utils/adminValidation.js';
+import {validateStock,PRODUCT_STATUSES} from '../../utils/adminValidation.js';
 import ProductEditor from './ProductEditor.jsx';
-const NEW_VARIANT={sku:'',size:'',color:'Onyx',stock:'0',chest_cm:''};
+function EditProductDialog({product,brands,api,perform,busy,report,onClose}){
+ const closeButton=useRef(null);
+ useEffect(()=>{
+  const previousOverflow=document.body.style.overflow;
+  document.body.style.overflow='hidden';
+  closeButton.current?.focus();
+  const escape=e=>{if(e.key==='Escape'&&!busy)onClose();};
+  window.addEventListener('keydown',escape);
+  return ()=>{document.body.style.overflow=previousOverflow;window.removeEventListener('keydown',escape);};
+ },[onClose,busy]);
+ return createPortal(
+  <div className="kd-edit-modal-backdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget&&!busy)onClose();}}>
+   <section className="kd-edit-modal" role="dialog" aria-modal="true" aria-labelledby="kd-edit-product-title">
+    <div className="kd-edit-modal-header">
+     <div><span>PRODUCT & INVENTORY</span><h2 id="kd-edit-product-title">Edit: {product.name}</h2></div>
+     <button ref={closeButton} className="kd-edit-modal-close" type="button" onClick={onClose} disabled={busy} aria-label="Close product editor"><X size={24}/></button>
+    </div>
+    <div className="kd-edit-modal-scroll">
+     <ProductEditor key={product.id} product={product} brands={brands} api={api} perform={perform} busy={busy} report={report} onCancel={onClose}/>
+    </div>
+   </section>
+  </div>,document.body);
+}
 export default function ProductsPanel({products,brands,api,perform,busy,report}){
   const [editing,setEditing]=useState(null);
   const [search,setSearch]=useState(''),[statusFilter,setStatusFilter]=useState('all');
-  const [variantDrafts,setVariantDrafts]=useState({}),[stockDrafts,setStockDrafts]=useState({});
+  const [stockDrafts,setStockDrafts]=useState({});
   const [pendingImages,setPendingImages]=useState({});
   const [pendingGalleries,setPendingGalleries]=useState({});
   const [deleting,setDeleting]=useState(null);
@@ -16,18 +39,10 @@ export default function ProductsPanel({products,brands,api,perform,busy,report})
   const [checkingDelete,setCheckingDelete]=useState(false);
   const rows=products.filter(p=>(statusFilter==='all'||p.status===statusFilter)&&[p.name,p.brand_name,p.slug].join(' ').toLowerCase().includes(search.toLowerCase()));
   function reset(){setEditing(null);}
-  function begin(p){setEditing(p.id);window.scrollTo({top:0,behavior:'smooth'});}
+  function begin(p){setEditing(p.id);}
   async function updateStatus(p,next){
     if(next==='archived'&&!window.confirm('Archive "'+p.name+'"? Existing orders will be retained.'))return;
     await perform(()=>api('/products/'+p.id,{method:'PATCH',body:{status:next}}),'Product status updated.');
-  }
-  const patchVariant=(id,key,value)=>setVariantDrafts(old=>({...old,[id]:{...NEW_VARIANT,...old[id],[key]:value}}));
-  async function addVariant(p){
-    const variant={...NEW_VARIANT,...variantDrafts[p.id]};
-    const problem=validateVariant(variant);if(problem){report(problem);return;}
-    const payload={...variant,stock:Number(variant.stock),chest_cm:variant.chest_cm===''?null:Number(variant.chest_cm)};
-    const ok=await perform(()=>api('/products/'+p.id+'/variants',{method:'POST',body:payload}),'Size/color variant created.');
-    if(ok)setVariantDrafts(old=>({...old,[p.id]:{...NEW_VARIANT}}));
   }
   async function saveStock(v){
     const stock=stockDrafts[v.id]??String(v.stock);
@@ -93,7 +108,7 @@ export default function ProductsPanel({products,brands,api,perform,busy,report})
   }
   return <section className="kd-admin-panel" aria-labelledby="product-title">
     <div className="kd-admin-panel-header"><div><h2 id="product-title">Product & Inventory</h2><p>Create or edit products with all colors, sizes and images in one workflow. Existing inventory and archive controls stay available.</p></div><span>{products.length} products</span></div>
-    <ProductEditor key={editing??'new'} product={editing?products.find(p=>p.id===editing):null} brands={brands}
+    <ProductEditor key="new-product" product={null} brands={brands}
       api={api} perform={perform} busy={busy} report={report} onCancel={reset}/>
     <div className="kd-admin-filter-row">
       <input aria-label="Search admin products" placeholder="Search products or brand…" value={search} onChange={e=>setSearch(e.target.value)}/>
@@ -148,26 +163,18 @@ export default function ProductsPanel({products,brands,api,perform,busy,report})
           <button type="button" className="border-button" disabled={busy||!pendingGalleries[p.id]?.length} onClick={()=>uploadGallery(p)}><ImagePlus size={15}/> UPLOAD GALLERY PHOTOS</button>
         </div>
         <div className="kd-variants-table">
-          {(p.variants||[]).length===0&&<p className="kd-no-skus">No SKU yet. Add a size/color variant below to enable cart and checkout.</p>}
+          {(p.variants||[]).length===0&&<p className="kd-no-skus">No SKU yet. Click EDIT to add colors, sizes and stock in the product editor.</p>}
           {(p.variants||[]).map(v=><div className="kd-stock-row" key={v.id}>
             <div><strong>{v.size} / {v.color}</strong><small>{v.sku}</small></div>
             <label>STOCK<input type="number" min="0" step="1" value={stockDrafts[v.id]??String(v.stock)} onChange={e=>setStockDrafts(old=>({...old,[v.id]:e.target.value}))}/></label>
             <button className="border-button" type="button" disabled={busy} onClick={()=>saveStock(v)}>SAVE STOCK</button>
           </div>)}
         </div>
-        <div className="kd-add-variant">
-          <span><PackagePlus size={15}/> ADD SKU / SIZE</span>
-          <div className="kd-add-variant-grid">
-            <input aria-label={'SKU for '+p.name} placeholder="SKU" value={variantDrafts[p.id]?.sku??''} onChange={e=>patchVariant(p.id,'sku',e.target.value)}/>
-            <input aria-label={'Size for '+p.name} placeholder="Size (S, M, L…)" value={variantDrafts[p.id]?.size??''} onChange={e=>patchVariant(p.id,'size',e.target.value)}/>
-            <input aria-label={'Color for '+p.name} placeholder="Color" value={variantDrafts[p.id]?.color??'Onyx'} onChange={e=>patchVariant(p.id,'color',e.target.value)}/>
-            <input aria-label={'Stock for '+p.name} type="number" min="0" step="1" value={variantDrafts[p.id]?.stock??'0'} onChange={e=>patchVariant(p.id,'stock',e.target.value)}/>
-            <input aria-label={'Chest cm for '+p.name} type="number" min="0" placeholder="Chest cm (optional)" value={variantDrafts[p.id]?.chest_cm??''} onChange={e=>patchVariant(p.id,'chest_cm',e.target.value)}/>
-            <button className="border-button" type="button" disabled={busy} onClick={()=>addVariant(p)}>ADD SKU</button>
-          </div>
-        </div>
+
       </article>)}
     </div>
+    {editing&&products.some(p=>p.id===editing)&&<EditProductDialog product={products.find(p=>p.id===editing)} brands={brands}
+      api={api} perform={perform} busy={busy} report={report} onClose={reset}/>}
     {deleting&&<PermanentDeleteDialog product={deleting} check={deletionCheck} checking={checkingDelete} busy={busy}
       onConfirm={confirmPermanentDelete} onClose={()=>{setDeleting(null);setDeletionCheck(null);}}/>}
   </section>;
