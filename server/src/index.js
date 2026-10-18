@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import {pool,query} from './db.js';
 import 'dotenv/config';
-import {imageDir,detectImage,imageUpload,galleryUpload,saveImage,removeImage} from './productImages.js';
+import {imageDir,detectImage,imageUpload,galleryUpload,bundleUpload,saveImage,removeImage} from './productImages.js';
 import {evaluateProductDeletion} from './productDeletion.js';
 
 const app=express();
@@ -70,7 +70,28 @@ route.delete('/brands/:id',authorize,admin,wrap(async(req,res)=>{
  const r=await query('DELETE FROM brands WHERE id=$1 RETURNING id',[req.params.id]);if(!r.rows[0])return fail(res,'Không tìm thấy brand.',404);res.json({ok:true});
 }));
 
-const baseSelect=`SELECT p.*,b.name AS brand_name,b.slug AS brand_slug, COALESCE((SELECT json_agg(json_build_object('id',v.id,'sku',v.sku,'size',v.size,'color',v.color,'chest_cm',v.chest_cm,'stock',v.stock) ORDER BY v.id) FROM product_variants v WHERE v.product_id=p.id),'[]'::json) AS variants, COALESCE((SELECT json_agg(json_build_object('id',i.id,'image_url',i.image_url,'position',i.position) ORDER BY i.position,i.id) FROM product_images i WHERE i.product_id=p.id),'[]'::json) AS images FROM products p JOIN brands b ON b.id=p.brand_id`;
+route.post('/admin/brands/:id/logo',authorize,admin,imageUpload,wrap(async(req,res)=>{
+ if(!isId(req.params.id)||!req.file)return fail(res,'Choose a brand logo and a valid brand.');
+ const ext=detectImage(req.file.buffer,req.file.mimetype);
+ if(!ext)return fail(res,'Only valid JPG, PNG and WebP images are supported.');
+ const brand=(await query('SELECT logo_url FROM brands WHERE id=$1',[req.params.id])).rows[0];
+ if(!brand)return fail(res,'Brand not found.',404);
+ const url=await saveImage(req.file.buffer,ext);
+ try{await query('UPDATE brands SET logo_url=$1 WHERE id=$2',[url,req.params.id]);}
+ catch(e){await removeImage(url).catch(()=>{});throw e;}
+ if(brand.logo_url)await removeImage(brand.logo_url).catch(()=>{});
+ res.status(201).json({logo_url:url});
+}));
+route.delete('/admin/brands/:id/logo',authorize,admin,wrap(async(req,res)=>{
+ if(!isId(req.params.id))return fail(res,'Invalid brand ID.');
+ const b=(await query('SELECT logo_url FROM brands WHERE id=$1',[req.params.id])).rows[0];
+ if(!b)return fail(res,'Brand not found.',404);
+ await query('UPDATE brands SET logo_url=NULL WHERE id=$1',[req.params.id]);
+ if(b.logo_url)await removeImage(b.logo_url).catch(()=>{});
+ res.json({ok:true});
+}));
+
+const baseSelect=`SELECT p.*,b.name AS brand_name,b.slug AS brand_slug,b.logo_url AS brand_logo_url, COALESCE((SELECT json_agg(json_build_object('id',v.id,'sku',v.sku,'size',v.size,'color',v.color,'color_hex',v.color_hex,'chest_cm',v.chest_cm,'stock',v.stock) ORDER BY v.id) FROM product_variants v WHERE v.product_id=p.id),'[]'::json) AS variants, COALESCE((SELECT json_agg(json_build_object('id',i.id,'image_url',i.image_url,'position',i.position) ORDER BY i.position,i.id) FROM product_images i WHERE i.product_id=p.id),'[]'::json) AS images FROM products p JOIN brands b ON b.id=p.brand_id`;
 route.get('/products',wrap(async(req,res)=>{
  const where=[`p.status='active'`],params=[];
  if(req.query.brand){params.push(clean(req.query.brand));where.push(`b.slug=$${params.length}`);}
@@ -86,7 +107,7 @@ route.get('/products/:slug',wrap(async(req,res)=>{
 }));
 route.post('/products',authorize,admin,wrap(async(req,res)=>{
  const {name,category,description,brand_id}=req.body;
- if(clean(name).length<3||!isId(brand_id)||!['tops','bottoms','outerwear','accessories','footwear'].includes(category)||!validPrice(req.body.price))return fail(res,'Thông tin sản phẩm không hợp lệ.');
+ if(clean(name).length<3||!isId(brand_id)||!['accessories','bags','clothing','shoes'].includes(category)||!validPrice(req.body.price))return fail(res,'Thông tin sản phẩm không hợp lệ.');
  const slug=slugify(req.body.slug||name);if(!slug)return fail(res,'Slug không hợp lệ.');
  const sale=req.body.sale_price==null||req.body.sale_price===''?null:Number(req.body.sale_price);
  if(!validSale(sale,req.body.price))return fail(res,'Sale price must be lower than original price.');
@@ -115,7 +136,7 @@ route.patch('/products/:id',authorize,admin,wrap(async(req,res)=>{
  }
  if('product_type'in req.body)req.body.product_type=clean(req.body.product_type)||null;
  if('status'in req.body&&!['active','draft','archived'].includes(req.body.status))return fail(res,'Trạng thái không hợp lệ.');
- if('category'in req.body&&!['tops','bottoms','outerwear','accessories','footwear'].includes(req.body.category))return fail(res,'Danh mục không hợp lệ.');
+ if('category'in req.body&&!['accessories','bags','clothing','shoes'].includes(req.body.category))return fail(res,'Danh mục không hợp lệ.');
  if('color'in req.body&&!/^#[0-9a-f]{6}$/i.test(req.body.color))return fail(res,'Màu không hợp lệ.');
  const r=await query(`UPDATE products SET ${fields.map((f,i)=>`${f}=$${i+1}`).join(',')} WHERE id=$${fields.length+1} RETURNING *`,[...fields.map(f=>req.body[f]),req.params.id]);
  if(!r.rows[0])return fail(res,'Không tìm thấy sản phẩm.',404);res.json(r.rows[0]);
@@ -253,11 +274,13 @@ route.delete('/admin/products/:id/image',authorize,admin,wrap(async(req,res)=>{
 
 route.post('/products/:id/variants',authorize,admin,wrap(async(req,res)=>{
  if(!isId(req.params.id)||!clean(req.body.sku)||!clean(req.body.size)||!Number.isSafeInteger(Number(req.body.stock))||Number(req.body.stock)<0)return fail(res,'Thông tin biến thể không hợp lệ.');
+ const colorHex=req.body.color_hex||null;
+ if(colorHex&&!/^#[a-f0-9]{6}$/i.test(colorHex))return fail(res,'Invalid color hex.');
  const rawChest=req.body.chest_cm;
  const hasChest=rawChest!==undefined&&rawChest!==null&&rawChest!=='';
  if(hasChest&&(!Number.isSafeInteger(Number(rawChest))||Number(rawChest)<=0))return fail(res,'Vòng ngực phải là số nguyên dương.');
- try {const r=await query(`INSERT INTO product_variants(product_id,sku,size,color,chest_cm,stock) VALUES($1,$2,$3,$4,$5,$6) RETURNING *`,[
- req.params.id,clean(req.body.sku),clean(req.body.size),clean(req.body.color)||'Onyx',hasChest?Number(rawChest):null,Number(req.body.stock)]);res.status(201).json(r.rows[0]);}
+ try {const r=await query(`INSERT INTO product_variants(product_id,sku,size,color,chest_cm,stock,color_hex) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING *`,[
+ req.params.id,clean(req.body.sku),clean(req.body.size),clean(req.body.color)||'Onyx',hasChest?Number(rawChest):null,Number(req.body.stock),colorHex]);res.status(201).json(r.rows[0]);}
  catch(e){if(e.code==='23505')return fail(res,'Biến thể hoặc SKU đã tồn tại.',409);if(e.code==='23503')return fail(res,'Sản phẩm không tồn tại.',404);throw e;}
 }));
 route.patch('/variants/:id',authorize,admin,wrap(async(req,res)=>{

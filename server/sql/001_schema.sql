@@ -103,3 +103,13 @@ UPDATE products SET product_type = CASE slug
  ELSE product_type END
  WHERE product_type IS NULL AND slug IN
  ('essential-sculpt-tee','structured-overshirt','modern-knit-polo','wide-leg-trousers','urban-crossbody','everyday-cap');
+
+
+-- Sprint 2.9: Consolidated storefront collections without deleting existing products.
+-- Preserve historical type in product_type and map bag-like accessories into Bags.
+UPDATE products SET category='bags'
+ WHERE category='accessories' AND (LOWER(COALESCE(product_type,'')) ~ '(bag|tote|clutch|backpack|crossbody)' OR slug ~ '(bag|tote|crossbody|backpack|clutch)');
+UPDATE products SET category='clothing' WHERE category IN ('tops','bottoms','outerwear');
+UPDATE products SET category='shoes' WHERE category='footwear';
+ALTER TABLE brands ADD COLUMN IF NOT EXISTS logo_url TEXT;
+ALTER TABLE product_variants ADD COLUMN IF NOT EXISTS color_hex VARCHAR(7);

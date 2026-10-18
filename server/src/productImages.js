@@ -46,10 +46,18 @@ export async function removeImage(path){
  catch(e){if(e.code!=='ENOENT')throw e;}
 }
 
-const galleryMulter=multer({storage:multer.memoryStorage(),limits:{fileSize:MAX_IMAGE_BYTES,files:6,parts:6}}).array('images',6);
+const galleryMulter=multer({storage:multer.memoryStorage(),limits:{fileSize:MAX_IMAGE_BYTES,files:6,parts:7,fields:1}}).array('images',6);
 export function galleryUpload(req,res,next){
  galleryMulter(req,res,error=>{
   if(!error)return next();
   res.status(error.code==='LIMIT_FILE_SIZE'?413:400).json({error:error.code==='LIMIT_FILE_SIZE'?'Each image must be under 3 MB.':'Invalid image gallery request (max 6 images per upload).'});
+ });
+}
+
+const bundleMulter=multer({storage:multer.memoryStorage(),limits:{fileSize:MAX_IMAGE_BYTES,files:6,fields:1,parts:7}}).array('images',6);
+export function bundleUpload(req,res,next){
+ bundleMulter(req,res,error=>{
+  if(!error)return next();
+  res.status(error.code==='LIMIT_FILE_SIZE'?413:400).json({error:error.code==='LIMIT_FILE_SIZE'?'Each image must be under 3 MB.':'Upload at most 6 JPG/PNG/WebP images at a time.'});
  });
 }
