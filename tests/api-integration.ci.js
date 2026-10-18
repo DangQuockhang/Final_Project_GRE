@@ -67,6 +67,55 @@ test('Admin permissions and COD stock transactions against disposable PostgreSQL
   const edited=await fetch(base+'/api/products/'+bundleBody.slug).then(r=>r.json());
   assert.equal(Number(edited.sale_price),950000);
   assert.equal(edited.variants.find(v=>v.color==='Red').stock,4);
+  // Deleting duplicate or unwanted color/size SKUs is staged in the Product Editor.
+  // The server accepts explicit deletes in the same atomic edit, but never breaks order history.
+  const orderLinked=edited.variants.find(v=>v.color==='Black');
+  const disposable=edited.variants.find(v=>v.color==='Gray');
+  const positive=edited.variants.find(v=>v.color==='Red');
+  const orderOnBundle=await request('/api/orders',{
+   recipient:'Test Customer',phone:'0000000000',address:'Inventory API integration test address',
+   items:[{variant_id:orderLinked.id,quantity:1}]
+  },user.data.token);
+  assert.equal(orderOnBundle.status,201);
+  const afterOrder=await fetch(base+'/api/products/'+bundleBody.slug).then(r=>r.json());
+  const submitDeletion=(current,ids,confirm=false)=> {
+   const form=new FormData();
+   form.append('payload',JSON.stringify({
+    ...editedPayload,
+    name:current.name,price:current.price,sale_price:current.sale_price,
+    variants:current.variants.filter(v=>!ids.some(id=>String(id)===String(v.id))),
+    deleted_variant_ids:ids,confirm_stock_discard:confirm
+   }));
+   return form;
+  };
+  const deniedVariantDeletion=await fetch(base+'/api/admin/products/'+bundleBody.id+'/bundle',{
+   method:'PATCH',headers:{Authorization:'Bearer '+user.data.token},body:submitDeletion(afterOrder,[disposable.id])
+  });
+  assert.equal(deniedVariantDeletion.status,403);
+  const orderDeletion=await fetch(base+'/api/admin/products/'+bundleBody.id+'/bundle',{
+   method:'PATCH',headers:{Authorization:'Bearer '+token},
+   body:submitDeletion(afterOrder,[orderLinked.id],true)
+  });
+  assert.equal(orderDeletion.status,409,'An order-linked SKU must not be deleted');
+  const stillThere=await fetch(base+'/api/products/'+bundleBody.slug).then(r=>r.json());
+  assert.equal(stillThere.variants.length,3,'Failed deletion must roll back every change');
+  const zeroStockDeletion=await fetch(base+'/api/admin/products/'+bundleBody.id+'/bundle',{
+   method:'PATCH',headers:{Authorization:'Bearer '+token},body:submitDeletion(stillThere,[disposable.id])
+  });
+  assert.equal(zeroStockDeletion.status,200,'Unordered SKU with 0 stock can be removed');
+  const withoutGray=await fetch(base+'/api/products/'+bundleBody.slug).then(r=>r.json());
+  assert.equal(withoutGray.variants.length,2);
+  assert.equal(withoutGray.variants.some(v=>v.id===disposable.id),false);
+  const noConfirmation=await fetch(base+'/api/admin/products/'+bundleBody.id+'/bundle',{
+   method:'PATCH',headers:{Authorization:'Bearer '+token},body:submitDeletion(withoutGray,[positive.id])
+  });
+  assert.equal(noConfirmation.status,409,'Stock-bearing SKU requires explicit confirmation');
+  const confirmed=await fetch(base+'/api/admin/products/'+bundleBody.id+'/bundle',{
+   method:'PATCH',headers:{Authorization:'Bearer '+token},body:submitDeletion(withoutGray,[positive.id],true)
+  });
+  assert.equal(confirmed.status,200);
+  const finalBundle=await fetch(base+'/api/products/'+bundleBody.slug).then(r=>r.json());
+  assert.deepEqual(finalBundle.variants.map(v=>v.id),[orderLinked.id]);
   const logoForm=()=>{const form=new FormData();form.append('image',new Blob([png],{type:'image/png'}),'brand.png');return form;};
   const deniedLogo=await fetch(base+'/api/admin/brands/'+brands[0].id+'/logo',{method:'POST',headers:{Authorization:'Bearer '+user.data.token},body:logoForm()});
   assert.equal(deniedLogo.status,403);
