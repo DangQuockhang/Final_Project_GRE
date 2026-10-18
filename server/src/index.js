@@ -115,10 +115,15 @@ const saveProductBundle=wrap(async(req,res)=>{
  const name=clean(body.name),slug=slugify(body.slug||name),type=clean(body.product_type);
  const brand_id=body.brand_id,category=body.category,price=Number(body.price);
  const sale=body.sale_price===null||body.sale_price===undefined||body.sale_price===''?null:Number(body.sale_price);
- const status=body.status||'draft',variants=body.variants||[];
+ const status=body.status||'draft',variants=body.variants||[],deletedIds=body.deleted_variant_ids||[];
  const color=body.color||'#758073';
  if(name.length<3||name.length>160||!slug||!isId(brand_id)||!['accessories','bags','clothing','shoes'].includes(category)||!validPrice(body.price)||!validSale(sale,price)||type.length>60||!['draft','active','archived'].includes(status)||!/^#[0-9a-f]{6}$/i.test(color)||clean(body.description).length>2000)return fail(res,'Invalid product information, price, sale or category.');
  if(!Array.isArray(variants)||variants.length>80)return fail(res,'Maximum 80 size/color variants per form.');
+ if(!Array.isArray(deletedIds)||deletedIds.length>80||deletedIds.some(id=>!isId(id))||new Set(deletedIds.map(String)).size!==deletedIds.length||(!editing&&deletedIds.length)){
+  return fail(res,'Invalid list of SKU deletions.');
+ }
+ const activeIds=new Set(variants.filter(v=>v.id!=null).map(v=>String(v.id)));
+ if(deletedIds.some(id=>activeIds.has(String(id))))return fail(res,'A SKU cannot be updated and deleted together.');
  const seen=new Set(),seenSku=new Set();
  for(const v of variants){
   const size=clean(v.size),c=clean(v.color),sku=clean(v.sku),stock=Number(v.stock),hex=v.color_hex||null;
@@ -141,6 +146,18 @@ const saveProductBundle=wrap(async(req,res)=>{
    product=(await client.query(`INSERT INTO products(name,slug,brand_id,category,product_type,price,sale_price,description,status,color,tryon_enabled)
     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,false) RETURNING *`,
     [name,slug,Number(brand_id),category,type||null,price,sale,clean(body.description),status,color])).rows[0];
+  }
+  // Delete explicitly selected SKU rows atomically with the other product edits.
+  // Order-linked variants must remain for COD history, even on cancelled orders.
+  // Parent row is locked above; each variant row is locked to serialize checkout.
+  for(const variantId of deletedIds){
+   const selected=await client.query('SELECT id,sku,stock FROM product_variants WHERE product_id=$1 AND id=$2 FOR UPDATE',[product.id,variantId]);
+   const sku=selected.rows[0];
+   if(!sku)error('SKU not found for this product.',404);
+   const ordered=await client.query('SELECT 1 FROM order_items WHERE variant_id=$1 LIMIT 1',[sku.id]);
+   if(ordered.rowCount)error('This SKU belongs to an existing order and cannot be deleted. Set stock to 0 instead.',409);
+   if(Number(sku.stock)>0&&body.confirm_stock_discard!==true)error('Confirm removal of SKU stock before deleting this variant.',409);
+   await client.query('DELETE FROM product_variants WHERE id=$1 AND product_id=$2',[sku.id,product.id]);
   }
   for(const v of variants){
    const vals=[clean(v.sku),clean(v.size),clean(v.color),v.color_hex||null,Number(v.stock)];
@@ -165,7 +182,7 @@ const saveProductBundle=wrap(async(req,res)=>{
  }catch(e){
   await client.query('ROLLBACK').catch(()=>{});
   if(e.code==='23505')return fail(res,'Product slug, SKU or size/color is already in use.',409);
-  if(e.code==='23503')return fail(res,'Brand or product reference does not exist.');
+  if(e.code==='23503')return fail(res,'SKU is referenced by order history or brand is missing. Deletion was cancelled.',409);
   if(e.code==='23514')return fail(res,'Product data violates a database constraint.');
   throw e;
  }finally{
