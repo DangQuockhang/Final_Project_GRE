@@ -23,7 +23,10 @@ export default function ProductEditor({product,brands,api,perform,busy,report,on
  const limit=Math.min(6,8-(product?.images?.length||0));
  const urls=useMemo(()=>files.map(file=>({name:file.name,url:URL.createObjectURL(file)})),[files]);
  useEffect(()=>()=>urls.forEach(x=>URL.revokeObjectURL(x.url)),[urls]);
- const set=(k,v)=>setDraft(o=>({...o,[k]:v}));
+ const set=(k,v)=>{
+  setDraft(o=>({...o,[k]:v}));
+  if(k==='category'&&!product&&!rows.length)setSizes(['bags','accessories'].includes(v)?'ONE SIZE':'S, M, L');
+ };
  function addColor(){
   const next=shades.find(s=>!colors.some(c=>normal(c.name)===normal(s.name)))||{name:'New color',hex:'#758073'};
   setColors(c=>[...c,{...next}]);
@@ -93,7 +96,7 @@ export default function ProductEditor({product,brands,api,perform,busy,report,on
     <input aria-label={'Stock '+(i+1)} type="number" min="0" value={row.stock} onChange={e=>setRows(old=>old.map((v,j)=>i===j?{...v,stock:e.target.value}:v))}/>
    </div>)}</div>:<p className="kd-no-skus">Choose colors and sizes, then click Generate to add SKU variants before publishing.</p>}
   </section>
-  <section className="kd-quick-step"><div className="kd-quick-step-heading"><div><h4>2. Product photographs</h4><p>Select all product photos before saving. The first uploaded photo becomes the cover.</p></div><ImagePlus size={27}/></div>
+  <section className="kd-quick-step"><div className="kd-quick-step-heading"><div><h4>2. Product photographs</h4><p>Select multiple product photos before saving. The first photo becomes the cover on creation; edits append to the gallery.</p></div><ImagePlus size={27}/></div>
    {gallery.length>0&&<div className="kd-quick-photo-thumbs">{gallery.map(u=><img key={u} src={productImageUrl(u,import.meta.env.VITE_API_URL||apiBase)} alt="Existing product photo"/>)}</div>}
    <input type="file" multiple accept="image/jpeg,image/png,image/webp" aria-label="Select multiple product photos" onChange={e=>choose(e.target.files)}/>
    <p>{files.length} new photos selected · {Math.max(0,limit)} slots available per save · 3 MB maximum per photo.</p>
