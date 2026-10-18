@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {validateBrand,validateProduct,validateStock,validateVariant,adminMetrics,ORDER_TRANSITIONS} from '../apps/store/src/utils/adminValidation.js';
 
-const product={name:'Modern jacket',brand_id:'1',category:'outerwear',price:'1999000',color:'#aabbcc',status:'draft',description:''};
+const product={name:'Modern jacket',brand_id:'1',category:'clothing',price:'1999000',color:'#aabbcc',status:'draft',description:''};
 test('admin validates a brand before API request',()=>{
  assert.equal(validateBrand({name:'New Brand',description:'Contemporary'}),'');
  assert.match(validateBrand({name:'X'}),/2 đến 120/);
@@ -11,6 +11,7 @@ test('admin rejects malformed product pricing and status',()=>{
  assert.equal(validateProduct(product),'');
  assert.match(validateProduct({...product,price:'12.5'}),/số nguyên/);
  assert.match(validateProduct({...product,status:'published'}),/Trạng thái/);
+ assert.ok(validateProduct({...product,category:'tops'}));
  assert.match(validateProduct({...product,brand_id:''}),/thương hiệu/);
 });
 test('SKU and stock are always non-negative integers',()=>{

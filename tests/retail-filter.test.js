@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 import {filterProducts,paginateProducts} from '../packages/catalog/filters.js';
 const brands=[{id:1,slug:'kd',name:'KD'}];
 const items=[
- {id:1,name:'Jacket',brand_id:1,brand_name:'KD',category:'outerwear',product_type:'Jacket',price:2000000,sale_price:1600000,status:'active',variants:[{size:'M',stock:2}]},
- {id:2,name:'T-Shirt',brand_id:1,brand_name:'KD',category:'tops',product_type:'T-Shirt',price:1200000,sale_price:null,status:'active',variants:[{size:'S',stock:0}]},
- {id:3,name:'Archived',brand_id:1,brand_name:'KD',category:'tops',product_type:'T-Shirt',price:500000,status:'archived',variants:[{size:'S',stock:5}]}
+ {id:1,name:'Jacket',brand_id:1,brand_name:'KD',category:'clothing',product_type:'Jacket',price:2000000,sale_price:1600000,status:'active',variants:[{size:'M',stock:2}]},
+ {id:2,name:'T-Shirt',brand_id:1,brand_name:'KD',category:'clothing',product_type:'T-Shirt',price:1200000,sale_price:null,status:'active',variants:[{size:'S',stock:0}]},
+ {id:3,name:'Archived',brand_id:1,brand_name:'KD',category:'clothing',product_type:'T-Shirt',price:500000,status:'archived',variants:[{size:'S',stock:5}]}
 ];
 test('retail filters use effective sale price',()=>{
  assert.deepEqual(filterProducts(items,brands,{sale:'1'}).map(p=>p.id),[1]);

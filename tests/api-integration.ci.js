@@ -32,7 +32,7 @@ test('Admin permissions and COD stock transactions against disposable PostgreSQL
   assert.equal(user.status,201);
   const brands=await fetch(base+'/api/brands').then(r=>r.json());
   const product=await request('/api/products',{
-   name:'Test Tee '+id,brand_id:brands[0].id,category:'tops',product_type:'T-Shirt',price:1200000,sale_price:990000,status:'active'
+   name:'Test Tee '+id,brand_id:brands[0].id,category:'clothing',product_type:'T-Shirt',price:1200000,sale_price:990000,status:'active'
   },token);
   assert.equal(product.status,201);
   const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6TuYAAAAASUVORK5CYII=','base64');
@@ -126,7 +126,7 @@ test('Admin permissions and COD stock transactions against disposable PostgreSQL
   assert.equal((await request('/api/admin/products/'+product.data.id+'/permanent',undefined,token,'DELETE')).status,409);
   // Separate disposable draft: a stock/permission-protected deletion.
   const draft=await request('/api/products',{
-   name:'Disposable Tee '+id,brand_id:brands[0].id,category:'tops',price:800000,status:'draft'
+   name:'Disposable Tee '+id,brand_id:brands[0].id,category:'clothing',price:800000,status:'draft'
   },token);
   assert.equal(draft.status,201);
   const draftSku=await request('/api/products/'+draft.data.id+'/variants',{
