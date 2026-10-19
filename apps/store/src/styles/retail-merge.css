@@ -412,3 +412,190 @@
   }
   .kd-retail-five-grid .product-card-meta b{font-size:15px}
 }
+
+
+/* Sprint 2.12 | Clean luxury catalog cards.
+   The global product-image background is sage (#e7ebe5): images that do not
+   fill their aspect-ratio box exposed green strips above/below each photo.
+   Scope this redesign strictly to the Shop grid, keeping editorial homepage
+   cards and palette unchanged. */
+.kd-retail-five-grid{
+  gap:clamp(14px,1.45vw,23px);
+  align-items:stretch;
+  grid-auto-rows:auto;
+}
+.kd-retail-five-grid .kd-reveal-card{
+  display:flex;
+  min-width:0;
+  min-height:0;
+  height:100%;
+}
+.kd-retail-five-grid .product-card{
+  display:flex;
+  flex-direction:column;
+  width:100%;
+  height:100%;
+  min-width:0;
+  min-height:0;
+  overflow:hidden;
+  background:#fff;
+  border:1px solid #eceae5;
+  border-radius:10px;
+  box-shadow:0 5px 18px rgba(35,41,35,.045);
+  text-decoration:none;
+  transition:box-shadow .25s ease,transform .25s ease,border-color .25s ease;
+}
+.kd-retail-five-grid .product-card:hover{
+  border-color:#dddcd6;
+  box-shadow:0 14px 27px rgba(35,41,35,.105);
+  transform:translateY(-3px);
+}
+.kd-retail-five-grid .product-card:focus-visible{
+  outline:3px solid #7d9780;
+  outline-offset:3px;
+}
+.kd-retail-five-grid .product-card-photo{
+  position:relative;
+  display:block;
+  isolation:isolate;
+  flex:none;
+  width:100%;
+  height:auto;
+  aspect-ratio:4/5;
+  padding:0;
+  margin:0;
+  overflow:hidden;
+  background:#fff;
+  border-bottom:1px solid #f4f3ef;
+}
+.kd-retail-five-grid .product-card-photo .kd-product-photo{
+  position:absolute;
+  display:block;
+  inset:0;
+  width:100%;
+  height:100%;
+  box-sizing:border-box;
+  padding:clamp(12px,1.25vw,22px);
+  margin:0;
+  aspect-ratio:auto;
+  object-fit:contain;
+  object-position:center center;
+  background:#fff;
+  border:0;
+  transition:transform .4s ease;
+}
+.kd-retail-five-grid .product-card-photo .visual{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  aspect-ratio:auto;
+  background:#f8f8f6;
+}
+.kd-retail-five-grid .product-card:hover .kd-product-photo,
+.kd-retail-five-grid .product-card:hover .visual{
+  transform:scale(1.035);
+}
+.kd-retail-five-grid .product-card-photo .kd26-card-action{
+  display:none;
+}
+.kd-retail-five-grid .product-card-meta{
+  display:flex;
+  flex:1;
+  flex-direction:column;
+  align-items:stretch;
+  justify-content:flex-start;
+  gap:0;
+  min-height:178px;
+  padding:19px 13px 23px;
+  background:#fff;
+  color:#27302a;
+  text-align:center;
+}
+.kd-retail-five-grid .product-card-meta>div{
+  display:flex;
+  flex-direction:column-reverse;
+  align-items:center;
+  gap:9px;
+  min-height:0;
+}
+.kd-retail-five-grid .product-card-meta small{
+  display:block;
+  font-size:12px;
+  line-height:1.4;
+  font-weight:700;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:#818782;
+  overflow-wrap:anywhere;
+}
+.kd-retail-five-grid .product-card-meta b{
+  display:-webkit-box;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:2;
+  line-clamp:2;
+  overflow:hidden;
+  min-height:2.9em;
+  max-height:2.9em;
+  font-family:Inter,system-ui,sans-serif;
+  font-size:15px;
+  font-weight:750;
+  line-height:1.45;
+  letter-spacing:-.01em;
+  overflow-wrap:anywhere;
+}
+.kd-retail-five-grid .product-card-meta>span{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:flex-end;
+  flex:none;
+  margin-top:auto;
+  min-height:56px;
+  gap:3px;
+  font-size:17px;
+  line-height:1.35;
+  font-weight:750;
+  color:#242c26;
+}
+.kd-retail-five-grid .product-card-meta del{
+  display:block;
+  font-size:12px;
+  font-weight:400;
+  line-height:1.25;
+  color:#999e99;
+}
+.kd-retail-five-grid .kd-retail-card-badge{
+  top:12px;
+  left:12px;
+  z-index:3;
+  padding:7px 12px;
+  border-radius:100px;
+  font-size:12px;
+  letter-spacing:.01em;
+}
+@media(max-width:700px){
+  .kd-retail-five-grid{gap:12px 10px}
+  .kd-retail-five-grid .product-card-photo{aspect-ratio:4/5}
+  .kd-retail-five-grid .product-card-photo .kd-product-photo{
+    padding:10px;
+  }
+  .kd-retail-five-grid .product-card-meta{
+    min-height:161px;
+    padding:15px 8px 17px;
+  }
+  .kd-retail-five-grid .product-card-meta b{font-size:14px}
+  .kd-retail-five-grid .product-card-meta small{font-size:11px}
+  .kd-retail-five-grid .product-card-meta>span{font-size:15px;min-height:49px}
+}
+@media(prefers-reduced-motion:reduce){
+  .kd-retail-five-grid .product-card,
+  .kd-retail-five-grid .product-card-photo .kd-product-photo{
+    transition:none;
+  }
+  .kd-retail-five-grid .product-card:hover,
+  .kd-retail-five-grid .product-card:hover .kd-product-photo,
+  .kd-retail-five-grid .product-card:hover .visual{
+    transform:none;
+  }
+}
