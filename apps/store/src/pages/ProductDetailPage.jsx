@@ -15,6 +15,7 @@ export default function ProductDetailPage({products=[],online=false,loading=fals
  const variants=Array.isArray(item?.variants)?item.variants:[];
  const palette=[...new Map(variants.map(v=>[v.color,{name:v.color,hex:v.color_hex||({black:'#222222',red:'#c33c42',gray:'#898c91',grey:'#898c91',onyx:'#333b36'}[String(v.color).toLowerCase()]||item?.color||'#758073')}])).values()];
  const activeColor=palette.some(c=>c.name===selectedColor)?selectedColor:(variants.find(v=>Number(v.stock)>0)?.color||variants[0]?.color||'');
+ const showColorChoices=palette.length>1;
  const sizeOptions=variants.filter(v=>v.color===activeColor);
  const variant=sizeOptions.find(v=>String(v.id)===selected)||sizeOptions.find(v=>Number(v.stock)>0)||sizeOptions[0];
  const available=Number(variant?.stock)||0,max=Math.max(0,Math.min(20,available));
@@ -52,14 +53,16 @@ export default function ProductDetailPage({products=[],online=false,loading=fals
       <div className="kd-retail-prices">{hasSale&&<del>{money(item.price)}</del>}<strong>{money(hasSale?item.sale_price:item.price)}</strong>{hasSale&&<span className="kd-retail-promo">Sale</span>}</div>
       <p className="kd-retail-product-description">{item.description}</p>
       <div className="kd-retail-separator"/>
-      <div className="kd-retail-label">COLOR <span style={{fontWeight:400,color:'#748077'}}>· {activeColor||'Not available'}</span></div>
-      <div className="kd-retail-color-choices" role="group" aria-label="Choose product color">
+      {showColorChoices&&<>
+       <div className="kd-retail-label">COLOR <span style={{fontWeight:400,color:'#748077'}}>· {activeColor||'Not available'}</span></div>
+       <div className="kd-retail-color-choices" role="group" aria-label="Choose product color">
         {palette.map(color=><button key={color.name} type="button" className={activeColor===color.name?'is-selected':''}
           onClick={()=>{setSelectedColor(color.name);setSelected('');setQuantity(1);setAdded(false)}} aria-pressed={activeColor===color.name}
           title={color.name} aria-label={'Choose '+color.name+' color'}>
           <i style={{backgroundColor:color.hex}}/><span>{color.name}</span>
         </button>)}
-      </div>
+       </div>
+      </>}
       <div className="kd-retail-label">SIZE <span style={{fontWeight:400,color:'#748077'}}>{variant?'· '+variant.size:''}</span></div>
       <div className="kd-retail-sizes" role="group" aria-label="Select size for chosen color">
        {sizeOptions.map(v=><button type="button" key={v.id} className={String(variant?.id)===String(v.id)?'active':''} aria-pressed={String(variant?.id)===String(v.id)} disabled={Number(v.stock)<=0} title={v.size+' / '+v.color} onClick={()=>{setSelected(String(v.id));setQuantity(1);setAdded(false)}}>{v.size}</button>)}
