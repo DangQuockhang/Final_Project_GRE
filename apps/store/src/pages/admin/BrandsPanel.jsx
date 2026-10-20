@@ -3,6 +3,8 @@ import {createPortal} from 'react-dom';
 import {Pencil,Trash2,X,ImagePlus,Save} from 'lucide-react';
 import {apiBase,productImageUrl} from '@kd/catalog';
 import {validateBrand} from '../../utils/adminValidation.js';
+import ImagePasteZone from '../../components/admin/ImagePasteZone.jsx';
+import {imageFilesFromClipboard,validateImageFiles} from '../../utils/clipboardImages.js';
 const EMPTY={name:'',description:''};
 const apiImage=value=>productImageUrl(value,import.meta.env.VITE_API_URL||apiBase);
 
@@ -13,12 +15,18 @@ function BrandForm({brand,api,perform,busy,report,onDone}){
  useEffect(()=>()=>{if(preview)URL.revokeObjectURL(preview)},[preview]);
  const photo=preview||(brand?.logo_url?apiImage(brand.logo_url):null);
  function choose(input){
-  const image=input?.[0];
-  if(!image){setFile(null);return;}
-  if(!['image/jpeg','image/png','image/webp'].includes(image.type)||image.size>3*1024*1024){
-   report('Choose one JPG, PNG or WebP brand image under 3 MB.');return;
-  }
-  setFile(image);
+  const files=Array.from(input||[]);
+  if(!files.length)return;
+  const issue=validateImageFiles(files,{maxCount:1});
+  if(issue){report(issue);return;}
+  setFile(files[0]);
+ }
+ function paste(e){
+  const images=imageFilesFromClipboard(e.clipboardData);
+  if(!images.length)return;
+  e.preventDefault();
+  e.stopPropagation();
+  choose(images);
  }
  async function submit(e){
   e.preventDefault();
@@ -37,7 +45,7 @@ function BrandForm({brand,api,perform,busy,report,onDone}){
   const done=await perform(()=>api('/admin/brands/'+brand.id+'/logo',{method:'DELETE'}),'Brand image removed.');
   if(done)setFile(null);
  }
- return <form className="kd-admin-editor kd-brand-editor kd-brand-workspace" onSubmit={submit}>
+ return <form className="kd-admin-editor kd-brand-editor kd-brand-workspace" onSubmit={submit} onPaste={paste}>
   <div className="kd-admin-editor-heading"><strong>{brand?'EDIT BRAND':'CREATE BRAND'}</strong></div>
   <div className="kd-brand-workspace-fields">
    <label>BRAND NAME<input required minLength={2} maxLength={120} value={draft.name}
@@ -46,12 +54,14 @@ function BrandForm({brand,api,perform,busy,report,onDone}){
     onChange={e=>setDraft(v=>({...v,description:e.target.value}))} placeholder="Brand story and details"/></label>
    <div className="kd-brand-image-fields">
     <label>BRAND IMAGE / LOGO (JPG, PNG, WEBP)
-     <input type="file" accept="image/jpeg,image/png,image/webp" onChange={e=>choose(e.target.files)}/>
+     <input type="file" accept="image/jpeg,image/png,image/webp" onChange={e=>{choose(e.target.files);e.target.value='';}}/>
     </label>
+    <ImagePasteZone label="brand logo" onImages={choose} disabled={busy}/>
+    {file&&<button type="button" className="border-button kd-clear-selected-image" onClick={()=>setFile(null)}>CLEAR SELECTED IMAGE</button>}
     <div className="kd-brand-image-preview">{photo?<img src={photo} alt={'Image preview for '+(brand?.name||draft.name)}/>:<div><ImagePlus size={28}/> Add a brand photo</div>}</div>
     {brand?.logo_url&&<button type="button" className="border-button kd-brand-delete-photo" disabled={busy}
      onClick={deletePhoto}><Trash2 size={16}/> REMOVE EXISTING IMAGE</button>}
-    <p>Upload a replacement to change the current image; removing a brand image does not delete the brand.</p>
+    <p>Paste a copied image or screenshot, or choose a JPG/PNG/WebP file under 3 MB. The new logo is saved with your brand details.</p>
    </div>
   </div>
   <button type="submit" className="button button-dark kd-brand-save" disabled={busy}><Save size={17}/>{brand?'SAVE BRAND CHANGES':'CREATE BRAND'}</button>
