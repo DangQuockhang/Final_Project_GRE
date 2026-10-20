@@ -5,6 +5,8 @@ import {PRODUCT_CATEGORIES,PRODUCT_STATUSES,validateProduct} from '../../utils/a
 import {buildVariantMatrix,hasMultipleColors,FALLBACK_HEX} from '../../utils/variantBuilder.js';
 import {duplicateProduct} from '../../utils/duplicateProduct.js';
 import QuickAddBrand from './QuickAddBrand.jsx';
+import ImagePasteZone from '../../components/admin/ImagePasteZone.jsx';
+import {appendImages,imageFilesFromClipboard} from '../../utils/clipboardImages.js';
 
 const shades=[{name:'Black',hex:'#222222'},{name:'Red',hex:'#C33C42'},{name:'Gray',hex:'#898C91'}];
 const normal=v=>String(v||'').toLowerCase().trim();
@@ -101,9 +103,19 @@ export default function ProductEditor({product,duplicateSource=null,duplicateTok
   }catch(error){report(error.message);}
  }
  function choose(filesLike){
-  const chosen=Array.from(filesLike||[]);
-  if(chosen.length>limit||chosen.some(f=>f.size>3*1024*1024||!['image/jpeg','image/png','image/webp'].includes(f.type))){report('Choose up to '+limit+' JPG/PNG/WebP photos, each under 3 MB.');return;}
-  setFiles(chosen);
+  const newFiles=Array.from(filesLike||[]);
+  if(!newFiles.length)return;
+  const result=appendImages(files,newFiles,{maxCount:Math.max(0,limit)});
+  if(result.error){report(result.error);return;}
+  setFiles(result.files);
+ }
+ function paste(e){
+  if(quickBrandOpen)return;
+  const images=imageFilesFromClipboard(e.clipboardData);
+  if(!images.length)return;
+  e.preventDefault();
+  e.stopPropagation();
+  choose(images);
  }
  async function save(e){
   e.preventDefault();
@@ -148,7 +160,7 @@ export default function ProductEditor({product,duplicateSource=null,duplicateTok
   }finally{setWorking(false);}
  }
  const gallery=[...new Set([product?.image_url,...(product?.images||[]).map(i=>i.image_url)].filter(Boolean))];
- return <form onSubmit={save} className="kd-quick-editor">
+ return <form onSubmit={save} onPaste={paste} className="kd-quick-editor">
   <div className="kd-quick-title"><div><span>PRODUCT WORKSPACE</span><h3>{product?'Edit '+product.name:duplicated?'Duplicate '+duplicateSource.name:'New product — one step'}</h3>
    <p>{duplicated?'A new independent draft. Details and sizes copied; stock reset to zero, new SKUs assigned. Select new photos before publishing.':'Details, color and size inventory, and photos — save together.'}</p>
   </div>{(product||duplicated)&&<button type="button" className="border-button" onClick={onCancel}><RotateCcw size={16}/> CANCEL {product?'EDIT':'DUPLICATE'}</button>}</div>
@@ -208,11 +220,15 @@ export default function ProductEditor({product,duplicateSource=null,duplicateTok
     <div>{removedVariants.map(v=><div className="kd-pending-sku" key={v.id}><span>{v.color} / {v.size} · {v.sku}</span><button type="button" onClick={()=>undoRemoval(v)}>UNDO</button></div>)}</div>
    </div>}
   </section>
-  <section className="kd-quick-step"><div className="kd-quick-step-heading"><div><h4>2. Product photographs</h4><p>Select multiple product photos before saving. The first photo becomes the cover on creation; edits append to the gallery.</p></div><ImagePlus size={27}/></div>
+  <section className="kd-quick-step"><div className="kd-quick-step-heading"><div><h4>2. Product photographs</h4><p>Paste screenshots or copied images, drag and drop, or choose image files. The first image is the cover for a new product.</p></div><ImagePlus size={27}/></div>
    {gallery.length>0&&<div className="kd-quick-photo-thumbs">{gallery.map(u=><img key={u} src={productImageUrl(u,import.meta.env.VITE_API_URL||apiBase)} alt="Existing product photo"/>)}</div>}
-   <input type="file" multiple accept="image/jpeg,image/png,image/webp" aria-label="Select multiple product photos" onChange={e=>choose(e.target.files)}/>
-   <p>{files.length} new photos selected · {Math.max(0,limit)} slots available per save · 3 MB maximum per photo.</p>
-   {urls.length>0&&<div className="kd-quick-photo-thumbs">{urls.map(x=><img key={x.url} src={x.url} alt={x.name}/>)}</div>}
+   <ImagePasteZone label="product photos" onImages={choose} disabled={busy||working}/>
+   <input type="file" multiple accept="image/jpeg,image/png,image/webp" aria-label="Select multiple product photos" onChange={e=>{choose(e.target.files);e.target.value='';}}/>
+   <p>{files.length} new photo(s) selected · {Math.max(0,limit)} slots allowed per save · 3 MB maximum per photo. Pasted photos are uploaded only when you save.</p>
+   {urls.length>0&&<div className="kd-quick-photo-thumbs kd-pasted-photo-thumbs">{urls.map((x,i)=><div className="kd-pasted-photo" key={x.url}>
+      <img src={x.url} alt={x.name||'Selected product photo'}/>
+      <button type="button" className="kd-remove-pasted-image" aria-label={'Remove selected photo '+(i+1)} title="Remove image before saving" onClick={()=>setFiles(previous=>previous.filter((_,j)=>j!==i))}><Trash2 size={15}/></button>
+    </div>)}</div>}
   </section>
   <div className="kd-quick-save"><button className="button button-dark" type="submit" disabled={busy||working||!brands.length}><Save size={18}/>{working?'SAVING…':product?'SAVE ALL PRODUCT CHANGES':duplicated?'CREATE DUPLICATE DRAFT':'CREATE PRODUCT WITH PHOTOS'}</button><span>{duplicated?'This copy is a separate product. All copied sizes start with zero stock; photos are not shared with the original.': 'New products default to Draft. Order-linked SKU history is protected; confirmed unreferenced SKU removals are applied on Save.'}</span></div>
   {quickBrandOpen&&<QuickAddBrand brands={brands} api={api} perform={perform} busy={busy||working} report={report}
