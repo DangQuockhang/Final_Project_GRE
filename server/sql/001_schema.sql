@@ -113,3 +113,30 @@ UPDATE products SET category='clothing' WHERE category IN ('tops','bottoms','out
 UPDATE products SET category='shoes' WHERE category='footwear';
 ALTER TABLE brands ADD COLUMN IF NOT EXISTS logo_url TEXT;
 ALTER TABLE product_variants ADD COLUMN IF NOT EXISTS color_hex VARCHAR(7);
+
+
+-- Sprint 2.14 — public order references, item photo snapshots and payment tracking.
+-- Existing order IDs and all order history remain intact.
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS order_code VARCHAR(32);
+UPDATE orders SET order_code='KD-'||
+ to_char(created_at AT TIME ZONE 'Asia/Ho_Chi_Minh','YYYYMMDD')||'-'||
+ upper(lpad(to_hex(id),12,'0'))
+WHERE order_code IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS orders_order_code_unique_idx ON orders(order_code);
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_status VARCHAR(24) NOT NULL DEFAULT 'UNPAID';
+ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_payment_method_check;
+ALTER TABLE orders ADD CONSTRAINT orders_payment_method_check CHECK (payment_method IN ('COD','BANK_TRANSFER'));
+ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_payment_status_check;
+ALTER TABLE orders ADD CONSTRAINT orders_payment_status_check CHECK(payment_status IN ('UNPAID','AWAITING_TRANSFER','PAID','REFUND_PENDING'));
+
+ALTER TABLE order_items ADD COLUMN IF NOT EXISTS image_url TEXT;
+ALTER TABLE order_items ADD COLUMN IF NOT EXISTS product_slug TEXT;
+ALTER TABLE order_items ADD COLUMN IF NOT EXISTS brand_name TEXT;
+ALTER TABLE order_items ADD COLUMN IF NOT EXISTS color TEXT;
+UPDATE order_items i SET
+ image_url=COALESCE(i.image_url,p.image_url),
+ product_slug=COALESCE(i.product_slug,p.slug),
+ brand_name=COALESCE(i.brand_name,b.name),
+ color=COALESCE(i.color,v.color)
+FROM product_variants v JOIN products p ON p.id=v.product_id JOIN brands b ON b.id=p.brand_id
+WHERE i.variant_id=v.id AND (i.image_url IS NULL OR i.product_slug IS NULL OR i.brand_name IS NULL OR i.color IS NULL);
