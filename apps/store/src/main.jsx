@@ -57,7 +57,7 @@ function Header(){const {count}=useCart(),{user}=useAuth(),{brands}=useCatalog()
 function Layout({children}){const {online,loading}=useCatalog();return <><Header/>{!loading&&!online&&<div className="demo-banner">API unavailable — product previews may be outdated. Ordering requires a connection to our server.</div>}<main>{children}</main><Footer/></>}
 function Home(){const {products,brands}=useCatalog();return <Layout><HomePage products={products} brands={brands}/></Layout>}
 function Shop(){const {products,brands}=useCatalog();return <Layout><ShopPage products={products} brands={brands}/></Layout>}
-function Brands(){const {brands}=useCatalog();return <Layout><BrandsPage brands={brands}/></Layout>}
+function Brands(){const {brands,products}=useCatalog();return <Layout><BrandsPage brands={brands} products={products}/></Layout>}
 function Product(){const {products,online,loading}=useCatalog(),{add}=useCart();return <Layout><ProductDetailPage products={products} online={online} loading={loading} addToCart={add}/></Layout>}
 function Cart(){
  const {cart,update,total}=useCart(),{products}=useCatalog();
