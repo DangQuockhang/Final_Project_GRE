@@ -51,6 +51,15 @@ jobs:
           if grep -q "CONTEMPORARY STYLE, THOUGHTFULLY CURATED" /tmp/kd-dom.html; then echo "Old announcement strip still visible"; exit 1; fi
           if grep -q "Discover considered everyday style" /tmp/kd-dom.html; then echo "Old benefits strip still visible"; exit 1; fi
           echo "React redesigned homepage rendered successfully in Chrome"
+          "$BROWSER" --headless --no-sandbox --disable-dev-shm-usage --disable-gpu --virtual-time-budget=8000 --dump-dom http://127.0.0.1:5173/brands > /tmp/kd-brands.html 2>/tmp/kd-brands.log
+          grep -q "kd-brand-directory-grid" /tmp/kd-brands.html || { echo "Brand directory did not render"; tail -n 40 /tmp/kd-brands.log; exit 1; }
+          grep -q "Find a brand" /tmp/kd-brands.html || { echo "Brand search missing"; exit 1; }
+          grep -q "kd-brand-showcase-card" /tmp/kd-brands.html || { echo "Brand cards missing"; exit 1; }
+          if grep -q "Browse brands currently in our catalog" /tmp/kd-brands.html; then echo "Outdated directory subtitle remains"; exit 1; fi
+          if grep -q "OUR LABELS" /tmp/kd-brands.html; then echo "Outdated brand eyebrow remains"; exit 1; fi
+          if grep -q "Curated demo labels" /tmp/kd-dom.html; then echo "Outdated home brand disclaimer remains"; exit 1; fi
+          echo "Brand directory and homepage labels rendered successfully"
+
           "$BROWSER" --headless --no-sandbox --disable-dev-shm-usage --disable-gpu --virtual-time-budget=8000 --dump-dom http://127.0.0.1:5173/shop > /tmp/kd-shop.html 2>/tmp/kd-shop.log
           grep -q "Filter" /tmp/kd-shop.html || { echo "Shop did not render"; tail -n 30 /tmp/kd-shop.log; exit 1; }
           "$BROWSER" --headless --no-sandbox --disable-dev-shm-usage --disable-gpu --virtual-time-budget=8000 --dump-dom http://127.0.0.1:5173/product/essential-sculpt-tee > /tmp/kd-product.html 2>/tmp/kd-product.log
