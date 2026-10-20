@@ -5,6 +5,8 @@ import {money,apiBase,productImageUrl} from '@kd/catalog';
 import PermanentDeleteDialog from '../../components/admin/PermanentDeleteDialog.jsx';
 import {validateStock,PRODUCT_STATUSES} from '../../utils/adminValidation.js';
 import ProductEditor from './ProductEditor.jsx';
+import ImagePasteZone from '../../components/admin/ImagePasteZone.jsx';
+import {appendImages,validateImageFiles} from '../../utils/clipboardImages.js';
 function EditProductDialog({product=null,duplicateSource=null,duplicateToken='',brands,api,perform,busy,report,onClose}){
  const closeButton=useRef(null);
  useEffect(()=>{
@@ -52,6 +54,11 @@ export default function ProductsPanel({products,brands,api,perform,busy,report})
     const ok=await perform(()=>api('/variants/'+v.id,{method:'PATCH',body:{stock:Number(stock)}}),'Inventory updated.');
     if(ok)setStockDrafts(old=>{const next={...old};delete next[v.id];return next;});
   }
+  function pasteCover(id,images){
+    const issue=validateImageFiles(images,{maxCount:1});
+    if(issue){report(issue);return;}
+    choosePhoto(id,images[0]);
+  }
   function choosePhoto(id,file){
     if(!file){setPendingImages(old=>{const next={...old};delete next[id];return next;});return;}
     if(!['image/jpeg','image/png','image/webp'].includes(file.type)){report('Select a PNG, JPG or WebP image.');return;}
@@ -69,13 +76,12 @@ export default function ProductsPanel({products,brands,api,perform,busy,report})
     if(!window.confirm('Remove the image for '+product.name+'?'))return;
     await perform(()=>api('/admin/products/'+product.id+'/image',{method:'DELETE'}),'Product photo removed.');
   }
-  function chooseGallery(id,files){
-    const allowed=Array.from(files||[]);
-    if(allowed.length>6){report('Upload up to 6 photos at once.');return;}
-    if(allowed.some(f=>!['image/jpeg','image/png','image/webp'].includes(f.type)||f.size>3*1024*1024)){
-      report('Choose JPG, PNG or WebP images, each under 3 MB.');return;
-    }
-    setPendingGalleries(old=>({...old,[id]:allowed}));
+  function chooseGallery(product,files){
+    const existing=pendingGalleries[product.id]||[];
+    const limit=Math.max(0,Math.min(6,8-(product.images||[]).length));
+    const result=appendImages(existing,Array.from(files||[]),{maxCount:limit});
+    if(result.error){report(result.error);return;}
+    setPendingGalleries(old=>({...old,[product.id]:result.files}));
   }
   async function uploadGallery(product){
     const files=pendingGalleries[product.id]||[];
@@ -144,7 +150,8 @@ export default function ProductsPanel({products,brands,api,perform,busy,report})
             <strong>PRODUCT PHOTO</strong>
             <p>JPG, PNG or WebP · up to 3 MB. Only upload licensed or original photography.</p>
             {pendingImages[p.id]&&<small className="kd-selected-photo">Selected: {pendingImages[p.id].name} ({Math.round(pendingImages[p.id].size/1024)} KB)</small>}
-            <input type="file" accept="image/png,image/jpeg,image/webp" aria-label={'Choose image for '+p.name} onChange={e=>choosePhoto(p.id,e.target.files?.[0])}/>
+            <ImagePasteZone label={'cover image for '+p.name} onImages={images=>pasteCover(p.id,images)} disabled={busy}/>
+            <input type="file" accept="image/png,image/jpeg,image/webp" aria-label={'Choose image for '+p.name} onChange={e=>{choosePhoto(p.id,e.target.files?.[0]);e.target.value='';}}/>
             <div className="kd-admin-image-actions">
               <button className="border-button" type="button" disabled={busy||!pendingImages[p.id]} onClick={()=>uploadPhoto(p)}><ImagePlus size={14}/> UPLOAD PHOTO</button>
               {p.image_url&&<button className="border-button" type="button" disabled={busy} onClick={()=>deletePhoto(p)}><Trash2 size={14}/> REMOVE PHOTO</button>}
@@ -161,8 +168,14 @@ export default function ProductsPanel({products,brands,api,perform,busy,report})
             </div>)}
             {!p.images?.length&&<p>No gallery photos yet.</p>}
           </div>
-          <input aria-label={'Select gallery images for '+p.name} type="file" multiple accept="image/png,image/jpeg,image/webp" onChange={e=>chooseGallery(p.id,e.target.files)}/>
-          {(pendingGalleries[p.id]||[]).length>0&&<p>{pendingGalleries[p.id].length} photo(s) selected.</p>}
+          <ImagePasteZone label={'gallery images for '+p.name} onImages={images=>chooseGallery(p,images)} disabled={busy}/>
+          <input aria-label={'Select gallery images for '+p.name} type="file" multiple accept="image/png,image/jpeg,image/webp" onChange={e=>{chooseGallery(p,e.target.files);e.target.value='';}}/>
+          {(pendingGalleries[p.id]||[]).length>0&&<div className="kd-pasted-gallery-queue">
+            <p>{pendingGalleries[p.id].length} photo(s) selected for upload:</p>
+            {(pendingGalleries[p.id]||[]).map((file,i)=><div key={i}><span>{file.name||'Pasted image '+(i+1)}</span>
+              <button type="button" disabled={busy} onClick={()=>setPendingGalleries(old=>({...old,[p.id]:(old[p.id]||[]).filter((_,j)=>j!==i)}))} aria-label={'Remove pending gallery photo '+(i+1)}><Trash2 size={16}/></button>
+            </div>)}
+          </div>}
           <button type="button" className="border-button" disabled={busy||!pendingGalleries[p.id]?.length} onClick={()=>uploadGallery(p)}><ImagePlus size={15}/> UPLOAD GALLERY PHOTOS</button>
         </div>
         <div className="kd-variants-table">
