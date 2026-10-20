@@ -2,7 +2,7 @@ import React from 'react';
 import {Link} from 'react-router-dom';
 import {CheckCircle2,Clock3,MapPin,Truck,PackageCheck,ReceiptText,ImageOff,Wallet,AlertTriangle} from 'lucide-react';
 import {apiBase,money,productImageUrl} from '@kd/catalog';
-import {publicOrderCode} from '../../../../server/src/orderCode.js';
+const publicOrderCode=order=>order?.order_code||'KD-'+String(order?.id||'').padStart(8,'0');
 
 const titles={PENDING:'New order',CONFIRMED:'Confirmed',SHIPPED:'On the way',DELIVERED:'Delivered',CANCELLED:'Cancelled'};
 const payText={COD:'Cash on delivery',BANK_TRANSFER:'Bank transfer'};
