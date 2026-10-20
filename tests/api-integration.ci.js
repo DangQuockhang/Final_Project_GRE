@@ -77,6 +77,39 @@ test('Admin permissions and COD stock transactions against disposable PostgreSQL
    items:[{variant_id:orderLinked.id,quantity:1}]
   },user.data.token);
   assert.equal(orderOnBundle.status,201);
+  assert.match(orderOnBundle.data.order_code,/^KD-\d{8}-[A-F0-9]{12}$/);
+  assert.equal(orderOnBundle.data.payment_method,'COD');
+  const methodList=await fetch(base+'/api/payment-methods').then(r=>r.json());
+  assert.equal(methodList.cod,true);
+  assert.equal(methodList.bank_transfer.enabled,true);
+  const history=await request('/api/orders/mine',undefined,user.data.token,'GET');
+  assert.equal(history.status,200);
+  const orderedLine=history.data.find(o=>o.id===orderOnBundle.data.id).items[0];
+  assert.ok(orderedLine.image_url?.startsWith('/media/products/'));
+  assert.equal(orderedLine.product_name,edited.name);
+  assert.equal(orderedLine.brand_name,brands[0].name);
+  assert.equal(orderedLine.size,'M');
+  assert.equal(orderedLine.slug,edited.slug);
+  const transfer=await request('/api/orders',{
+   recipient:'Test Customer',phone:'0000000000',address:'Bank transfer integration test address',
+   payment_method:'BANK_TRANSFER',items:[{variant_id:orderLinked.id,quantity:1}]
+  },user.data.token);
+  assert.equal(transfer.status,201);
+  assert.equal(transfer.data.payment_status,'AWAITING_TRANSFER');
+  assert.match(transfer.data.order_code,/^KD-\d{8}-[A-F0-9]{12}$/);
+  assert.notEqual(transfer.data.order_code,orderOnBundle.data.order_code);
+  const unverified=await request('/api/admin/orders/'+transfer.data.id+'/status',{status:'CONFIRMED'},token,'PATCH');
+  assert.equal(unverified.status,409,'Bank payment must be verified before order can be confirmed');
+  const forbiddenVerify=await request('/api/admin/orders/'+transfer.data.id+'/payment',{status:'PAID'},user.data.token,'PATCH');
+  assert.equal(forbiddenVerify.status,403);
+  const verified=await request('/api/admin/orders/'+transfer.data.id+'/payment',{status:'PAID'},token,'PATCH');
+  assert.equal(verified.status,200);
+  assert.equal(verified.data.payment_status,'PAID');
+  const confirmedTransfer=await request('/api/admin/orders/'+transfer.data.id+'/status',{status:'CONFIRMED'},token,'PATCH');
+  assert.equal(confirmedTransfer.status,200);
+  const cancelledPaid=await request('/api/admin/orders/'+transfer.data.id+'/status',{status:'CANCELLED'},token,'PATCH');
+  assert.equal(cancelledPaid.status,200);
+  assert.equal(cancelledPaid.data.payment_status,'REFUND_PENDING','Cancellation cannot imply funds refunded');
   const afterOrder=await fetch(base+'/api/products/'+bundleBody.slug).then(r=>r.json());
   const submitDeletion=(current,ids,confirm=false)=> {
    const form=new FormData();

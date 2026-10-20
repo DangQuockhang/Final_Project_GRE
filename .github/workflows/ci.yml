@@ -81,6 +81,9 @@ jobs:
       JWT_SECRET: integration-only-long-secret-value-for-demo-tests
       ADMIN_EMAIL: ci-admin@example.test
       ADMIN_PASSWORD: CiAdminPasswordForTests2026
+      BANK_TRANSFER_BANK: CI Test Bank
+      BANK_TRANSFER_ACCOUNT: 0000000000
+      BANK_TRANSFER_NAME: Test Recipient
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
