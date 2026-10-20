@@ -1,10 +1,11 @@
 import React,{useEffect,useMemo,useRef,useState} from 'react';
 import {createPortal} from 'react-dom';
-import {Pencil,Trash2,X,ImagePlus,Save} from 'lucide-react';
+import {Pencil,Trash2,X,ImagePlus,Save,Search,RotateCcw} from 'lucide-react';
 import {apiBase,productImageUrl} from '@kd/catalog';
 import {validateBrand} from '../../utils/adminValidation.js';
 import ImagePasteZone from '../../components/admin/ImagePasteZone.jsx';
 import {imageFilesFromClipboard,validateImageFiles} from '../../utils/clipboardImages.js';
+import {filterSortBrands} from '../../utils/brandFilters.js';
 const EMPTY={name:'',description:''};
 const apiImage=value=>productImageUrl(value,import.meta.env.VITE_API_URL||apiBase);
 
@@ -87,7 +88,14 @@ function BrandEditDialog({brand,api,perform,busy,report,onClose}){
 }
 export default function BrandsPanel({brands,products,api,perform,busy,report}){
  const [editing,setEditing]=useState(null);
+ const [query,setQuery]=useState(''),[sort,setSort]=useState('name-asc');
+ const [logoFilter,setLogoFilter]=useState('all'),[productsFilter,setProductsFilter]=useState('all');
  const brand=editing?brands.find(b=>b.id===editing):null;
+ const {brands:visibleBrands,countByBrand}=useMemo(()=>filterSortBrands(brands,products,{
+  query,sort,logo:logoFilter,productsFilter
+ }),[brands,products,query,sort,logoFilter,productsFilter]);
+ const hasFilters=Boolean(query.trim()||sort!=='name-asc'||logoFilter!=='all'||productsFilter!=='all');
+ const resetFilters=()=>{setQuery('');setSort('name-asc');setLogoFilter('all');setProductsFilter('all');};
  async function remove(b){
   if(products.some(p=>String(p.brand_id)===String(b.id))){report('This brand still has products. Reassign or archive them before deleting.');return;}
   if(!window.confirm('Permanently delete brand "'+b.name+'"?'))return;
@@ -96,10 +104,43 @@ export default function BrandsPanel({brands,products,api,perform,busy,report}){
  return <section className="kd-admin-panel" aria-labelledby="brand-title">
   <div className="kd-admin-panel-header"><div><h2 id="brand-title">Brand Management</h2><p>Create brands and manage images. Edit opens a separate workspace.</p></div><span>{brands.length} brands</span></div>
   <BrandForm brand={null} key="new-brand" api={api} perform={perform} busy={busy} report={report}/>
-  <div className="admin-table">{brands.length===0&&<div className="kd-admin-placeholder">No brands yet.</div>}
-   {brands.map(b=><article className="admin-row kd-admin-record kd-brand-list-row" key={b.id}>
+  <div className="kd-brand-management-toolbar" role="search" aria-label="Search, sort and filter brands">
+   <div className="kd-brand-search-field">
+    <Search size={19} aria-hidden="true"/>
+    <input type="search" aria-label="Search brands" placeholder="Search brand name, slug or description…" value={query} onChange={e=>setQuery(e.target.value)}/>
+    {query&&<button type="button" aria-label="Clear brand search" onClick={()=>setQuery('')}><X size={18}/></button>}
+   </div>
+   <label>SORT BY
+    <select aria-label="Sort brands" value={sort} onChange={e=>setSort(e.target.value)}>
+     <option value="name-asc">Name A–Z</option><option value="name-desc">Name Z–A</option>
+     <option value="newest">Newest first</option><option value="oldest">Oldest first</option>
+     <option value="products-desc">Most products</option><option value="products-asc">Fewest products</option>
+    </select>
+   </label>
+   <label>BRAND IMAGE
+    <select aria-label="Filter brands by image" value={logoFilter} onChange={e=>setLogoFilter(e.target.value)}>
+     <option value="all">All images</option><option value="with">With logo</option><option value="without">Without logo</option>
+    </select>
+   </label>
+   <label>PRODUCTS
+    <select aria-label="Filter brands by products" value={productsFilter} onChange={e=>setProductsFilter(e.target.value)}>
+     <option value="all">All brands</option><option value="with">With products</option><option value="without">Without products</option>
+    </select>
+   </label>
+   {hasFilters&&<button type="button" className="kd-brand-reset" onClick={resetFilters}><RotateCcw size={16}/> RESET</button>}
+  </div>
+  <div className="kd-brand-results-info" role="status" aria-live="polite">
+   Showing <strong>{visibleBrands.length}</strong> of <strong>{brands.length}</strong> brands
+  </div>
+  <div className="admin-table">{visibleBrands.length===0&&<div className="kd-admin-placeholder kd-brand-empty">
+    <Search size={25}/>
+    <strong>{brands.length?'No brands match your search or filters.':'No brands yet.'}</strong>
+    <span>{brands.length?'Try a different keyword or reset the filters.':'Create your first brand using the form above.'}</span>
+    {brands.length>0&&hasFilters&&<button type="button" className="border-button" onClick={resetFilters}>SHOW ALL BRANDS</button>}
+   </div>}
+   {visibleBrands.map(b=><article className="admin-row kd-admin-record kd-brand-list-row" key={b.id}>
     <div className="kd-brand-mini-photo">{b.logo_url?<img src={apiImage(b.logo_url)} alt={b.name+' brand image'}/>:<ImagePlus size={25}/>}</div>
-    <div className="kd-brand-list-content"><b>{b.name}</b><small>/{b.slug} · {products.filter(p=>String(p.brand_id)===String(b.id)).length} products</small>{b.description&&<p>{b.description}</p>}</div>
+    <div className="kd-brand-list-content"><b>{b.name}</b><small>/{b.slug} · {countByBrand.get(String(b.id))||0} products</small>{b.description&&<p>{b.description}</p>}</div>
     <div className="kd-admin-actions"><button type="button" className="border-button" disabled={busy} onClick={()=>setEditing(b.id)}><Pencil size={16}/> EDIT</button>
      <button type="button" className="border-button" disabled={busy} onClick={()=>remove(b)}><Trash2 size={15}/> DELETE</button></div>
    </article>)}
