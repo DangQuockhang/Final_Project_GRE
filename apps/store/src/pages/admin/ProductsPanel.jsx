@@ -1,17 +1,17 @@
 import React,{useEffect,useRef,useState} from 'react';
 import {createPortal} from 'react-dom';
-import {Pencil,Archive,ImagePlus,Trash2,X} from 'lucide-react';
+import {Pencil,Archive,ImagePlus,Trash2,X,CopyPlus} from 'lucide-react';
 import {money,apiBase,productImageUrl} from '@kd/catalog';
 import PermanentDeleteDialog from '../../components/admin/PermanentDeleteDialog.jsx';
 import {validateStock,PRODUCT_STATUSES} from '../../utils/adminValidation.js';
 import ProductEditor from './ProductEditor.jsx';
-function EditProductDialog({product,brands,api,perform,busy,report,onClose}){
+function EditProductDialog({product=null,duplicateSource=null,duplicateToken='',brands,api,perform,busy,report,onClose}){
  const closeButton=useRef(null);
  useEffect(()=>{
   const previousOverflow=document.body.style.overflow;
   document.body.style.overflow='hidden';
   closeButton.current?.focus();
-  const escape=e=>{if(e.key==='Escape'&&!busy)onClose();};
+  const escape=e=>{if(e.key==='Escape'&&!busy&&!document.querySelector('.kd-quick-brand-modal'))onClose();};
   window.addEventListener('keydown',escape);
   return ()=>{document.body.style.overflow=previousOverflow;window.removeEventListener('keydown',escape);};
  },[onClose,busy]);
@@ -19,17 +19,18 @@ function EditProductDialog({product,brands,api,perform,busy,report,onClose}){
   <div className="kd-edit-modal-backdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget&&!busy)onClose();}}>
    <section className="kd-edit-modal" role="dialog" aria-modal="true" aria-labelledby="kd-edit-product-title">
     <div className="kd-edit-modal-header">
-     <div><span>PRODUCT & INVENTORY</span><h2 id="kd-edit-product-title">Edit: {product.name}</h2></div>
+     <div><span>PRODUCT & INVENTORY</span><h2 id="kd-edit-product-title">{duplicateSource?'Duplicate: '+duplicateSource.name:'Edit: '+product.name}</h2></div>
      <button ref={closeButton} className="kd-edit-modal-close" type="button" onClick={onClose} disabled={busy} aria-label="Close product editor"><X size={24}/></button>
     </div>
     <div className="kd-edit-modal-scroll">
-     <ProductEditor key={product.id} product={product} brands={brands} api={api} perform={perform} busy={busy} report={report} onCancel={onClose}/>
+     <ProductEditor key={product?.id||'duplicate-'+duplicateToken} product={product} duplicateSource={duplicateSource} duplicateToken={duplicateToken} brands={brands} api={api} perform={perform} busy={busy} report={report} onCancel={onClose}/>
     </div>
    </section>
   </div>,document.body);
 }
 export default function ProductsPanel({products,brands,api,perform,busy,report}){
   const [editing,setEditing]=useState(null);
+  const [duplicating,setDuplicating]=useState(null);
   const [search,setSearch]=useState(''),[statusFilter,setStatusFilter]=useState('all');
   const [stockDrafts,setStockDrafts]=useState({});
   const [pendingImages,setPendingImages]=useState({});
@@ -40,6 +41,7 @@ export default function ProductsPanel({products,brands,api,perform,busy,report})
   const rows=products.filter(p=>(statusFilter==='all'||p.status===statusFilter)&&[p.name,p.brand_name,p.slug].join(' ').toLowerCase().includes(search.toLowerCase()));
   function reset(){setEditing(null);}
   function begin(p){setEditing(p.id);}
+  function beginDuplicate(p){setDuplicating({sourceId:p.id,token:Date.now().toString(36)+Math.random().toString(36).slice(2,8)});}
   async function updateStatus(p,next){
     if(next==='archived'&&!window.confirm('Archive "'+p.name+'"? Existing orders will be retained.'))return;
     await perform(()=>api('/products/'+p.id,{method:'PATCH',body:{status:next}}),'Product status updated.');
@@ -122,6 +124,7 @@ export default function ProductsPanel({products,brands,api,perform,busy,report})
             <span className={'kd-status kd-status-'+p.status}>{p.status.toUpperCase()}</span>
             <select aria-label={'Change status for '+p.name} value={p.status} disabled={busy} onChange={e=>updateStatus(p,e.target.value)}>{PRODUCT_STATUSES.map(s=><option key={s} value={s}>{s.toUpperCase()}</option>)}</select>
             <button className="border-button" type="button" disabled={busy} onClick={()=>begin(p)}><Pencil size={13}/> EDIT</button>
+            <button className="border-button kd-duplicate-product-button" type="button" disabled={busy} onClick={()=>beginDuplicate(p)} title={'Create an independent draft from '+p.name}><CopyPlus size={14}/> DUPLICATE</button>
             {p.status!=='archived'&&<button className="border-button" type="button" disabled={busy} onClick={()=>updateStatus(p,'archived')}><Archive size={13}/> ARCHIVE</button>}
             <button className="border-button kd-delete-product-button" type="button"
               disabled={busy||p.status==='active'||(p.variants||[]).some(v=>Number(v.stock)>0)}
@@ -175,6 +178,9 @@ export default function ProductsPanel({products,brands,api,perform,busy,report})
     </div>
     {editing&&products.some(p=>p.id===editing)&&<EditProductDialog product={products.find(p=>p.id===editing)} brands={brands}
       api={api} perform={perform} busy={busy} report={report} onClose={reset}/>}
+    {duplicating&&products.some(p=>p.id===duplicating.sourceId)&&<EditProductDialog
+      duplicateSource={products.find(p=>p.id===duplicating.sourceId)} duplicateToken={duplicating.token}
+      brands={brands} api={api} perform={perform} busy={busy} report={report} onClose={()=>setDuplicating(null)}/>}
     {deleting&&<PermanentDeleteDialog product={deleting} check={deletionCheck} checking={checkingDelete} busy={busy}
       onConfirm={confirmPermanentDelete} onClose={()=>{setDeleting(null);setDeletionCheck(null);}}/>}
   </section>;
