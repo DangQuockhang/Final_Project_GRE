@@ -12,7 +12,7 @@ function Photo({item}){
  const url=productImageUrl(item.image_url,import.meta.env.VITE_API_URL||apiBase);
  return <div className="kd-order-history-photo">{url?<img src={url} alt={item.product_name||'Ordered product'}/>:<ImageOff size={26} aria-label="Product image unavailable"/>}</div>;
 }
-export default function OrderCard({order,admin=false,loading=false,onStatusChange,onVerifyPayment,paymentConfig}){
+export default function OrderCard({order,admin=false,loading=false,onStatusChange,onVerifyPayment,paymentConfig,allowedTransitions={}}){
  const reference=publicOrderCode(order);
  const status=order.status||'PENDING',payment=order.payment_status||'UNPAID';
  const items=order.items||[];
@@ -53,9 +53,9 @@ export default function OrderCard({order,admin=false,loading=false,onStatusChang
    {admin&&<div className="kd-order-admin-controls">
     {order.payment_method==='BANK_TRANSFER'&&payment==='AWAITING_TRANSFER'&&
      <button type="button" className="border-button" disabled={loading} onClick={()=>onVerifyPayment?.(order)}><CheckCircle2 size={17}/> VERIFY TRANSFER RECEIPT</button>}
-    {onStatusChange?.allowed?.[status]?.length>0&&<select aria-label={'Change order '+reference+' status'} disabled={loading} value=""
+    {allowedTransitions[status]?.length>0&&<select aria-label={'Change order '+reference+' status'} disabled={loading} value=""
      onChange={e=>e.target.value&&onStatusChange(order,e.target.value)}>
-     <option value="">Update order status…</option>{onStatusChange.allowed[status].map(s=><option key={s} value={s}>{titles[s]||s}</option>)}
+     <option value="">Update order status…</option>{allowedTransitions[status].map(s=><option key={s} value={s}>{titles[s]||s}</option>)}
     </select>}
    </div>}
   </div>
