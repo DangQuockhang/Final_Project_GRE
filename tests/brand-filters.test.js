@@ -41,7 +41,7 @@ test('filter brands by with/without image or products',()=>{
  assert.deepEqual(names({logo:'without'}),['Áo Việt','Blank Brand']);
  assert.deepEqual(names({productsFilter:'with'}),['AMI','Áo Việt','MLB']);
  assert.deepEqual(names({productsFilter:'without'}),['Blank Brand']);
- assert.deepEqual(names({query:'a',logo:'with',productsFilter:'with'}),['AMI']);
+ assert.deepEqual(names({query:'parisian',logo:'with',productsFilter:'with'}),['AMI']);
 });
 test('public directory counts only active products and does not show draft-only brands as active',()=>{
  const counts=brandProductCounts(products,{activeOnly:true});
