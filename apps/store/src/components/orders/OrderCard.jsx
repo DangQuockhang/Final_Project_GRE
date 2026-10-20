@@ -1,4 +1,4 @@
-import React from 'react';
+import React,{useEffect,useState} from 'react';
 import {Link} from 'react-router-dom';
 import {CheckCircle2,Clock3,MapPin,Truck,PackageCheck,ReceiptText,ImageOff,Wallet,AlertTriangle} from 'lucide-react';
 import {apiBase,money,productImageUrl} from '@kd/catalog';
@@ -10,7 +10,11 @@ const payState={UNPAID:'Not yet paid',AWAITING_TRANSFER:'Awaiting transfer',PAID
 const dateText=value=>new Intl.DateTimeFormat('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'Asia/Ho_Chi_Minh'}).format(new Date(value));
 function Photo({item}){
  const url=productImageUrl(item.image_url,import.meta.env.VITE_API_URL||apiBase);
- return <div className="kd-order-history-photo">{url?<img src={url} alt={item.product_name||'Ordered product'}/>:<ImageOff size={26} aria-label="Product image unavailable"/>}</div>;
+ const [broken,setBroken]=useState(false);
+ useEffect(()=>setBroken(false),[url]);
+ return <div className="kd-order-history-photo">{url&&!broken?
+  <img src={url} alt={item.product_name||'Ordered product'} onError={()=>setBroken(true)}/>:
+  <ImageOff size={26} aria-label="Product image unavailable"/>}</div>;
 }
 export default function OrderCard({order,admin=false,loading=false,onStatusChange,onVerifyPayment,paymentConfig,allowedTransitions={}}){
  const reference=publicOrderCode(order);
