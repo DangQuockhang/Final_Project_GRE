@@ -6,6 +6,7 @@ import {pool,query} from './db.js';
 import 'dotenv/config';
 import {imageDir,detectImage,imageUpload,galleryUpload,bundleUpload,saveImage,removeImage} from './productImages.js';
 import {evaluateProductDeletion} from './productDeletion.js';
+import {makeOrderCode} from './orderCode.js';
 
 const app=express();
 const PORT=Number(process.env.PORT||4000);
@@ -377,35 +378,84 @@ route.patch('/variants/:id',authorize,admin,wrap(async(req,res)=>{
  if(!r.rows[0])return fail(res,'Biến thể không tồn tại.',404);res.json(r.rows[0]);
 }));
 
+const bankDetails=()=>{
+ const bank=clean(process.env.BANK_TRANSFER_BANK),account=clean(process.env.BANK_TRANSFER_ACCOUNT),name=clean(process.env.BANK_TRANSFER_NAME);
+ return bank&&account&&name?{bank,account,name}:null;
+};
+route.get('/payment-methods',(req,res)=>{
+ const bank=bankDetails();
+ res.json({cod:true,bank_transfer:{enabled:!!bank,...(bank||{})}});
+});
+const orderItemsJson=`COALESCE((SELECT json_agg(json_build_object(
+ 'product_name',i.product_name,'sku',i.sku,'quantity',i.quantity,
+ 'unit_price',i.unit_price,'size',i.size,
+ 'image_url',COALESCE(i.image_url,p.image_url),'slug',COALESCE(i.product_slug,p.slug),
+ 'brand_name',COALESCE(i.brand_name,b.name),'color',COALESCE(i.color,v.color)
+ ) ORDER BY i.id)
+ FROM order_items i
+ LEFT JOIN product_variants v ON v.id=i.variant_id
+ LEFT JOIN products p ON p.id=v.product_id
+ LEFT JOIN brands b ON b.id=p.brand_id
+ WHERE i.order_id=o.id),'[]'::json)`;
+
 route.post('/orders',authorize,wrap(async(req,res)=>{
  const {recipient,phone,address,items}=req.body;
- if(clean(recipient).length<2||clean(phone).length<9||clean(address).length<10||!Array.isArray(items)||items.length===0||items.length>30)return fail(res,'Thông tin nhận hàng hoặc giỏ hàng không hợp lệ.');
- const ids=new Set();for(const item of items){if(!isId(item.variant_id)||!Number.isInteger(item.quantity)||item.quantity<1||item.quantity>20||ids.has(Number(item.variant_id)))return fail(res,'Biến thể hoặc số lượng không hợp lệ.');ids.add(Number(item.variant_id));}
+ const method=req.body.payment_method||'COD';
+ if(!['COD','BANK_TRANSFER'].includes(method))return fail(res,'Unsupported payment method.');
+ if(method==='BANK_TRANSFER'&&!bankDetails())return fail(res,'Bank transfer is not configured.',409);
+ if(clean(recipient).length<2||clean(phone).length<9||clean(address).length<10||
+    clean(address).length>750||!Array.isArray(items)||items.length===0||items.length>30)
+   return fail(res,'Invalid delivery or cart information.');
+ const ids=new Set();
+ for(const item of items){
+  if(!isId(item.variant_id)||!Number.isInteger(item.quantity)||item.quantity<1||item.quantity>20||ids.has(Number(item.variant_id)))
+   return fail(res,'Invalid SKU or quantity.');
+  ids.add(Number(item.variant_id));
+ }
  const client=await pool.connect();
  try{
   await client.query('BEGIN');let total=0;const lines=[];
-  // Row locks held for the entire transaction; sorted order reduces deadlock risk.
   const sorted=[...items].sort((a,b)=>a.variant_id-b.variant_id);
   for(const item of sorted){
-   const r=await client.query(`SELECT v.*,p.name AS product_name,COALESCE(p.sale_price,p.price) AS price,p.status FROM product_variants v
-       JOIN products p ON p.id=v.product_id WHERE v.id=$1 FOR UPDATE OF v`,[item.variant_id]);
-   const v=r.rows[0];if(!v||v.status!=='active'||v.stock<item.quantity) {const err=new Error('Hết hàng hoặc số lượng không đủ.');err.status=409;throw err;}
+   const r=await client.query(`SELECT v.*,p.name AS product_name,p.slug AS product_slug,p.image_url,
+    b.name AS brand_name,COALESCE(p.sale_price,p.price) AS price,p.status
+    FROM product_variants v
+    JOIN products p ON p.id=v.product_id
+    JOIN brands b ON b.id=p.brand_id
+    WHERE v.id=$1 FOR UPDATE OF v`,[item.variant_id]);
+   const v=r.rows[0];
+   if(!v||v.status!=='active'||v.stock<item.quantity){const e=new Error('Insufficient inventory for selected size.');e.status=409;throw e;}
    total+=v.price*item.quantity;lines.push({variant:v,quantity:item.quantity});
   }
-  if(!Number.isSafeInteger(total)){const e=new Error('Giá trị đơn hàng không hợp lệ.');e.status=400;throw e;}
-  const o=await client.query(`INSERT INTO orders(user_id,recipient,phone,address,total) VALUES($1,$2,$3,$4,$5) RETURNING *`,[req.user.id,clean(recipient),clean(phone),clean(address),total]);
+  if(!Number.isSafeInteger(total)){const e=new Error('Invalid order amount.');e.status=400;throw e;}
+  const inserted=await client.query(`INSERT INTO orders(user_id,recipient,phone,address,total,order_code,payment_method,payment_status)
+   VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+   [req.user.id,clean(recipient),clean(phone),clean(address),total,makeOrderCode(),method,method==='COD'?'UNPAID':'AWAITING_TRANSFER']);
+  const saved=inserted.rows[0];
   for(const {variant:v,quantity} of lines){
    await client.query('UPDATE product_variants SET stock=stock-$1 WHERE id=$2',[quantity,v.id]);
-   await client.query(`INSERT INTO order_items(order_id,variant_id,product_name,sku,size,quantity,unit_price) VALUES($1,$2,$3,$4,$5,$6,$7)`,[o.rows[0].id,v.id,v.product_name,v.sku,v.size,quantity,v.price]);
+   await client.query(`INSERT INTO order_items(order_id,variant_id,product_name,sku,size,quantity,unit_price,image_url,product_slug,brand_name,color)
+    VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+    [saved.id,v.id,v.product_name,v.sku,v.size,quantity,v.price,v.image_url,v.product_slug,v.brand_name,v.color]);
   }
-  await client.query('COMMIT');res.status(201).json(o.rows[0]);
+  await client.query('COMMIT');res.status(201).json(saved);
  }catch(e){await client.query('ROLLBACK');throw e;}finally{client.release();}
 }));
 route.get('/orders/mine',authorize,wrap(async(req,res)=>{
- const r=await query(`SELECT o.*,COALESCE((SELECT json_agg(json_build_object('product_name',i.product_name,'sku',i.sku,'quantity',i.quantity,'unit_price',i.unit_price,'size',i.size)) FROM order_items i WHERE i.order_id=o.id),'[]'::json) AS items FROM orders o WHERE o.user_id=$1 ORDER BY o.created_at DESC`,[req.user.id]);res.json(r.rows);
+ const r=await query(`SELECT o.*,${orderItemsJson} AS items FROM orders o
+ WHERE o.user_id=$1 ORDER BY o.created_at DESC`,[req.user.id]);res.json(r.rows);
 }));
 route.get('/admin/orders',authorize,admin,wrap(async(req,res)=>{
- const r=await query(`SELECT o.*,u.email,COALESCE((SELECT json_agg(json_build_object('product_name',i.product_name,'sku',i.sku,'quantity',i.quantity,'unit_price',i.unit_price,'size',i.size)) FROM order_items i WHERE i.order_id=o.id),'[]'::json) AS items FROM orders o JOIN users u ON u.id=o.user_id ORDER BY o.created_at DESC LIMIT 100`);res.json(r.rows);
+ const r=await query(`SELECT o.*,u.email,${orderItemsJson} AS items FROM orders o
+ JOIN users u ON u.id=o.user_id ORDER BY o.created_at DESC LIMIT 100`);res.json(r.rows);
+}));
+route.patch('/admin/orders/:id/payment',authorize,admin,wrap(async(req,res)=>{
+ if(!isId(req.params.id)||req.body.status!=='PAID')return fail(res,'Invalid payment update.');
+ const result=await query(`UPDATE orders SET payment_status='PAID' WHERE id=$1
+ AND payment_method='BANK_TRANSFER' AND payment_status='AWAITING_TRANSFER'
+ RETURNING *`,[req.params.id]);
+ if(!result.rowCount)return fail(res,'Only awaiting bank transfers can be marked paid.',409);
+ res.json(result.rows[0]);
 }));
 route.patch('/admin/orders/:id/status',authorize,admin,wrap(async(req,res)=>{
  const next=req.body.status;if(!['CONFIRMED','SHIPPED','DELIVERED','CANCELLED'].includes(next)||!isId(req.params.id))return fail(res,'Trạng thái không hợp lệ.');
@@ -414,11 +464,15 @@ route.patch('/admin/orders/:id/status',authorize,admin,wrap(async(req,res)=>{
  await c.query('BEGIN');const result=await c.query('SELECT * FROM orders WHERE id=$1 FOR UPDATE',[req.params.id]);const o=result.rows[0];
  if(!o){const e=new Error('Không tìm thấy đơn.');e.status=404;throw e;}
  if(!allowed[o.status].includes(next)){const e=new Error('Chuyển trạng thái không hợp lệ.');e.status=409;throw e;}
+ if(next==='CONFIRMED'&&o.payment_method==='BANK_TRANSFER'&&o.payment_status!=='PAID'){
+  const e=new Error('Confirm incoming bank transfer before confirming this order.');e.status=409;throw e;
+ }
  if(next==='CANCELLED'){
   const lines=await c.query('SELECT variant_id,quantity FROM order_items WHERE order_id=$1',[o.id]);
   for(const line of lines.rows) await c.query('UPDATE product_variants SET stock=stock+$1 WHERE id=$2',[line.quantity,line.variant_id]);
  }
- const r=await c.query('UPDATE orders SET status=$1 WHERE id=$2 RETURNING *',[next,o.id]);await c.query('COMMIT');res.json(r.rows[0]);
+ const payment=next==='CANCELLED'&&o.payment_status==='PAID'?'REFUND_PENDING':o.payment_status;
+ const r=await c.query('UPDATE orders SET status=$1,payment_status=$2 WHERE id=$3 RETURNING *',[next,payment,o.id]);await c.query('COMMIT');res.json(r.rows[0]);
  }catch(e){await c.query('ROLLBACK');throw e;}finally{c.release();}
 }));
 
