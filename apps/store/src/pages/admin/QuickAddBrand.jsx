@@ -34,6 +34,7 @@ export default function QuickAddBrand({brands,api,perform,busy,report,onCreated,
  }
  async function submit(event){
   event.preventDefault();
+  event.stopPropagation(); // React portal events bubble through the ProductEditor tree; never submit a product here.
   const draft={name:name.trim(),description};
   const issue=validateBrand(draft);
   if(issue){report(issue);return;}
