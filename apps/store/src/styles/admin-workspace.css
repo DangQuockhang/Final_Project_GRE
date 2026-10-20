@@ -411,3 +411,152 @@
 @media(prefers-reduced-motion:reduce){
  .kd-quick-brand-backdrop{backdrop-filter:none}
 }
+
+
+/* Sprint 2.16 — keyboard clipboard image paste across Product/Brand editors. */
+.kd-image-paste-zone{
+ display:flex;
+ align-items:center;
+ justify-content:flex-start;
+ gap:16px;
+ width:100%;
+ min-height:104px;
+ padding:18px 20px;
+ border:2px dashed #b9cab8;
+ border-radius:6px;
+ background:#f8faf6;
+ color:#3a533f;
+ cursor:text;
+ transition:border-color .18s ease,background .18s ease;
+}
+.kd-image-paste-zone:hover,
+.kd-image-paste-zone.is-dragging{
+ border-color:#638467;
+ background:#edf3ea;
+}
+.kd-image-paste-zone:focus-visible,
+.kd-image-paste-zone:focus{
+ outline:3px solid #9fbc9d;
+ outline-offset:2px;
+ border-color:#628164;
+}
+.kd-image-paste-zone>svg{flex:none}
+.kd-image-paste-zone>div{
+ flex:1;
+ display:flex;
+ flex-direction:column;
+ gap:6px;
+ min-width:0;
+}
+.kd-image-paste-zone strong{
+ display:flex;
+ align-items:center;
+ flex-wrap:wrap;
+ gap:10px;
+ color:#2a442f;
+ font-size:16px;
+ font-weight:800;
+}
+.kd-image-paste-zone kbd{
+ padding:4px 9px;
+ background:#fff;
+ border:1px solid #c1d0be;
+ border-radius:4px;
+ box-shadow:0 2px 0 #d7e3d4;
+ font:700 13px/1.25 system-ui,Arial,sans-serif;
+ color:#35573b;
+}
+.kd-image-paste-zone span{
+ font-size:14px;
+ line-height:1.55;
+ color:#677d69;
+}
+.kd-pasted-photo-thumbs{
+ display:flex;
+ flex-wrap:wrap;
+ gap:12px;
+ align-items:stretch;
+}
+.kd-pasted-photo{
+ display:block;
+ position:relative;
+ flex:0 0 115px;
+ width:115px;
+ height:132px;
+ border:1px solid #dde5dc;
+ border-radius:4px;
+ background:#fff;
+ overflow:hidden;
+}
+.kd-pasted-photo>img{
+ display:block;
+ width:100%;
+ height:100%;
+ object-fit:contain;
+ padding:7px;
+}
+.kd-remove-pasted-image{
+ position:absolute;
+ top:5px;
+ right:5px;
+ display:grid;
+ place-items:center;
+ width:33px;
+ height:33px;
+ min-height:33px;
+ background:#fff;
+ border:1px solid #decac6;
+ border-radius:50%;
+ color:#a04343;
+ cursor:pointer;
+}
+.kd-remove-pasted-image:hover{background:#ffeeeb}
+.kd-clear-selected-image{
+ justify-self:start;
+ min-height:39px;
+ padding:8px 13px;
+ font-weight:750;
+ font-size:12px;
+ color:#9b4045;
+ background:#fffafa;
+ border:1px solid #d3b9bc;
+}
+.kd-pasted-gallery-queue{
+ display:grid;
+ gap:7px;
+ padding:13px;
+ background:#f8faf7;
+ border:1px solid #e3eae0;
+}
+.kd-pasted-gallery-queue p{font-size:14px;color:#536d59;margin:0 0 6px}
+.kd-pasted-gallery-queue>div{
+ display:flex;
+ align-items:center;
+ justify-content:space-between;
+ gap:12px;
+ padding:7px 0;
+ border-top:1px solid #e5ece3;
+}
+.kd-pasted-gallery-queue span{
+ font-size:13px;
+ color:#364b3b;
+ overflow-wrap:anywhere;
+}
+.kd-pasted-gallery-queue button{
+ width:37px;
+ height:37px;
+ border:1px solid #d9c5c5;
+ color:#a04146;
+ background:#fff;
+ display:grid;
+ place-items:center;
+ flex:none;
+ cursor:pointer;
+}
+@media(max-width:580px){
+ .kd-image-paste-zone{padding:14px;gap:10px;min-height:95px}
+ .kd-image-paste-zone strong{font-size:14px}
+ .kd-image-paste-zone span{font-size:12px}
+ .kd-image-paste-zone>svg:last-child{display:none}
+}
+@media(prefers-reduced-motion:reduce){.kd-image-paste-zone{transition:none}}
