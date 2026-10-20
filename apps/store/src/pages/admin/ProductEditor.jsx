@@ -1,8 +1,10 @@
-import React,{useEffect,useMemo,useState} from 'react';
+import React,{useEffect,useMemo,useRef,useState} from 'react';
 import {ImagePlus,Plus,Trash2,Layers,Save,RotateCcw} from 'lucide-react';
 import {apiBase,productImageUrl} from '@kd/catalog';
 import {PRODUCT_CATEGORIES,PRODUCT_STATUSES,validateProduct} from '../../utils/adminValidation.js';
 import {buildVariantMatrix,hasMultipleColors,FALLBACK_HEX} from '../../utils/variantBuilder.js';
+import {duplicateProduct} from '../../utils/duplicateProduct.js';
+import QuickAddBrand from './QuickAddBrand.jsx';
 
 const shades=[{name:'Black',hex:'#222222'},{name:'Red',hex:'#C33C42'},{name:'Gray',hex:'#898C91'}];
 const normal=v=>String(v||'').toLowerCase().trim();
@@ -15,14 +17,19 @@ const initialColors=p=>{
  if(!p?.variants?.length)return [{...shades[0]}];
  return [...new Map(p.variants.map(v=>[normal(v.color),{name:v.color,hex:v.color_hex||shades.find(s=>normal(s.name)===normal(v.color))?.hex||'#758073'}])).values()];
 };
-export default function ProductEditor({product,brands,api,perform,busy,report,onCancel}){
- const [draft,setDraft]=useState(()=>start(product));
- const [colors,setColors]=useState(()=>initialColors(product));
- const [multipleColors,setMultipleColors]=useState(()=>hasMultipleColors(product?.variants));
- const [sizes,setSizes]=useState(()=>[...new Set((product?.variants||[]).map(v=>v.size))].join(', ')||'ONE SIZE');
- const [rows,setRows]=useState(()=>(product?.variants||[]).map(v=>({...v,stock:String(v.stock),color_hex:v.color_hex||initialColors(product).find(c=>normal(c.name)===normal(v.color))?.hex||'#758073'})));
+export default function ProductEditor({product,duplicateSource=null,duplicateToken='',brands,api,perform,busy,report,onCancel}){
+ const duplicated=useMemo(()=>duplicateSource?duplicateProduct(duplicateSource,duplicateToken):null,[duplicateSource,duplicateToken]);
+ const reference=duplicateSource||product;
+ const [draft,setDraft]=useState(()=>duplicated?.draft||start(product));
+ const [colors,setColors]=useState(()=>initialColors(reference));
+ const [multipleColors,setMultipleColors]=useState(()=>hasMultipleColors(reference?.variants));
+ const [sizes,setSizes]=useState(()=>duplicated?.sizes||[...new Set((product?.variants||[]).map(v=>v.size))].join(', ')||'ONE SIZE');
+ const [rows,setRows]=useState(()=>duplicated?.rows||(product?.variants||[]).map(v=>({...v,stock:String(v.stock),color_hex:v.color_hex||initialColors(product).find(c=>normal(c.name)===normal(v.color))?.hex||'#758073'})));
  const [files,setFiles]=useState([]),[defaultStock,setDefaultStock]=useState('0'),[working,setWorking]=useState(false);
  const [removedVariants,setRemovedVariants]=useState([]);
+ const [quickBrandOpen,setQuickBrandOpen]=useState(false);
+ const quickBrandButton=useRef(null);
+ const closeQuickBrand=()=>{setQuickBrandOpen(false);quickBrandButton.current?.focus();};
  const limit=Math.min(6,8-(product?.images?.length||0));
  const urls=useMemo(()=>files.map(file=>({name:file.name,url:URL.createObjectURL(file)})),[files]);
  useEffect(()=>()=>urls.forEach(x=>URL.revokeObjectURL(x.url)),[urls]);
@@ -100,7 +107,8 @@ export default function ProductEditor({product,brands,api,perform,busy,report,on
  }
  async function save(e){
   e.preventDefault();
-  const data={...draft,color:multipleColors?(colors[0]?.hex||FALLBACK_HEX):(product?.color||FALLBACK_HEX),tryon_enabled:false};
+  const data={...draft,color:multipleColors?(colors[0]?.hex||FALLBACK_HEX):(product?.color||FALLBACK_HEX),tryon_enabled:false,
+   ...(duplicated?{slug:duplicated.getSlug(draft.name)}:{})};
   const issue=validateProduct(data);
   if(issue){report(issue);return;}
   if(!multipleColors&&hasMultipleColors(rows)){
@@ -141,10 +149,15 @@ export default function ProductEditor({product,brands,api,perform,busy,report,on
  }
  const gallery=[...new Set([product?.image_url,...(product?.images||[]).map(i=>i.image_url)].filter(Boolean))];
  return <form onSubmit={save} className="kd-quick-editor">
-  <div className="kd-quick-title"><div><span>PRODUCT WORKSPACE</span><h3>{product?'Edit '+product.name:'New product — one step'}</h3><p>Details, color and size inventory, and photos — save together.</p></div>{product&&<button type="button" className="border-button" onClick={onCancel}><RotateCcw size={16}/> CANCEL EDIT</button>}</div>
+  <div className="kd-quick-title"><div><span>PRODUCT WORKSPACE</span><h3>{product?'Edit '+product.name:duplicated?'Duplicate '+duplicateSource.name:'New product — one step'}</h3>
+   <p>{duplicated?'A new independent draft. Details and sizes copied; stock reset to zero, new SKUs assigned. Select new photos before publishing.':'Details, color and size inventory, and photos — save together.'}</p>
+  </div>{(product||duplicated)&&<button type="button" className="border-button" onClick={onCancel}><RotateCcw size={16}/> CANCEL {product?'EDIT':'DUPLICATE'}</button>}</div>
   <div className="kd-quick-grid">
    <label>PRODUCT NAME<input required value={draft.name} onChange={e=>set('name',e.target.value)} placeholder="Classic Overshirt"/></label>
-   <label>BRAND<select required value={draft.brand_id} onChange={e=>set('brand_id',e.target.value)}><option value="">Choose a brand</option>{brands.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
+   <div className="kd-product-brand-field">
+    <label>BRAND<select required value={draft.brand_id} onChange={e=>set('brand_id',e.target.value)}><option value="">Choose a brand</option>{brands.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
+    <button ref={quickBrandButton} type="button" className="border-button kd-quick-add-brand-trigger" disabled={busy||working} onClick={()=>setQuickBrandOpen(true)}><Plus size={17}/> QUICK ADD BRAND</button>
+   </div>
    <label>CATEGORY<select value={draft.category} onChange={e=>set('category',e.target.value)}>{PRODUCT_CATEGORIES.map(c=><option value={c} key={c}>{c.toUpperCase()}</option>)}</select></label>
    <label>PRODUCT TYPE<input value={draft.product_type} maxLength={60} onChange={e=>set('product_type',e.target.value)} placeholder="T-Shirt, Jacket, Tote Bag…"/></label>
    <label>PRICE (VND)<input type="number" min="0" required value={draft.price} onChange={e=>set('price',e.target.value)}/></label>
@@ -201,6 +214,8 @@ export default function ProductEditor({product,brands,api,perform,busy,report,on
    <p>{files.length} new photos selected · {Math.max(0,limit)} slots available per save · 3 MB maximum per photo.</p>
    {urls.length>0&&<div className="kd-quick-photo-thumbs">{urls.map(x=><img key={x.url} src={x.url} alt={x.name}/>)}</div>}
   </section>
-  <div className="kd-quick-save"><button className="button button-dark" type="submit" disabled={busy||working||!brands.length}><Save size={18}/>{working?'SAVING…':product?'SAVE ALL PRODUCT CHANGES':'CREATE PRODUCT WITH PHOTOS'}</button><span>New products default to Draft. Order-linked SKU history is protected; confirmed unreferenced SKU removals are applied on Save.</span></div>
+  <div className="kd-quick-save"><button className="button button-dark" type="submit" disabled={busy||working||!brands.length}><Save size={18}/>{working?'SAVING…':product?'SAVE ALL PRODUCT CHANGES':duplicated?'CREATE DUPLICATE DRAFT':'CREATE PRODUCT WITH PHOTOS'}</button><span>{duplicated?'This copy is a separate product. All copied sizes start with zero stock; photos are not shared with the original.': 'New products default to Draft. Order-linked SKU history is protected; confirmed unreferenced SKU removals are applied on Save.'}</span></div>
+  {quickBrandOpen&&<QuickAddBrand brands={brands} api={api} perform={perform} busy={busy||working} report={report}
+   onCreated={id=>set('brand_id',id)} onClose={closeQuickBrand}/>}
  </form>;
 }
