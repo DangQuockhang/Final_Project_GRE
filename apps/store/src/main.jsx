@@ -2,7 +2,6 @@ import React,{createContext,useContext,useEffect,useMemo,useState} from 'react';
 import {createRoot} from 'react-dom/client';
 import {BrowserRouter,Link,NavLink,Navigate,Route,Routes,useNavigate,useParams,useSearchParams} from 'react-router-dom';
 import {ArrowRight,ArrowUpRight,Check,ChevronRight,CircleUserRound,Heart,Instagram,Menu,Minus,Plus,Search,ShieldCheck,ShoppingBag,SlidersHorizontal,Sparkles,Trash2,Truck,X} from 'lucide-react';
-import {TryOnStudio} from '@kd/virtual-fitting';
 import {apiBase,demoProducts,demoBrands,money} from '@kd/catalog';
 import './style.css';
 import './styles/sprint2.css';
@@ -27,7 +26,6 @@ import './styles/checkout-cart.css';
 import AdminPage from './pages/admin/AdminPage.jsx';
 
 const API=import.meta.env.VITE_API_URL||apiBase;
-const FITTING_URL=import.meta.env.VITE_STUDIO_URL||'http://localhost:5174';
 const request=async(path,{method='GET',body,token}={})=>{
  const multipart=typeof FormData!=='undefined'&&body instanceof FormData;
  const res=await fetch(`${API}${path}`,{method,headers:{...(body&&!multipart?{'Content-Type':'application/json'}:{}),...(token?{Authorization:`Bearer ${token}`}:{})},body:multipart?body:body?JSON.stringify(body):undefined});
@@ -50,12 +48,12 @@ function Providers({children}){
  const cartValue={cart,add,update,clear:()=>setCart([]),count:cart.reduce((s,x)=>s+x.quantity,0),total:cartDisplayTotal(cart,products)};
  return <authContext.Provider value={auth}><catalogContext.Provider value={{products,brands,online,loading,refresh}}><cartContext.Provider value={cartValue}>{children}</cartContext.Provider></catalogContext.Provider></authContext.Provider>
 }
-function Header(){const {count}=useCart(),{user}=useAuth(),{brands}=useCatalog();return <Navbar count={count} user={user} brands={brands} fittingUrl={FITTING_URL}/> }
-function Layout({children}){const {online,loading}=useCatalog();return <><Header/>{!loading&&!online&&<div className="demo-banner">DEMO MODE — API chưa kết nối. Bạn có thể khám phá giao diện với sản phẩm giả lập; đăng nhập và checkout sẽ cần backend.</div>}<main>{children}</main><Footer fittingUrl={FITTING_URL}/></>}
-function Home(){const {products,brands}=useCatalog();return <Layout><HomePage products={products} brands={brands} fittingUrl={FITTING_URL}/></Layout>}
+function Header(){const {count}=useCart(),{user}=useAuth(),{brands}=useCatalog();return <Navbar count={count} user={user} brands={brands}/> }
+function Layout({children}){const {online,loading}=useCatalog();return <><Header/>{!loading&&!online&&<div className="demo-banner">API unavailable — product previews may be outdated. Ordering requires a connection to our server.</div>}<main>{children}</main><Footer/></>}
+function Home(){const {products,brands}=useCatalog();return <Layout><HomePage products={products} brands={brands}/></Layout>}
 function Shop(){const {products,brands}=useCatalog();return <Layout><ShopPage products={products} brands={brands}/></Layout>}
-function Brands(){const {brands}=useCatalog();return <Layout><section className="page-intro"><Eyebrow>THE LABELS / 001–003</Eyebrow><h1>Curated <em>identities.</em></h1><p>Concept labels for demonstration purposes. Replace only after verified supply and rights.</p></section><section className="section brands-page"><div className="brand-tiles">{brands.map((b,i)=><Link key={b.id} to={`/shop?brand=${b.slug}`} className={`brand-tile brand-tile-${i}`}><small>CONCEPT LABEL / 0{i+1}</small><b>{b.name}</b><p>{b.description}</p><span>EXPLORE THE COLLECTION ↗</span></Link>)}</div></section></Layout>}
-function Product(){const {products,online,loading}=useCatalog(),{add}=useCart();return <Layout><ProductDetailPage products={products} online={online} loading={loading} addToCart={add} fittingUrl={FITTING_URL}/></Layout>}
+function Brands(){const {brands}=useCatalog();return <Layout><section className="page-intro"><Eyebrow>OUR LABELS</Eyebrow><h1>Curated <em>identities.</em></h1><p>Browse brands currently in our catalog.</p></section><section className="section brands-page"><div className="brand-tiles">{brands.map((b,i)=><Link key={b.id} to={`/shop?brand=${b.slug}`} className={`brand-tile brand-tile-${i}`}><small>BRAND / 0{i+1}</small><b>{b.name}</b><p>{b.description}</p><span>EXPLORE THE COLLECTION ↗</span></Link>)}</div></section></Layout>}
+function Product(){const {products,online,loading}=useCatalog(),{add}=useCart();return <Layout><ProductDetailPage products={products} online={online} loading={loading} addToCart={add}/></Layout>}
 function Cart(){
  const {cart,update,total}=useCart(),{products}=useCatalog();
  const navigate=useNavigate();

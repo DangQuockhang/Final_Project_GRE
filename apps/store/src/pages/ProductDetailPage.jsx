@@ -77,9 +77,8 @@ export default function ProductDetailPage({products=[],online=false,loading=fals
        </div>}
        <button type="button" className="button button-dark" disabled={!canBuy} onClick={()=>{addToCart(item,variant,quantity);setAdded(true)}}>{!inStock?'SOLD OUT':added?'ADDED TO BAG ✓':'ADD TO BAG'} <ShoppingBag size={18}/></button>
       </div>
-      {item.tryon_enabled&&<a className="fitting-link kd-retail-fit-cta" href={fittingUrl+'/?product='+encodeURIComponent(slug)} target="_blank" rel="noreferrer"><Sparkles size={21}/><span><b>EXPLORE 3D FITTING</b><small>Illustrative mannequin preview · Not guaranteed fit</small></span><ArrowUpRight size={19}/></a>}
       <div className="kd-retail-spec"><strong>PRODUCT DETAILS</strong><p><b>Brand:</b> {item.brand_name}</p><p><b>Collection:</b> {item.category}</p><p><b>Product type:</b> {item.product_type||'Not specified'}</p><p><b>Available to order:</b> {inStock?'Yes':'Sold out'}</p></div>
-      <div className="pdp-benefits"><div><ShieldCheck size={18}/>Supplier documentation required before real sales</div><div><Truck size={18}/>Checkout is a COD demonstration</div></div>
+      <div className="pdp-benefits"><div><ShieldCheck size={18}/>Supplier documentation required before real sales</div><div><Truck size={18}/>Select your delivery and available payment method at checkout</div></div>
     </div>
    </div>
   </section>

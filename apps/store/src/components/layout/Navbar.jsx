@@ -33,7 +33,6 @@ export default function Navbar({user,count,fittingUrl,brands=[]}){
       <Link to="/shop">ALL PRODUCTS</Link>
       <Link className="kd-retail-sale-link" to="/shop?sale=1">SALE</Link>
       {user?.role==='admin'&&<Link to="/admin">ADMIN</Link>}
-      <a className="kd-retail-studio" href={fittingUrl} target="_blank" rel="noreferrer">3D FITTING <ArrowUpRight size={19}/></a>
     </nav>
     <div className="kd-retail-actions">
       <button type="button" className="kd-retail-icon" aria-label={searchOpen?'Close search':'Search products'} aria-expanded={searchOpen} onClick={()=>{setSearchOpen(s=>!s);setMenu('')}}>{searchOpen?<X size={27}/>:<Search size={30}/>}</button>

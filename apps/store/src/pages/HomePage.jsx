@@ -4,7 +4,6 @@ import ShopByCategory from '../components/home/ShopByCategory.jsx';
 import FeaturedProducts from '../components/home/FeaturedProducts.jsx';
 import EditorialStory from '../components/home/EditorialStory.jsx';
 import FeaturedBrands from '../components/home/FeaturedBrands.jsx';
-import VirtualTryOnBanner from '../components/home/VirtualTryOnBanner.jsx';
 import ClosingBanner from '../components/home/ClosingBanner.jsx';
 export default function HomePage({products,brands,fittingUrl}){
  return <div className="kd26-home">
@@ -13,7 +12,6 @@ export default function HomePage({products,brands,fittingUrl}){
   <FeaturedProducts products={products}/>
   <EditorialStory/>
   <FeaturedBrands brands={brands}/>
-  <VirtualTryOnBanner fittingUrl={fittingUrl}/>
   <ClosingBanner/>
  </div>;
 }

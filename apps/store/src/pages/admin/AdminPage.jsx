@@ -49,8 +49,8 @@ export default function AdminPage({user,token,request,refreshCatalog}){
   const common={api,perform,busy,report};
   return <div className="admin-shell kd-admin-shell">
     <div className="admin-top">
-      <div><Eyebrow>KD DESIGN / ADMIN ONLY</Eyebrow><h1>Command <em>center.</em></h1><p>Signed in as {user?.email||'Administrator'} · Demo management workspace</p></div>
-      <span className="admin-chip">SPRINT 2 / OPERATIONS</span>
+      <div><Eyebrow>KD DESIGN / ADMIN ONLY</Eyebrow><h1>Command <em>center.</em></h1><p>Signed in as {user?.email||'Administrator'} · Management workspace</p></div>
+      <span className="admin-chip">STORE OPERATIONS</span>
     </div>
     <div className="kd-admin-stat-grid" aria-label="Admin metrics">
       <div><span>ACTIVE PRODUCTS</span><strong>{stats.active}</strong><small>Current admin catalog (up to 200)</small></div>
@@ -70,7 +70,7 @@ export default function AdminPage({user,token,request,refreshCatalog}){
     {loading?<div className="kd-admin-placeholder" role="status">Loading dashboard data…</div>:
       <div className="kd-admin-content">
         {tab==='overview'&&<section className="kd-admin-overview">
-          <div><h2>Operational overview</h2><p>Manage fictional demo labels, SKU-level inventory and COD test orders without leaving KD Design.</p></div>
+          <div><h2>Operational overview</h2><p>Manage brands, SKU-level inventory and customer orders in one workspace.</p></div>
           <div className="kd-admin-quick">
             <button type="button" onClick={()=>setTab('products')}><Package size={19}/> Manage products</button>
             <button type="button" onClick={()=>setTab('brands')}><Tags size={19}/> Manage brands</button>
