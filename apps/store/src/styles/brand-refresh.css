@@ -1,0 +1,312 @@
+/* KD DESIGN | Brand directory and compact editorial home rhythm.
+   Uses real admin-uploaded logo_url. Keeps the original Ivory, Charcoal, Olive palette. */
+.kd-brand-directory{
+ --brand-ivory:#f7f5f0;
+ --brand-ink:#242824;
+ --brand-olive:#435447;
+ min-height:55vh;
+ background:var(--brand-ivory);
+ color:var(--brand-ink);
+ padding-bottom:clamp(46px,5vw,75px);
+}
+.kd-brand-directory-intro,
+.kd-brand-directory-results{
+ width:min(100% - clamp(36px,7vw,140px),1570px);
+ margin-inline:auto;
+}
+.kd-brand-directory-intro{
+ padding:clamp(42px,5vw,78px) 0 24px;
+}
+.kd-brand-directory-heading{
+ display:flex;
+ align-items:end;
+ justify-content:space-between;
+ gap:22px;
+}
+.kd-brand-directory h1{
+ font:400 clamp(52px,6.2vw,95px)/1.04 'Playfair Display',Georgia,serif;
+ letter-spacing:-.065em;
+ margin:0;
+}
+.kd-brand-directory h1 em{
+ color:#859881;
+ font-weight:400;
+}
+.kd-brand-directory-count{
+ flex:none;
+ color:#647466;
+ font-size:15px;
+ font-weight:700;
+ padding-bottom:11px;
+}
+.kd-brand-directory-tools{
+ display:flex;
+ align-items:center;
+ justify-content:space-between;
+ gap:18px;
+ margin-top:clamp(22px,3vw,42px);
+ padding:0 0 16px;
+ border-bottom:1px solid #dce3d8;
+}
+.kd-brand-directory-search{
+ width:min(100%,420px);
+ min-height:50px;
+ display:flex;
+ align-items:center;
+ gap:12px;
+ padding:0 15px;
+ border:1px solid #d6ded2;
+ background:#fff;
+ color:#647969;
+}
+.kd-brand-directory-search input{
+ width:100%;
+ height:50px;
+ min-width:0;
+ border:0;
+ outline:0;
+ background:transparent;
+ font-size:16px;
+ color:#253329;
+}
+.kd-brand-directory-search input::placeholder{color:#8d998e}
+.kd-brand-directory-search:focus-within{
+ outline:2px solid #789878;
+ outline-offset:2px;
+}
+.kd-brand-directory-search button{
+ flex:none;
+ display:grid;
+ place-items:center;
+ width:37px;
+ height:37px;
+ border:0;
+ background:transparent;
+ cursor:pointer;
+ color:#526854;
+}
+.kd-brand-directory-sort{
+ flex:none;
+ font-size:14px;
+ font-weight:800;
+ letter-spacing:.1em;
+ color:#566958;
+}
+.kd-brand-directory-grid,
+.kd-brand-featured-grid{
+ display:grid;
+ grid-template-columns:repeat(auto-fit,minmax(min(100%,235px),1fr));
+ gap:clamp(12px,1.35vw,21px);
+ align-items:stretch;
+}
+.kd-brand-directory-results{padding-top:10px}
+.kd-brand-showcase-card{
+ min-width:0;
+ display:flex;
+ flex-direction:column;
+ height:100%;
+ overflow:hidden;
+ border:1px solid #e4e7e0;
+ border-radius:6px;
+ background:#fff;
+ color:#253026;
+ text-decoration:none;
+ box-shadow:0 6px 18px rgba(33,41,34,.035);
+ transition:transform .28s ease,border-color .28s ease,box-shadow .28s ease;
+}
+.kd-brand-showcase-card:hover{
+ border-color:#bbc8b9;
+ box-shadow:0 14px 28px rgba(35,51,38,.105);
+ transform:translateY(-4px);
+}
+.kd-brand-showcase-card:focus-visible{
+ outline:3px solid #719675;
+ outline-offset:3px;
+}
+.kd-brand-art{
+ display:grid;
+ place-items:center;
+ height:clamp(155px,14.5vw,217px);
+ min-height:155px;
+ width:100%;
+ overflow:hidden;
+ padding:17px;
+ background:linear-gradient(140deg,#fafbf9,#f1f3ee);
+ border-bottom:1px solid #ebeee7;
+}
+.kd-brand-art.has-photo{background:#fff}
+.kd-brand-art img{
+ display:block;
+ width:100%;
+ height:100%;
+ max-height:190px;
+ object-fit:contain;
+ object-position:center;
+ image-rendering:auto;
+ transition:transform .3s ease;
+}
+.kd-brand-showcase-card:hover .kd-brand-art img{transform:scale(1.04)}
+.kd-brand-monogram{
+ display:grid;
+ place-items:center;
+ width:clamp(94px,9vw,135px);
+ height:clamp(94px,9vw,135px);
+ border:1px solid #d3dccf;
+ border-radius:50%;
+ font:400 clamp(35px,4vw,58px)/1 'Playfair Display',Georgia,serif;
+ color:#435847;
+ letter-spacing:-.045em;
+}
+.kd-brand-showcase-copy{
+ display:flex;
+ flex:1;
+ flex-direction:column;
+ padding:clamp(17px,1.55vw,25px);
+ gap:11px;
+}
+.kd-brand-showcase-copy h3{
+ font:400 clamp(23px,2vw,33px)/1.14 'Playfair Display',Georgia,serif;
+ color:#283329;
+ letter-spacing:-.035em;
+ margin:0;
+ overflow-wrap:anywhere;
+}
+.kd-brand-showcase-copy p{
+ display:-webkit-box;
+ -webkit-box-orient:vertical;
+ -webkit-line-clamp:2;
+ line-clamp:2;
+ overflow:hidden;
+ margin:0;
+ min-height:0;
+ color:#68766b;
+ font-size:14px;
+ line-height:1.6;
+}
+.kd-brand-showcase-action{
+ display:flex;
+ align-items:center;
+ justify-content:space-between;
+ gap:13px;
+ min-height:42px;
+ margin-top:auto;
+ padding-top:10px;
+ border-top:1px solid #eef0e9;
+ color:#384f3e;
+ font-size:14px;
+ font-weight:750;
+}
+.kd-brand-showcase-action svg{flex:none;transition:transform .25s ease}
+.kd-brand-showcase-card:hover .kd-brand-showcase-action svg{transform:translate(3px,-3px)}
+.kd-brand-directory-empty{
+ display:grid;
+ justify-content:start;
+ gap:12px;
+ padding:26px 0 40px;
+}
+.kd-brand-directory-empty h2{
+ font:400 28px/1.3 'Playfair Display',Georgia,serif;
+}
+.kd-brand-directory-empty button{
+ border:1px solid #879d86;
+ padding:13px 18px;
+ background:#fff;
+ color:#334c38;
+ font-size:15px;
+ cursor:pointer;
+}
+/* Homepage: show five real-brand cards rather than oversized, mostly empty panels. */
+.kd26-home .kd26-section{
+ padding-block:clamp(55px,5.3vw,79px);
+}
+.kd26-home .kd26-section-head{
+ margin-bottom:clamp(21px,2.5vw,32px);
+}
+.kd26-home .kd-brand-featured{
+ padding-block:clamp(48px,4.6vw,72px);
+}
+.kd26-home .kd-brand-featured-grid{
+ grid-template-columns:repeat(auto-fit,minmax(min(100%,215px),1fr));
+}
+.kd26-home .kd-brand-featured .kd-brand-showcase-card{
+ background:#fff;
+ min-height:0;
+}
+.kd26-home .kd-brand-featured .kd-brand-art{
+ height:clamp(135px,12vw,180px);
+ min-height:135px;
+ padding:15px;
+}
+.kd26-home .kd-brand-featured .kd-brand-showcase-copy{
+ gap:9px;
+ padding:17px 18px 19px;
+}
+.kd26-home .kd-brand-featured .kd-brand-showcase-copy h3{
+ font-size:clamp(23px,1.9vw,31px);
+}
+.kd26-home .kd-brand-featured .kd-brand-showcase-action{
+ min-height:36px;
+}
+.kd26-home .kd26-close{
+ width:min(100%,1550px);
+ max-width:1550px;
+ padding:clamp(36px,3.8vw,56px) clamp(26px,5.2vw,85px);
+ gap:24px;
+ align-items:center;
+}
+.kd26-home .kd26-close h2{
+ font-size:clamp(40px,4.5vw,63px);
+ margin:7px 0 7px;
+}
+.kd26-home .kd26-close p{font-size:16px;line-height:1.6}
+/* Less dead space in the editorial split at mainstream laptop sizes. */
+.kd26-home .kd26-editorial{min-height:480px}
+.kd26-home .kd26-editorial-image{min-height:445px}
+.kd26-home .kd26-editorial-copy{
+ padding:clamp(36px,5vw,74px);
+ gap:18px;
+}
+@media(max-width:930px){
+ .kd-brand-directory-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr))}
+ .kd26-home .kd-brand-featured-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .kd26-home .kd-brand-featured .kd-brand-art{min-height:145px}
+}
+@media(max-width:700px){
+ .kd-brand-directory-intro,.kd-brand-directory-results{width:calc(100% - 34px)}
+ .kd-brand-directory-intro{padding-top:32px}
+ .kd-brand-directory-heading{align-items:start;gap:9px;flex-direction:column}
+ .kd-brand-directory h1{font-size:clamp(45px,10vw,66px)}
+ .kd-brand-directory-count{font-size:14px;padding:0}
+ .kd-brand-directory-tools{margin-top:24px}
+ .kd-brand-directory-search{flex:1}
+ .kd-brand-directory-sort{font-size:12px}
+ .kd-brand-directory-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+ .kd-brand-art{height:155px;min-height:155px;padding:11px}
+ .kd-brand-monogram{width:92px;height:92px;font-size:38px}
+ .kd-brand-showcase-copy{padding:14px 12px;gap:7px}
+ .kd-brand-showcase-copy h3{font-size:clamp(19px,4.6vw,27px)}
+ .kd-brand-showcase-copy p{font-size:13px}
+ .kd-brand-showcase-action{font-size:12px;gap:4px;min-height:42px}
+ .kd-brand-showcase-action svg{width:17px}
+ .kd26-home .kd26-section{padding:46px 19px}
+ .kd26-home .kd-brand-featured-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+ .kd26-home .kd-brand-featured .kd-brand-art{height:140px}
+ .kd26-home .kd-brand-featured .kd-brand-showcase-copy{padding:14px 12px}
+ .kd26-home .kd-brand-featured .kd-brand-showcase-copy h3{font-size:clamp(19px,4.5vw,26px)}
+ .kd26-home .kd26-close{padding:39px 20px;align-items:flex-start}
+ .kd26-home .kd26-close h2{font-size:clamp(39px,8.5vw,52px)}
+ .kd26-home .kd26-editorial{min-height:0}
+ .kd26-home .kd26-editorial-image{min-height:340px}
+ .kd26-home .kd26-editorial-copy{min-height:0;padding:46px 23px}
+}
+@media(max-width:390px){
+ .kd-brand-directory-grid,.kd26-home .kd-brand-featured-grid{grid-template-columns:1fr}
+}
+@media(prefers-reduced-motion:reduce){
+ .kd-brand-showcase-card,
+ .kd-brand-art img,
+ .kd-brand-showcase-action svg{transition:none}
+ .kd-brand-showcase-card:hover,
+ .kd-brand-showcase-card:hover .kd-brand-art img,
+ .kd-brand-showcase-card:hover .kd-brand-showcase-action svg{transform:none}
+}

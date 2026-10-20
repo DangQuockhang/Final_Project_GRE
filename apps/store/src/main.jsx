@@ -13,6 +13,7 @@ import Eyebrow from './components/common/Eyebrow.jsx';
 import Navbar from './components/layout/Navbar.jsx';
 import Footer from './components/layout/Footer.jsx';
 import HomePage from './pages/HomePage.jsx';
+import BrandsPage from './pages/BrandsPage.jsx';
 import ShopPage from './pages/ShopPage.jsx';
 import ProductDetailPage from './pages/ProductDetailPage.jsx';
 import './styles/shop-phase2.css';
@@ -26,6 +27,7 @@ import './styles/retail-shoe-fallback.css';
 import './styles/admin-workspace.css';
 import './styles/checkout-cart.css';
 import './styles/order-management.css';
+import './styles/brand-refresh.css';
 import AdminPage from './pages/admin/AdminPage.jsx';
 
 const API=import.meta.env.VITE_API_URL||apiBase;
@@ -55,7 +57,7 @@ function Header(){const {count}=useCart(),{user}=useAuth(),{brands}=useCatalog()
 function Layout({children}){const {online,loading}=useCatalog();return <><Header/>{!loading&&!online&&<div className="demo-banner">API unavailable — product previews may be outdated. Ordering requires a connection to our server.</div>}<main>{children}</main><Footer/></>}
 function Home(){const {products,brands}=useCatalog();return <Layout><HomePage products={products} brands={brands}/></Layout>}
 function Shop(){const {products,brands}=useCatalog();return <Layout><ShopPage products={products} brands={brands}/></Layout>}
-function Brands(){const {brands}=useCatalog();return <Layout><section className="page-intro"><Eyebrow>OUR LABELS</Eyebrow><h1>Curated <em>identities.</em></h1><p>Browse brands currently in our catalog.</p></section><section className="section brands-page"><div className="brand-tiles">{brands.map((b,i)=><Link key={b.id} to={`/shop?brand=${b.slug}`} className={`brand-tile brand-tile-${i}`}><small>BRAND / 0{i+1}</small><b>{b.name}</b><p>{b.description}</p><span>EXPLORE THE COLLECTION ↗</span></Link>)}</div></section></Layout>}
+function Brands(){const {brands}=useCatalog();return <Layout><BrandsPage brands={brands}/></Layout>}
 function Product(){const {products,online,loading}=useCatalog(),{add}=useCart();return <Layout><ProductDetailPage products={products} online={online} loading={loading} addToCart={add}/></Layout>}
 function Cart(){
  const {cart,update,total}=useCart(),{products}=useCatalog();
