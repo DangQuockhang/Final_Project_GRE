@@ -310,3 +310,87 @@
  .kd-brand-showcase-card:hover .kd-brand-art img,
  .kd-brand-showcase-card:hover .kd-brand-showcase-action svg{transform:none}
 }
+
+
+/* Public /brands: compact accessible search, sort & filter controls. */
+.kd-brand-directory-tools{
+ display:flex;
+ align-items:end;
+ flex-wrap:wrap;
+ gap:16px;
+ justify-content:space-between;
+}
+.kd-brand-directory-search{
+ flex:1 1 250px;
+ width:auto;
+ max-width:460px;
+}
+.kd-brand-public-filters{
+ display:flex;
+ flex-wrap:wrap;
+ align-items:end;
+ gap:11px;
+}
+.kd-brand-public-filters>label{
+ display:flex;
+ flex-direction:column;
+ gap:6px;
+ min-width:142px;
+ font-size:11px;
+ letter-spacing:.085em;
+ font-weight:800;
+ color:#536956;
+}
+.kd-brand-public-filters select{
+ height:50px;
+ min-height:50px;
+ padding:0 12px;
+ border:1px solid #d6ded2;
+ border-radius:2px;
+ background:#fff;
+ color:#314335;
+ font-size:14px;
+ letter-spacing:normal;
+ cursor:pointer;
+}
+.kd-brand-public-filters select:focus-visible{
+ outline:2px solid #799979;
+ outline-offset:2px;
+}
+.kd-brand-public-count{
+ display:flex;
+ flex-wrap:wrap;
+ align-items:center;
+ gap:6px;
+ font-size:14px;
+ color:#617462;
+ padding-top:14px;
+}
+.kd-brand-public-count strong{color:#273a2d}
+.kd-brand-public-count button{
+ display:inline-flex;
+ align-items:center;
+ gap:6px;
+ margin-left:14px;
+ padding:6px 9px;
+ border:1px solid #becdb9;
+ background:transparent;
+ color:#46674b;
+ font-size:13px;
+ font-weight:700;
+ cursor:pointer;
+}
+@media(max-width:920px){
+ .kd-brand-directory-search{flex:1 1 100%;max-width:none}
+ .kd-brand-public-filters{width:100%}
+ .kd-brand-public-filters>label{flex:1 1 140px}
+ .kd-brand-public-filters select{width:100%}
+}
+@media(max-width:590px){
+ .kd-brand-directory-tools{gap:11px}
+ .kd-brand-public-filters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+ .kd-brand-public-filters>label{min-width:0}
+ .kd-brand-public-filters>label:first-child{grid-column:1/-1}
+ .kd-brand-public-filters select{min-width:0;font-size:13px}
+ .kd-brand-public-count{font-size:13px}
+}

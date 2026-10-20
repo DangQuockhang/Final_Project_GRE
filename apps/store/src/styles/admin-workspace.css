@@ -560,3 +560,128 @@
  .kd-image-paste-zone>svg:last-child{display:none}
 }
 @media(prefers-reduced-motion:reduce){.kd-image-paste-zone{transition:none}}
+
+
+/* Brand Management search / sort / filter toolbar (Sprint 2). */
+.kd-brand-management-toolbar{
+ display:flex;
+ flex-wrap:wrap;
+ align-items:flex-end;
+ gap:13px;
+ margin:27px 0 15px;
+ padding:19px;
+ border:1px solid #dce5d9;
+ background:#f5f8f3;
+ border-radius:5px;
+}
+.kd-brand-search-field{
+ display:flex;
+ align-items:center;
+ gap:10px;
+ flex:2 1 280px;
+ min-width:210px;
+ height:51px;
+ padding:0 13px;
+ border:1px solid #cbd9c9;
+ background:#fff;
+ color:#526e57;
+}
+.kd-brand-search-field input{
+ border:0;
+ outline:0;
+ background:transparent;
+ min-width:0;
+ flex:1;
+ width:100%;
+ height:49px;
+ font-size:15px;
+ color:#253a2a;
+}
+.kd-brand-search-field input::placeholder{color:#8a998b}
+.kd-brand-search-field:focus-within{
+ outline:2px solid #7e9c80;
+ outline-offset:2px;
+}
+.kd-brand-search-field>button{
+ display:grid;
+ place-items:center;
+ flex:none;
+ height:37px;
+ width:37px;
+ border:0;
+ background:transparent;
+ color:#536c57;
+ cursor:pointer;
+}
+.kd-brand-management-toolbar>label{
+ display:flex;
+ flex-direction:column;
+ gap:8px;
+ flex:1 1 142px;
+ min-width:140px;
+ font-size:12px;
+ font-weight:800;
+ letter-spacing:.065em;
+ color:#4e6653;
+}
+.kd-brand-management-toolbar>label select{
+ height:51px;
+ min-height:51px;
+ width:100%;
+ padding:0 12px;
+ border:1px solid #cbd9c9;
+ border-radius:0;
+ background:#fff;
+ color:#283e2d;
+ font-size:15px;
+ font-weight:550;
+ letter-spacing:normal;
+ cursor:pointer;
+}
+.kd-brand-reset{
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ gap:7px;
+ height:51px;
+ flex:none;
+ min-width:91px;
+ padding:10px 13px;
+ border:1px solid #bccfba;
+ color:#3a5941;
+ font-size:13px;
+ font-weight:800;
+ background:#fff;
+ cursor:pointer;
+}
+.kd-brand-reset:hover{background:#e8f0e6}
+.kd-brand-results-info{
+ font-size:14px;
+ color:#627965;
+ margin:0 0 16px;
+}
+.kd-brand-results-info strong{font-size:15px;color:#2f4633}
+.kd-brand-empty{
+ display:flex;
+ flex-direction:column;
+ align-items:center;
+ justify-content:center;
+ gap:10px;
+ padding:44px 20px;
+ text-align:center;
+ color:#607663;
+}
+.kd-brand-empty strong{font-size:18px;color:#344e39}
+.kd-brand-empty span{font-size:14px;line-height:1.5}
+.kd-brand-empty .border-button{margin-top:8px}
+@media(max-width:860px){
+ .kd-brand-management-toolbar{gap:12px}
+ .kd-brand-search-field{flex-basis:100%}
+ .kd-brand-management-toolbar>label{flex-basis:150px}
+}
+@media(max-width:560px){
+ .kd-brand-management-toolbar{padding:14px;gap:11px}
+ .kd-brand-search-field{flex-basis:100%}
+ .kd-brand-management-toolbar>label{flex:1 1 calc(50% - 12px);min-width:125px}
+ .kd-brand-reset{width:100%}
+}
