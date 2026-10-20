@@ -124,6 +124,7 @@ UPDATE orders SET order_code='KD-'||
 WHERE order_code IS NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS orders_order_code_unique_idx ON orders(order_code);
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_status VARCHAR(24) NOT NULL DEFAULT 'UNPAID';
+ALTER TABLE orders ALTER COLUMN payment_method TYPE VARCHAR(20);
 ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_payment_method_check;
 ALTER TABLE orders ADD CONSTRAINT orders_payment_method_check CHECK (payment_method IN ('COD','BANK_TRANSFER'));
 ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_payment_status_check;
