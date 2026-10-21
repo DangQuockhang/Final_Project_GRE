@@ -141,3 +141,14 @@ UPDATE order_items i SET
  color=COALESCE(i.color,v.color)
 FROM product_variants v JOIN products p ON p.id=v.product_id JOIN brands b ON b.id=p.brand_id
 WHERE i.variant_id=v.id AND (i.image_url IS NULL OR i.product_slug IS NULL OR i.brand_name IS NULL OR i.color IS NULL);
+
+
+-- Sprint 2.19: Size charts are NOT product photographs. Per-product override
+-- wins over the brand/category default. All changes are additive/idempotent.
+CREATE TABLE IF NOT EXISTS brand_size_guides (
+ brand_id INTEGER NOT NULL REFERENCES brands(id) ON DELETE CASCADE,
+ category VARCHAR(40) NOT NULL CHECK (category IN ('clothing','shoes','bags','accessories')),
+ image_url TEXT NOT NULL,
+ PRIMARY KEY (brand_id,category)
+);
+ALTER TABLE products ADD COLUMN IF NOT EXISTS size_guide_image_url TEXT;
