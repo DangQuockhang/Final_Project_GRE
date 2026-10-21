@@ -123,11 +123,8 @@ export default function ProductEditor({product,duplicateSource=null,duplicateTok
  }
  function movePending(index,direction){setFiles(previous=>moveItem(previous,index,direction));}
  function removePending(index){
-  setFiles(previous=>{
-   const removed=previous[index];
-   if(removed===pendingCover)setPendingCover(null);
-   return previous.filter((_,i)=>i!==index);
-  });
+  if(files[index]===pendingCover)setPendingCover(null);
+  setFiles(previous=>previous.filter((_,i)=>i!==index));
  }
  async function savePhotoOrder(){
   if(!product)return;
