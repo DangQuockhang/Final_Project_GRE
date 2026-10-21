@@ -89,7 +89,7 @@ function Viewer({images,index,setIndex,onClose,name}){
 }
 export default function ProductGallery({product,images=[]}){
  const [index,setIndex]=useState(0),[open,setOpen]=useState(false);
- const firstTouch=useRef(null);
+ const firstTouch=useRef(null),lastSwipe=useRef(0);
  useEffect(()=>{setIndex(0);setOpen(false)},[product?.slug]);
  useEffect(()=>{setIndex(i=>Math.min(i,Math.max(0,images.length-1)))},[images.length]);
  const change=delta=>setIndex(i=>nextImage(i,delta,images.length));
@@ -98,12 +98,16 @@ export default function ProductGallery({product,images=[]}){
   if(!firstTouch.current)return;
   const dx=e.changedTouches[0]?.clientX-firstTouch.current.x,dy=e.changedTouches[0]?.clientY-firstTouch.current.y;
   firstTouch.current=null;
-  if(Math.abs(dx)>45&&Math.abs(dx)>Math.abs(dy))change(dx>0?-1:1);
+  if(Math.abs(dx)>45&&Math.abs(dx)>Math.abs(dy)){
+   lastSwipe.current=Date.now()+450;
+   e.preventDefault();
+   change(dx>0?-1:1);
+  }
  };
  return <div className="kd-v2-product-gallery" aria-label="Product photography">
   <div className="kd-v2-gallery-stage" onTouchStart={touchStart} onTouchEnd={touchEnd}>
    {images.length?
-    <button className="kd-v2-gallery-main" type="button" aria-label={'Expand photo '+(index+1)+' of '+images.length} onClick={()=>setOpen(true)}>
+    <button className="kd-v2-gallery-main" type="button" aria-label={'Expand photo '+(index+1)+' of '+images.length} onClick={()=>{if(Date.now()>lastSwipe.current)setOpen(true)}}>
      <img key={images[index]} src={images[index]} loading={index===0?'eager':'lazy'} alt={product.name+' view '+(index+1)} draggable={false}/>
      <span className="kd-v2-gallery-expand"><Maximize2 size={19}/> View details</span>
     </button>:
