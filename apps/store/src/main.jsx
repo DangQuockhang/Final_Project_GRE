@@ -27,6 +27,7 @@ import './styles/retail-shoe-fallback.css';
 import './styles/admin-workspace.css';
 import './styles/checkout-cart.css';
 import './styles/order-management.css';
+import './styles/product-gallery-v2.css';
 import './styles/brand-refresh.css';
 import AdminPage from './pages/admin/AdminPage.jsx';
 
