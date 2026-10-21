@@ -68,7 +68,11 @@ route.patch('/brands/:id',authorize,admin,wrap(async(req,res)=>{
 route.delete('/brands/:id',authorize,admin,wrap(async(req,res)=>{
  if(!isId(req.params.id))return fail(res,'ID không hợp lệ.');
  const count=await query('SELECT COUNT(*)::int AS n FROM products WHERE brand_id=$1',[req.params.id]);if(count.rows[0].n>0)return fail(res,'Brand còn sản phẩm, không thể xóa.',409);
- const r=await query('DELETE FROM brands WHERE id=$1 RETURNING id',[req.params.id]);if(!r.rows[0])return fail(res,'Không tìm thấy brand.',404);res.json({ok:true});
+ const guides=(await query('SELECT image_url FROM brand_size_guides WHERE brand_id=$1',[req.params.id])).rows;
+ const r=await query('DELETE FROM brands WHERE id=$1 RETURNING id,logo_url',[req.params.id]);
+ if(!r.rows[0])return fail(res,'Không tìm thấy brand.',404);
+ await Promise.all([r.rows[0].logo_url,...guides.map(g=>g.image_url)].filter(Boolean).map(url=>removeImage(url).catch(()=>{})));
+ res.json({ok:true});
 }));
 
 route.post('/admin/brands/:id/logo',authorize,admin,imageUpload,wrap(async(req,res)=>{
@@ -318,7 +322,7 @@ route.delete('/admin/products/:id/permanent',authorize,admin,wrap(async(req,res)
   // Only unused SKU rows cascade; order_items FK protects history.
   await client.query('DELETE FROM products WHERE id=$1',[product.id]);
   await client.query('COMMIT');
-  removed={...product,allImageUrls:[product.image_url,...galleryImages]};
+  removed={...product,allImageUrls:[product.image_url,product.size_guide_image_url,...galleryImages]};
  }catch(error){
   await client.query('ROLLBACK').catch(()=>{});
   if(error.code==='23503')return fail(res,'Product is linked to order data. Archive it instead.',409);
