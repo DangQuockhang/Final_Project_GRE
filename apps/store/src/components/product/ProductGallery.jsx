@@ -2,13 +2,8 @@ import React,{useEffect,useRef,useState} from 'react';
 import {createPortal} from 'react-dom';
 import {ChevronLeft,ChevronRight,Maximize2,Minus,Plus,X,RotateCcw} from 'lucide-react';
 import {ProductMedia} from './ProductCard.jsx';
+import {nextImage} from '../../utils/productGallery.js';
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
-export const nextImage=(current,delta,count)=>count?((current+delta)%count+count)%count:0;
-export function galleryUrls(product,resolve){
- const urls=[product?.image_url,...(product?.images||[]).map(photo=>photo.image_url)]
-  .filter(Boolean).map(resolve).filter(Boolean);
- return [...new Set(urls)];
-}
 function Viewer({images,index,setIndex,onClose,name}){
  const [scale,setScale]=useState(1),[offset,setOffset]=useState({x:0,y:0});
  const pointer=useRef(null),modal=useRef(null),close=useRef(null);

@@ -3,7 +3,8 @@ import {Link,useParams} from 'react-router-dom';
 import {ChevronRight,ShoppingBag,ArrowUpRight,ShieldCheck,Truck,Minus,Plus,ArrowLeft,Ruler} from 'lucide-react';
 import {money,apiBase,productImageUrl} from '@kd/catalog';
 import {ProductCard} from '../components/product/ProductCard.jsx';
-import ProductGallery,{galleryUrls} from '../components/product/ProductGallery.jsx';
+import ProductGallery from '../components/product/ProductGallery.jsx';
+import {galleryUrls} from '../utils/productGallery.js';
 import SizeGuideModal from '../components/product/SizeGuideModal.jsx';
 const API=import.meta.env.VITE_API_URL||apiBase;
 
