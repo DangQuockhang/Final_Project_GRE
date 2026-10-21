@@ -100,7 +100,6 @@ export default function ProductGallery({product,images=[]}){
   firstTouch.current=null;
   if(Math.abs(dx)>45&&Math.abs(dx)>Math.abs(dy)){
    lastSwipe.current=Date.now()+450;
-   e.preventDefault();
    change(dx>0?-1:1);
   }
  };
