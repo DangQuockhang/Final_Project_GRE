@@ -4,6 +4,7 @@ import {Pencil,Trash2,X,ImagePlus,Save,Search,RotateCcw} from 'lucide-react';
 import {apiBase,productImageUrl} from '@kd/catalog';
 import {validateBrand} from '../../utils/adminValidation.js';
 import ImagePasteZone from '../../components/admin/ImagePasteZone.jsx';
+import SizeGuideEditor from '../../components/admin/SizeGuideEditor.jsx';
 import {imageFilesFromClipboard,validateImageFiles} from '../../utils/clipboardImages.js';
 import {filterSortBrands} from '../../utils/brandFilters.js';
 const EMPTY={name:'',description:''};
@@ -12,6 +13,7 @@ const apiImage=value=>productImageUrl(value,import.meta.env.VITE_API_URL||apiBas
 function BrandForm({brand,api,perform,busy,report,onDone}){
  const [draft,setDraft]=useState(()=>brand?{name:brand.name,description:brand.description||''}:{...EMPTY});
  const [file,setFile]=useState(null);
+ const [guideCategory,setGuideCategory]=useState('clothing');
  const preview=useMemo(()=>file?URL.createObjectURL(file):null,[file]);
  useEffect(()=>()=>{if(preview)URL.revokeObjectURL(preview)},[preview]);
  const photo=preview||(brand?.logo_url?apiImage(brand.logo_url):null);
@@ -65,6 +67,19 @@ function BrandForm({brand,api,perform,busy,report,onDone}){
     <p>Paste a copied image or screenshot, or choose a JPG/PNG/WebP file under 3 MB. The new logo is saved with your brand details.</p>
    </div>
   </div>
+  {brand&&<div className="kd-brand-guide-config">
+    <label>SIZE GUIDE CATEGORY
+     <select value={guideCategory} onChange={e=>setGuideCategory(e.target.value)}>
+      <option value="clothing">Clothing</option><option value="shoes">Shoes</option>
+      <option value="bags">Bags</option><option value="accessories">Accessories</option>
+     </select>
+    </label>
+    <SizeGuideEditor key={brand.id+'-'+guideCategory} title={'Size chart · '+guideCategory}
+     subtitle={'Default chart for '+brand.name+' '+guideCategory+'. Individual products may use their own override.'}
+     url={brand.size_guides?.[guideCategory]||null}
+     uploadPath={'/admin/brands/'+brand.id+'/size-guides/'+guideCategory}
+     api={api} perform={perform} busy={busy} report={report}/>
+   </div>}
   <button type="submit" className="button button-dark kd-brand-save" disabled={busy}><Save size={17}/>{brand?'SAVE BRAND CHANGES':'CREATE BRAND'}</button>
  </form>;
 }
