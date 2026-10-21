@@ -194,28 +194,37 @@
 .kd-v2-lightbox-tools button:disabled,
 .kd-v2-lightbox-footer button:disabled{opacity:.4;cursor:default}
 .kd-v2-lightbox-stage{
- flex:1;
+ position:relative;
+ flex:1 1 0;
  min-height:0;
  min-width:0;
- display:grid;
- place-items:center;
+ display:block;
  overflow:hidden;
  background:#fff;
  border-radius:4px;
  cursor:grab;
  touch-action:none;
  user-select:none;
+ isolation:isolate;
 }
 .kd-v2-lightbox-stage.is-zoomed{cursor:grabbing}
+/* IMPORTANT: Keep the image out of a CSS grid track. A 100%-height grid
+   item with intrinsic sizing can stretch its track beyond the viewport:
+   at "100%" zoom it then appears massively cropped. Absolutely center the
+   native-sized image, and only scale it UP when the user explicitly zooms. */
 .kd-v2-lightbox-stage img{
- width:100%;
- height:100%;
- max-width:100%;
- max-height:100%;
+ position:absolute;
+ top:50%;
+ left:50%;
+ display:block;
+ width:auto;
+ height:auto;
+ max-width:calc(100% - 24px);
+ max-height:calc(100% - 24px);
  object-fit:contain;
  object-position:center center;
  pointer-events:none;
- transform-origin:center;
+ transform-origin:center center;
  user-select:none;
  will-change:transform;
 }
