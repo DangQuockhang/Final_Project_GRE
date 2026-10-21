@@ -175,11 +175,11 @@ const saveProductBundle=wrap(async(req,res)=>{
       VALUES($1,$2,$3,$4,$5,$6)`,[product.id,...vals]);
    }
   }
-  const count=(await client.query('SELECT COUNT(*)::int AS n FROM product_images WHERE product_id=$1',[product.id])).rows[0].n;
-  if(count+photos.length>8)error('Maximum 8 gallery photos per product.',409);
+  const galleryStats=(await client.query('SELECT COUNT(*)::int AS n,COALESCE(MAX(position),-1)::int+1 AS next_position FROM product_images WHERE product_id=$1',[product.id])).rows[0];
+  if(galleryStats.n+photos.length>8)error('Maximum 8 gallery photos per product.',409);
   for(const [i,file] of photos.entries()){
    const url=await saveImage(file.buffer,file.ext);saved.push(url);
-   await client.query('INSERT INTO product_images(product_id,image_url,position) VALUES($1,$2,$3)',[product.id,url,count+i]);
+   await client.query('INSERT INTO product_images(product_id,image_url,position) VALUES($1,$2,$3)',[product.id,url,galleryStats.next_position+i]);
   }
   if(saved.length&&(coverNewIndex!==undefined||!product.image_url))await client.query('UPDATE products SET image_url=$1 WHERE id=$2',[saved[coverNewIndex??0],product.id]);
   await client.query('COMMIT');committed=true;
@@ -295,12 +295,12 @@ route.post('/admin/products/:id/images',authorize,admin,galleryUpload,wrap(async
   await client.query('BEGIN');
   const product=(await client.query('SELECT id,image_url FROM products WHERE id=$1 FOR UPDATE',[req.params.id])).rows[0];
   if(!product){await client.query('ROLLBACK');return fail(res,'Product not found.',404);}
-  const count=await client.query('SELECT COUNT(*)::int AS n FROM product_images WHERE product_id=$1',[product.id]);
+  const count=await client.query('SELECT COUNT(*)::int AS n,COALESCE(MAX(position),-1)::int+1 AS next_position FROM product_images WHERE product_id=$1',[product.id]);
   if(count.rows[0].n+prepared.length>8){await client.query('ROLLBACK');return fail(res,'Gallery limited to 8 uploaded images.',409);}
   const rows=[];
   for(const [i,file] of prepared.entries()){
    const url=await saveImage(file.buffer,file.ext);saved.push(url);
-   const inserted=await client.query('INSERT INTO product_images(product_id,image_url,position) VALUES($1,$2,$3) RETURNING *',[product.id,url,count.rows[0].n+i]);
+   const inserted=await client.query('INSERT INTO product_images(product_id,image_url,position) VALUES($1,$2,$3) RETURNING *',[product.id,url,count.rows[0].next_position+i]);
    rows.push(inserted.rows[0]);
   }
   if(!product.image_url)await client.query('UPDATE products SET image_url=$1 WHERE id=$2',[rows[0].image_url,product.id]);
