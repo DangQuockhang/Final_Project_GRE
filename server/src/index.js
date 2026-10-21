@@ -133,6 +133,10 @@ const saveProductBundle=wrap(async(req,res)=>{
   seen.add(key);seenSku.add(sku.toLowerCase());
  }
  const photos=(req.files||[]).map(file=>({buffer:file.buffer,ext:detectImage(file.buffer,file.mimetype)}));
+ const coverNewIndex=body.cover_new_index;
+ if(coverNewIndex!==undefined&&
+  (!Number.isSafeInteger(coverNewIndex)||coverNewIndex<0||coverNewIndex>=photos.length))
+   return fail(res,'The selected cover must be one of the new uploaded photos.');
  if(photos.some(p=>!p.ext))return fail(res,'Photos must contain valid JPG, PNG or WebP data.');
  const client=await pool.connect(),saved=[];let committed=false;
  try{
@@ -177,7 +181,7 @@ const saveProductBundle=wrap(async(req,res)=>{
    const url=await saveImage(file.buffer,file.ext);saved.push(url);
    await client.query('INSERT INTO product_images(product_id,image_url,position) VALUES($1,$2,$3)',[product.id,url,count+i]);
   }
-  if(!product.image_url&&saved.length)await client.query('UPDATE products SET image_url=$1 WHERE id=$2',[saved[0],product.id]);
+  if(saved.length&&(coverNewIndex!==undefined||!product.image_url))await client.query('UPDATE products SET image_url=$1 WHERE id=$2',[saved[coverNewIndex??0],product.id]);
   await client.query('COMMIT');committed=true;
   res.status(editing?200:201).json({id:product.id,slug:product.slug,created:!editing});
  }catch(e){
@@ -309,6 +313,41 @@ route.post('/admin/products/:id/images',authorize,admin,galleryUpload,wrap(async
   client.release();
   if(!committed)await Promise.all(saved.map(url=>removeImage(url).catch(()=>{})));
  }
+}));
+// Admin can explicitly reorder product gallery images and select the storefront cover.
+// Position + cover are committed atomically. No image files are removed.
+route.patch('/admin/products/:id/images/order',authorize,admin,wrap(async(req,res)=>{
+ if(!isId(req.params.id))return fail(res,'Invalid product ID.');
+ const ids=req.body.image_ids,coverId=req.body.cover_image_id;
+ if(!Array.isArray(ids)||ids.length>8||ids.some(id=>!isId(id))||
+  new Set(ids.map(String)).size!==ids.length||
+  (coverId!==undefined&&coverId!==null&&!isId(coverId)))
+   return fail(res,'Invalid gallery photo order.');
+ const client=await pool.connect();
+ try{
+  await client.query('BEGIN');
+  const product=(await client.query('SELECT id,image_url FROM products WHERE id=$1 FOR UPDATE',[req.params.id])).rows[0];
+  if(!product){await client.query('ROLLBACK');return fail(res,'Product not found.',404);}
+  const existing=(await client.query('SELECT id,image_url FROM product_images WHERE product_id=$1 ORDER BY position,id FOR UPDATE',[product.id])).rows;
+  const available=new Map(existing.map(image=>[String(image.id),image]));
+  if(ids.length!==existing.length||ids.some(id=>!available.has(String(id)))){
+   await client.query('ROLLBACK');return fail(res,'Gallery changed. Reload the product editor before ordering photos.',409);
+  }
+  if(coverId!=null&&!available.has(String(coverId))){
+   await client.query('ROLLBACK');return fail(res,'Selected cover is not part of this product.',400);
+  }
+  for(const [position,id] of ids.entries()){
+   await client.query('UPDATE product_images SET position=$1 WHERE id=$2 AND product_id=$3',[position,id,product.id]);
+  }
+  let cover=product.image_url;
+  if(coverId!=null){
+   cover=available.get(String(coverId)).image_url;
+   await client.query('UPDATE products SET image_url=$1 WHERE id=$2',[cover,product.id]);
+  }
+  await client.query('COMMIT');
+  res.json({ok:true,image_url:cover,images:ids.map((id,index)=>({...available.get(String(id)),position:index}))});
+ }catch(error){await client.query('ROLLBACK').catch(()=>{});throw error;}
+ finally{client.release();}
 }));
 route.delete('/admin/products/:id/images/:imageId',authorize,admin,wrap(async(req,res)=>{
  if(!isId(req.params.id)||!isId(req.params.imageId))return fail(res,'Invalid image ID.');
