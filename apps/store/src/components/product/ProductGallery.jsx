@@ -6,7 +6,7 @@ import {nextImage} from '../../utils/productGallery.js';
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 function Viewer({images,index,setIndex,onClose,name}){
  const [scale,setScale]=useState(1),[offset,setOffset]=useState({x:0,y:0});
- const pointer=useRef(null),modal=useRef(null),close=useRef(null);
+ const pointer=useRef(null),touchPoints=useRef(new Map()),pinch=useRef(null),modal=useRef(null),close=useRef(null);
  const move=delta=>{setIndex(i=>nextImage(i,delta,images.length));setScale(1);setOffset({x:0,y:0});};
  useEffect(()=>{
   const old=document.body.style.overflow;document.body.style.overflow='hidden';
@@ -26,24 +26,44 @@ function Viewer({images,index,setIndex,onClose,name}){
    return next;
   });
  };
+ const distance=()=>{const pts=[...touchPoints.current.values()];return pts.length<2?0:Math.hypot(pts[0].x-pts[1].x,pts[0].y-pts[1].y);};
  const start=e=>{
   if(e.button!==0)return;
   e.currentTarget.setPointerCapture?.(e.pointerId);
-  pointer.current={id:e.pointerId,x:e.clientX,y:e.clientY,origin:{...offset}};
+  touchPoints.current.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(touchPoints.current.size===2){
+   pinch.current={distance:distance(),scale};
+   pointer.current=null;
+  }else if(touchPoints.current.size===1){
+   pointer.current={id:e.pointerId,x:e.clientX,y:e.clientY,origin:{...offset}};
+  }
  };
  const drag=e=>{
+  if(!touchPoints.current.has(e.pointerId))return;
+  touchPoints.current.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(touchPoints.current.size===2&&pinch.current){
+   const ratio=distance()/Math.max(1,pinch.current.distance);
+   setScale(clamp(pinch.current.scale*ratio,1,4));
+   return;
+  }
   if(!pointer.current||pointer.current.id!==e.pointerId||scale===1)return;
   const nextX=pointer.current.origin.x+e.clientX-pointer.current.x;
   const nextY=pointer.current.origin.y+e.clientY-pointer.current.y;
-  setOffset({x:clamp(nextX,-innerWidth*1.5,innerWidth*1.5),y:clamp(nextY,-innerHeight*1.5,innerHeight*1.5)});
+  setOffset({x:clamp(nextX,-window.innerWidth*1.5,window.innerWidth*1.5),y:clamp(nextY,-window.innerHeight*1.5,window.innerHeight*1.5)});
  };
  const stop=e=>{
-  if(!pointer.current||pointer.current.id!==e.pointerId)return;
-  const dx=e.clientX-pointer.current.x,dy=e.clientY-pointer.current.y;
+  const swipe=pointer.current?.id===e.pointerId&&touchPoints.current.size===1;
+  const dx=swipe?e.clientX-pointer.current.x:0,dy=swipe?e.clientY-pointer.current.y:0;
+  touchPoints.current.delete(e.pointerId);
   pointer.current=null;
-  if(scale===1&&Math.abs(dx)>55&&Math.abs(dx)>Math.abs(dy))move(dx>0?-1:1);
+  if(touchPoints.current.size<2)pinch.current=null;
+  if(swipe&&scale===1&&Math.abs(dx)>55&&Math.abs(dx)>Math.abs(dy))move(dx>0?-1:1);
  };
- const wheel=e=>{if(!e.ctrlKey&&!e.altKey)return;e.preventDefault();zoom(e.deltaY<0?.2:-.2);};
+ const wheel=e=>{
+  if(!e.ctrlKey&&!e.altKey)return;
+  e.preventDefault();
+  zoom(e.deltaY<0?.2:-.2);
+ };
  return createPortal(<div className="kd-v2-lightbox" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)onClose()}}>
   <section className="kd-v2-lightbox-dialog" ref={modal} role="dialog" aria-modal="true" aria-label={'Zoom images of '+name}>
    <header className="kd-v2-lightbox-header">
@@ -56,7 +76,7 @@ function Viewer({images,index,setIndex,onClose,name}){
      <button ref={close} type="button" className="kd-v2-lightbox-close" aria-label="Close image viewer" onClick={onClose}><X size={24}/></button>
     </div>
    </header>
-   <div className={'kd-v2-lightbox-stage'+(scale>1?' is-zoomed':'')} onPointerDown={start} onPointerMove={drag} onPointerUp={stop} onPointerCancel={()=>pointer.current=null} onWheel={wheel}>
+   <div className={'kd-v2-lightbox-stage'+(scale>1?' is-zoomed':'')} onPointerDown={start} onPointerMove={drag} onPointerUp={stop} onPointerCancel={stop} onDoubleClick={()=>{zoom(scale===1?1:-3);setOffset({x:0,y:0})}} onWheel={wheel}>
     <img draggable={false} src={images[index]} alt={name+' photo '+(index+1)} style={{transform:'translate('+offset.x+'px,'+offset.y+'px) scale('+scale+')'}}/>
    </div>
    <footer className="kd-v2-lightbox-footer">
