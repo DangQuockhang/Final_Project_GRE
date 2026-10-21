@@ -57,6 +57,38 @@ test('Admin permissions and COD stock transactions against disposable PostgreSQL
   assert.equal(bundleItem.category,'clothing');
   assert.equal(bundleItem.images.length,2);
   assert.equal(bundleItem.image_url,bundleItem.images[1].image_url,'Chosen uploaded cover must be displayed to customers');
+  // Size guide files must never pollute product photos. Products may override
+  // their brand/category guide without changing their gallery image count.
+  const chartForm=()=>{
+   const form=new FormData();form.append('image',new Blob([png],{type:'image/png'}),'size-chart.png');return form;
+  };
+  const brandChartPath='/api/admin/brands/'+brands[0].id+'/size-guides/clothing';
+  const deniedChart=await fetch(base+brandChartPath,{method:'POST',headers:{Authorization:'Bearer '+user.data.token},body:chartForm()});
+  assert.equal(deniedChart.status,403);
+  const brandChart=await fetch(base+brandChartPath,{method:'POST',headers:{Authorization:'Bearer '+token},body:chartForm()});
+  assert.equal(brandChart.status,201);
+  const brandChartBody=await brandChart.json();
+  assert.match(brandChartBody.image_url,/^\/media\/products\/[a-f0-9-]{36}\.png$/i);
+  const sizeWithDefault=await fetch(base+'/api/products/'+bundleBody.slug).then(r=>r.json());
+  assert.equal(sizeWithDefault.brand_size_guide_image_url,brandChartBody.image_url);
+  assert.equal(sizeWithDefault.size_guide_image_url,null);
+  assert.equal(sizeWithDefault.images.length,2,'Brand size chart is not a gallery photo');
+  const productChartPath='/api/admin/products/'+bundleBody.id+'/size-guide';
+  assert.equal((await fetch(base+productChartPath,{method:'POST',headers:{Authorization:'Bearer '+user.data.token},body:chartForm()})).status,403);
+  const overrideChart=await fetch(base+productChartPath,{method:'POST',headers:{Authorization:'Bearer '+token},body:chartForm()});
+  assert.equal(overrideChart.status,201);
+  const overrideBody=await overrideChart.json();
+  const sizeWithOverride=await fetch(base+'/api/products/'+bundleBody.slug).then(r=>r.json());
+  assert.equal(sizeWithOverride.size_guide_image_url,overrideBody.size_guide_image_url);
+  assert.notEqual(sizeWithOverride.size_guide_image_url,sizeWithOverride.brand_size_guide_image_url);
+  assert.equal(sizeWithOverride.images.length,2,'Product size guide is not a gallery photo');
+  assert.equal((await request(productChartPath,undefined,token,'DELETE')).status,200);
+  const restoredBrandGuide=await fetch(base+'/api/products/'+bundleBody.slug).then(r=>r.json());
+  assert.equal(restoredBrandGuide.size_guide_image_url,null);
+  assert.equal(restoredBrandGuide.brand_size_guide_image_url,brandChartBody.image_url);
+  assert.equal((await request(brandChartPath,undefined,token,'DELETE')).status,200);
+  const noGuide=await fetch(base+'/api/products/'+bundleBody.slug).then(r=>r.json());
+  assert.equal(noGuide.brand_size_guide_image_url,null);
   assert.equal(bundleItem.variants.length,3);
   assert.equal(bundleItem.variants.find(v=>v.color==='Red').color_hex,'#bb3344');
   assert.equal(bundleItem.variants.find(v=>v.color==='Gray').stock,0);
