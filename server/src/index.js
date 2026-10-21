@@ -50,7 +50,7 @@ route.get('/auth/me',authorize,wrap(async(req,res)=>{
  const r=await query('SELECT id,name,email,role FROM users WHERE id=$1',[req.user.id]);if(!r.rows[0])return fail(res,'Tài khoản không tồn tại.',401);res.json(r.rows[0]);
 }));
 
-route.get('/brands',wrap(async(req,res)=>{const r=await query('SELECT * FROM brands ORDER BY name');res.json(r.rows);}));
+route.get('/brands',wrap(async(req,res)=>{const r=await query(`SELECT b.*,COALESCE((SELECT json_object_agg(g.category,g.image_url) FROM brand_size_guides g WHERE g.brand_id=b.id),'{}'::json) AS size_guides FROM brands b ORDER BY b.name`);res.json(r.rows);}));
 route.post('/brands',authorize,admin,wrap(async(req,res)=>{
  const name=clean(req.body.name);if(name.length<2||name.length>120)return fail(res,'Tên brand cần 2–120 ký tự.');
  const slug=slugify(req.body.slug||name);if(!slug)return fail(res,'Slug không hợp lệ.');
@@ -92,7 +92,52 @@ route.delete('/admin/brands/:id/logo',authorize,admin,wrap(async(req,res)=>{
  res.json({ok:true});
 }));
 
-const baseSelect=`SELECT p.*,b.name AS brand_name,b.slug AS brand_slug,b.logo_url AS brand_logo_url, COALESCE((SELECT json_agg(json_build_object('id',v.id,'sku',v.sku,'size',v.size,'color',v.color,'color_hex',v.color_hex,'chest_cm',v.chest_cm,'stock',v.stock) ORDER BY v.id) FROM product_variants v WHERE v.product_id=p.id),'[]'::json) AS variants, COALESCE((SELECT json_agg(json_build_object('id',i.id,'image_url',i.image_url,'position',i.position) ORDER BY i.position,i.id) FROM product_images i WHERE i.product_id=p.id),'[]'::json) AS images FROM products p JOIN brands b ON b.id=p.brand_id`;
+
+// Size guides are uploaded independently of the merchandise gallery. The
+// optional per-product image overrides the default for its brand/category.
+const sizeGuideCategories=new Set(['clothing','shoes','bags','accessories']);
+route.post('/admin/brands/:id/size-guides/:category',authorize,admin,imageUpload,wrap(async(req,res)=>{
+ if(!isId(req.params.id)||!sizeGuideCategories.has(req.params.category)||!req.file)return fail(res,'Select a brand, category and valid size chart image.');
+ const ext=detectImage(req.file.buffer,req.file.mimetype);
+ if(!ext)return fail(res,'Size chart must be a valid JPG, PNG or WebP image.',400);
+ const brand=(await query('SELECT id FROM brands WHERE id=$1',[req.params.id])).rows[0];
+ if(!brand)return fail(res,'Brand not found.',404);
+ const old=(await query('SELECT image_url FROM brand_size_guides WHERE brand_id=$1 AND category=$2',[brand.id,req.params.category])).rows[0]?.image_url;
+ const url=await saveImage(req.file.buffer,ext);
+ try{await query('INSERT INTO brand_size_guides(brand_id,category,image_url) VALUES($1,$2,$3) ON CONFLICT(brand_id,category) DO UPDATE SET image_url=EXCLUDED.image_url',[brand.id,req.params.category,url]);}
+ catch(e){await removeImage(url).catch(()=>{});throw e;}
+ if(old)await removeImage(old).catch(()=>{});
+ res.status(201).json({brand_id:brand.id,category:req.params.category,image_url:url});
+}));
+route.delete('/admin/brands/:id/size-guides/:category',authorize,admin,wrap(async(req,res)=>{
+ if(!isId(req.params.id)||!sizeGuideCategories.has(req.params.category))return fail(res,'Invalid brand/category.');
+ const old=await query('DELETE FROM brand_size_guides WHERE brand_id=$1 AND category=$2 RETURNING image_url',[req.params.id,req.params.category]);
+ if(!old.rowCount)return fail(res,'Size guide not found.',404);
+ await removeImage(old.rows[0].image_url).catch(()=>{});
+ res.json({ok:true});
+}));
+route.post('/admin/products/:id/size-guide',authorize,admin,imageUpload,wrap(async(req,res)=>{
+ if(!isId(req.params.id)||!req.file)return fail(res,'Select a product and size guide image.');
+ const ext=detectImage(req.file.buffer,req.file.mimetype);
+ if(!ext)return fail(res,'Size chart must be a valid JPG, PNG or WebP image.');
+ const product=(await query('SELECT size_guide_image_url FROM products WHERE id=$1',[req.params.id])).rows[0];
+ if(!product)return fail(res,'Product not found.',404);
+ const url=await saveImage(req.file.buffer,ext);
+ try{await query('UPDATE products SET size_guide_image_url=$1 WHERE id=$2',[url,req.params.id]);}
+ catch(e){await removeImage(url).catch(()=>{});throw e;}
+ if(product.size_guide_image_url)await removeImage(product.size_guide_image_url).catch(()=>{});
+ res.status(201).json({size_guide_image_url:url});
+}));
+route.delete('/admin/products/:id/size-guide',authorize,admin,wrap(async(req,res)=>{
+ if(!isId(req.params.id))return fail(res,'Invalid product ID.');
+ const old=await query('SELECT size_guide_image_url FROM products WHERE id=$1',[req.params.id]);
+ if(!old.rowCount)return fail(res,'Product not found.',404);
+ await query('UPDATE products SET size_guide_image_url=NULL WHERE id=$1',[req.params.id]);
+ if(old.rows[0].size_guide_image_url)await removeImage(old.rows[0].size_guide_image_url).catch(()=>{});
+ res.json({ok:true});
+}));
+
+const baseSelect=`SELECT p.*,b.name AS brand_name,b.slug AS brand_slug,b.logo_url AS brand_logo_url,(SELECT g.image_url FROM brand_size_guides g WHERE g.brand_id=p.brand_id AND g.category=p.category) AS brand_size_guide_image_url, COALESCE((SELECT json_agg(json_build_object('id',v.id,'sku',v.sku,'size',v.size,'color',v.color,'color_hex',v.color_hex,'chest_cm',v.chest_cm,'stock',v.stock) ORDER BY v.id) FROM product_variants v WHERE v.product_id=p.id),'[]'::json) AS variants, COALESCE((SELECT json_agg(json_build_object('id',i.id,'image_url',i.image_url,'position',i.position) ORDER BY i.position,i.id) FROM product_images i WHERE i.product_id=p.id),'[]'::json) AS images FROM products p JOIN brands b ON b.id=p.brand_id`;
 route.get('/products',wrap(async(req,res)=>{
  const where=[`p.status='active'`],params=[];
  if(req.query.brand){params.push(clean(req.query.brand));where.push(`b.slug=$${params.length}`);}
