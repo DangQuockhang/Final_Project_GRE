@@ -1,5 +1,5 @@
 import React,{useEffect,useMemo,useRef,useState} from 'react';
-import {ImagePlus,Plus,Trash2,Layers,Save,RotateCcw} from 'lucide-react';
+import {ImagePlus,Plus,Trash2,Layers,Save,RotateCcw,ArrowLeft,ArrowRight,Star} from 'lucide-react';
 import {apiBase,productImageUrl} from '@kd/catalog';
 import {PRODUCT_CATEGORIES,PRODUCT_STATUSES,validateProduct} from '../../utils/adminValidation.js';
 import {buildVariantMatrix,hasMultipleColors,FALLBACK_HEX} from '../../utils/variantBuilder.js';
@@ -7,6 +7,7 @@ import {duplicateProduct} from '../../utils/duplicateProduct.js';
 import QuickAddBrand from './QuickAddBrand.jsx';
 import ImagePasteZone from '../../components/admin/ImagePasteZone.jsx';
 import {appendImages,imageFilesFromClipboard} from '../../utils/clipboardImages.js';
+import {moveItem,galleryInOrder} from '../../utils/productPhotoOrder.js';
 
 const shades=[{name:'Black',hex:'#222222'},{name:'Red',hex:'#C33C42'},{name:'Gray',hex:'#898C91'}];
 const normal=v=>String(v||'').toLowerCase().trim();
@@ -28,6 +29,17 @@ export default function ProductEditor({product,duplicateSource=null,duplicateTok
  const [sizes,setSizes]=useState(()=>duplicated?.sizes||[...new Set((product?.variants||[]).map(v=>v.size))].join(', ')||'ONE SIZE');
  const [rows,setRows]=useState(()=>duplicated?.rows||(product?.variants||[]).map(v=>({...v,stock:String(v.stock),color_hex:v.color_hex||initialColors(product).find(c=>normal(c.name)===normal(v.color))?.hex||'#758073'})));
  const [files,setFiles]=useState([]),[defaultStock,setDefaultStock]=useState('0'),[working,setWorking]=useState(false);
+ const [pendingCover,setPendingCover]=useState(null);
+ const [galleryIds,setGalleryIds]=useState(()=>(product?.images||[]).map(image=>image.id));
+ const [coverGalleryId,setCoverGalleryId]=useState(null);
+ useEffect(()=>{
+  setGalleryIds((product?.images||[]).map(image=>image.id));
+  setCoverGalleryId(null);
+ },[product?.images,product?.image_url]);
+ const orderedGallery=galleryInOrder(product?.images||[],galleryIds);
+ const galleryChanged=galleryIds.some((id,i)=>String(id)!==String(product?.images?.[i]?.id));
+ const coverChanged=coverGalleryId!=null&&
+  !orderedGallery.some(image=>String(image.id)===String(coverGalleryId)&&image.image_url===product?.image_url);
  const [removedVariants,setRemovedVariants]=useState([]);
  const [quickBrandOpen,setQuickBrandOpen]=useState(false);
  const quickBrandButton=useRef(null);
@@ -109,6 +121,30 @@ export default function ProductEditor({product,duplicateSource=null,duplicateTok
   if(result.error){report(result.error);return;}
   setFiles(result.files);
  }
+ function movePending(index,direction){setFiles(previous=>moveItem(previous,index,direction));}
+ function removePending(index){
+  setFiles(previous=>{
+   const removed=previous[index];
+   if(removed===pendingCover)setPendingCover(null);
+   return previous.filter((_,i)=>i!==index);
+  });
+ }
+ async function savePhotoOrder(){
+  if(!product)return;
+  const ok=await perform(()=>api('/admin/products/'+product.id+'/images/order',{
+   method:'PATCH',
+   body:{image_ids:galleryIds,...(coverGalleryId!=null?{cover_image_id:coverGalleryId}:{})}
+  }),'Gallery order and cover image saved.');
+  if(ok)setCoverGalleryId(null);
+ }
+ async function removeExistingImage(image){
+  if(!product||!window.confirm('Remove this product gallery photo?'))return;
+  await perform(()=>api('/admin/products/'+product.id+'/images/'+image.id,{method:'DELETE'}),'Gallery photo removed.');
+ }
+ async function removeCurrentCover(){
+  if(!product?.image_url||!window.confirm('Remove the current cover? The earliest gallery image will become the cover when available.'))return;
+  await perform(()=>api('/admin/products/'+product.id+'/image',{method:'DELETE'}),'Cover image removed.');
+ }
  function paste(e){
   if(quickBrandOpen)return;
   const images=imageFilesFromClipboard(e.clipboardData);
@@ -150,7 +186,8 @@ export default function ProductEditor({product,duplicateSource=null,duplicateTok
   const deletedIds=removedVariants.map(v=>v.id);
   const hasOriginalStock=removedVariants.some(v=>(product?.variants||[]).some(original=>String(original.id)===String(v.id)&&Number(original.stock)>0));
   form.append('payload',JSON.stringify({...data,price:Number(data.price),sale_price:data.sale_price===''?null:Number(data.sale_price),
-   variants:savingRows.map(v=>({...v,stock:Number(v.stock)})),deleted_variant_ids:deletedIds,confirm_stock_discard:hasOriginalStock}));
+   variants:savingRows.map(v=>({...v,stock:Number(v.stock)})),deleted_variant_ids:deletedIds,confirm_stock_discard:hasOriginalStock,
+   ...(files.includes(pendingCover)?{cover_new_index:files.indexOf(pendingCover)}:{})}));
   files.forEach(f=>form.append('images',f));
   setWorking(true);
   try{
@@ -220,15 +257,61 @@ export default function ProductEditor({product,duplicateSource=null,duplicateTok
     <div>{removedVariants.map(v=><div className="kd-pending-sku" key={v.id}><span>{v.color} / {v.size} · {v.sku}</span><button type="button" onClick={()=>undoRemoval(v)}>UNDO</button></div>)}</div>
    </div>}
   </section>
-  <section className="kd-quick-step"><div className="kd-quick-step-heading"><div><h4>2. Product photographs</h4><p>Paste screenshots or copied images, drag and drop, or choose image files. The first image is the cover for a new product.</p></div><ImagePlus size={27}/></div>
-   {gallery.length>0&&<div className="kd-quick-photo-thumbs">{gallery.map(u=><img key={u} src={productImageUrl(u,import.meta.env.VITE_API_URL||apiBase)} alt="Existing product photo"/>)}</div>}
+  <section className="kd-quick-step kd-editor-media">
+   <div className="kd-quick-step-heading">
+    <div><h4>2. Photos & storefront cover</h4>
+     <p>Images in File Explorer may not follow your Ctrl-click order. Use the arrows below to set the order explicitly. Choose a cover to display to customers.</p>
+    </div>
+    <ImagePlus size={27}/>
+   </div>
+   {product&&<div className="kd-editor-cover-preview">
+    {product.image_url?<img src={productImageUrl(product.image_url,import.meta.env.VITE_API_URL||apiBase)} alt={'Current cover for '+product.name}/>:<div><ImagePlus size={26}/> No cover photo</div>}
+    <div><strong>CURRENT STOREFRONT COVER</strong><span>This is the image customers see on product cards.</span>
+     {product.image_url&&<button type="button" className="border-button" disabled={busy||working} onClick={removeCurrentCover}>REMOVE COVER</button>}
+    </div>
+   </div>}
+   {product&&orderedGallery.length>0&&<>
+    <div className="kd-editor-gallery-head"><strong>EXISTING GALLERY — {orderedGallery.length} PHOTOS</strong><span>Arrange from left to right, then save the order.</span></div>
+    <div className="kd-editor-gallery-reorder">
+     {orderedGallery.map((image,i)=>{
+      const isCover=String(coverGalleryId||'')===String(image.id)||(coverGalleryId==null&&product.image_url===image.image_url);
+      return <div className={'kd-editor-image-tile'+(isCover?' is-cover':'')} key={image.id}>
+       <div className="kd-editor-image-stage"><img src={productImageUrl(image.image_url,import.meta.env.VITE_API_URL||apiBase)} alt={'Gallery photo '+(i+1)}/>
+        <span className="kd-editor-image-index">{i+1}</span>{isCover&&<span className="kd-editor-cover-tag"><Star size={13}/> COVER</span>}
+       </div>
+       <div className="kd-editor-tile-controls">
+        <button type="button" title="Move photo left" aria-label={'Move existing photo '+(i+1)+' left'} disabled={busy||working||i===0} onClick={()=>setGalleryIds(prev=>moveItem(prev,i,-1))}><ArrowLeft size={17}/></button>
+        <button type="button" title="Move photo right" aria-label={'Move existing photo '+(i+1)+' right'} disabled={busy||working||i===orderedGallery.length-1} onClick={()=>setGalleryIds(prev=>moveItem(prev,i,1))}><ArrowRight size={17}/></button>
+        <button type="button" title="Set as main cover" aria-label={'Use existing photo '+(i+1)+' as cover'} disabled={busy||working} onClick={()=>setCoverGalleryId(image.id)}><Star size={17}/></button>
+        <button type="button" title="Remove gallery photo" aria-label={'Remove existing photo '+(i+1)} disabled={busy||working} onClick={()=>removeExistingImage(image)}><Trash2 size={17}/></button>
+       </div>
+      </div>;
+     })}
+    </div>
+    <button className="border-button kd-save-gallery-order" disabled={busy||working||(!galleryChanged&&!coverChanged)} type="button" onClick={savePhotoOrder}><Save size={17}/> SAVE PHOTO ORDER & COVER</button>
+    {(galleryChanged||coverChanged)&&<p className="kd-editor-order-unsaved" role="status">Photo order or cover changed. Click SAVE PHOTO ORDER & COVER to apply to the storefront.</p>}
+   </>}
+   <div className="kd-editor-gallery-head"><strong>{product?'ADD NEW PHOTOS':'NEW PRODUCT PHOTOS'}</strong><span>Maximum {limit} new images, 3 MB per file.</span></div>
    <ImagePasteZone label="product photos" onImages={choose} disabled={busy||working}/>
    <input type="file" multiple accept="image/jpeg,image/png,image/webp" aria-label="Select multiple product photos" onChange={e=>{choose(e.target.files);e.target.value='';}}/>
-   <p>{files.length} new photo(s) selected · {Math.max(0,limit)} slots allowed per save · 3 MB maximum per photo. Pasted photos are uploaded only when you save.</p>
-   {urls.length>0&&<div className="kd-quick-photo-thumbs kd-pasted-photo-thumbs">{urls.map((x,i)=><div className="kd-pasted-photo" key={x.url}>
-      <img src={x.url} alt={x.name||'Selected product photo'}/>
-      <button type="button" className="kd-remove-pasted-image" aria-label={'Remove selected photo '+(i+1)} title="Remove image before saving" onClick={()=>setFiles(previous=>previous.filter((_,j)=>j!==i))}><Trash2 size={15}/></button>
-    </div>)}</div>}
+   <p>{files.length} new photo(s) selected · Click Choose Files repeatedly to preserve your chosen sequence, or reorder with the arrows.</p>
+   {urls.length>0&&<div className="kd-editor-gallery-reorder">
+    {urls.map((x,i)=>{
+     const isCover=pendingCover===files[i]||(!product&&!pendingCover&&i===0);
+     return <div className={'kd-editor-image-tile'+(isCover?' is-cover':'')} key={x.url}>
+      <div className="kd-editor-image-stage"><img src={x.url} alt={x.name||'Selected product photo'}/>
+       <span className="kd-editor-image-index">{i+1}</span>{isCover&&<span className="kd-editor-cover-tag"><Star size={13}/> COVER</span>}
+      </div>
+      <div className="kd-editor-tile-controls">
+       <button type="button" title="Move image left" aria-label={'Move new photo '+(i+1)+' left'} disabled={i===0||busy||working} onClick={()=>movePending(i,-1)}><ArrowLeft size={17}/></button>
+       <button type="button" title="Move image right" aria-label={'Move new photo '+(i+1)+' right'} disabled={i===files.length-1||busy||working} onClick={()=>movePending(i,1)}><ArrowRight size={17}/></button>
+       <button type="button" title="Make cover" aria-label={'Set new photo '+(i+1)+' as cover'} disabled={busy||working} onClick={()=>setPendingCover(files[i])}><Star size={17}/></button>
+       <button type="button" title="Remove pending image" aria-label={'Remove new photo '+(i+1)} disabled={busy||working} onClick={()=>removePending(i)}><Trash2 size={17}/></button>
+      </div>
+     </div>;
+    })}
+   </div>}
+   <p className="kd-editor-media-help">New photos and the selected new cover are saved with SAVE ALL PRODUCT CHANGES. Existing-gallery ordering is saved with SAVE PHOTO ORDER & COVER.</p>
   </section>
   <div className="kd-quick-save"><button className="button button-dark" type="submit" disabled={busy||working||!brands.length}><Save size={18}/>{working?'SAVING…':product?'SAVE ALL PRODUCT CHANGES':duplicated?'CREATE DUPLICATE DRAFT':'CREATE PRODUCT WITH PHOTOS'}</button><span>{duplicated?'This copy is a separate product. All copied sizes start with zero stock; photos are not shared with the original.': 'New products default to Draft. Order-linked SKU history is protected; confirmed unreferenced SKU removals are applied on Save.'}</span></div>
   {quickBrandOpen&&<QuickAddBrand brands={brands} api={api} perform={perform} busy={busy||working} report={report}
