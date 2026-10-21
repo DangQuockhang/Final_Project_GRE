@@ -77,7 +77,7 @@ function Viewer({images,index,setIndex,onClose,name}){
     </div>
    </header>
    <div className={'kd-v2-lightbox-stage'+(scale>1?' is-zoomed':'')} onPointerDown={start} onPointerMove={drag} onPointerUp={stop} onPointerCancel={stop} onDoubleClick={()=>{zoom(scale===1?1:-3);setOffset({x:0,y:0})}} onWheel={wheel}>
-    <img draggable={false} src={images[index]} alt={name+' photo '+(index+1)} style={{transform:'translate('+offset.x+'px,'+offset.y+'px) scale('+scale+')'}}/>
+    <img draggable={false} src={images[index]} alt={name+' photo '+(index+1)} style={{transform:'translate(-50%, -50%) translate('+offset.x+'px,'+offset.y+'px) scale('+scale+')'}}/>
    </div>
    <footer className="kd-v2-lightbox-footer">
     <button type="button" aria-label="Previous photo" onClick={()=>move(-1)} disabled={images.length<2}><ChevronLeft size={24}/></button>
