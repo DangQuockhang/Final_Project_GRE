@@ -966,3 +966,113 @@
  .kd-compact-product-card{transition:none}
  .kd-compact-product-card:hover{transform:none}
 }
+
+
+/* Sprint 2.19 | Size charts are independently edited, never product gallery photos. */
+.kd-size-guide-admin{
+ display:grid;
+ gap:15px;
+ min-width:0;
+ margin-top:19px;
+ padding:clamp(17px,2vw,23px);
+ border:1px solid #dce7d9;
+ background:#f6f9f4;
+}
+.kd-size-guide-admin .kd-quick-step-heading h4{
+ display:flex;
+ align-items:center;
+ gap:10px;
+}
+.kd-size-guide-admin-stage{
+ display:grid;
+ align-content:start;
+ justify-content:start;
+ gap:9px;
+ min-width:0;
+}
+.kd-size-guide-admin-stage img{
+ display:block;
+ max-width:min(100%,420px);
+ max-height:310px;
+ width:auto;
+ height:auto;
+ object-fit:contain;
+ background:#fff;
+ border:1px solid #d8e1d5;
+ padding:8px;
+}
+.kd-size-guide-admin-stage p{
+ font-size:14px;
+ color:#5d765f;
+ margin:0;
+}
+.kd-size-guide-admin-empty{
+ display:flex;
+ align-items:center;
+ gap:12px;
+ padding:16px;
+ color:#778a78;
+ background:#fff;
+ border:1px dashed #bed1bb;
+ font-size:14px;
+}
+.kd-size-guide-admin-upload{
+ display:grid;
+ gap:11px;
+ min-width:0;
+}
+.kd-size-guide-admin-upload>input[type=file]{
+ max-width:100%;
+ min-height:44px;
+ font-size:14px;
+ color:#465d49;
+}
+.kd-size-guide-admin-actions{
+ display:flex;
+ align-items:center;
+ flex-wrap:wrap;
+ gap:10px;
+}
+.kd-size-guide-admin-actions button{
+ display:inline-flex;
+ align-items:center;
+ justify-content:center;
+ gap:9px;
+ min-height:44px;
+ padding:10px 14px;
+ font-size:13px;
+ font-weight:800;
+}
+.kd-size-guide-admin-actions .kd-size-remove{color:#a34b49;border-color:#dfc9c5}
+.kd-size-guide-help{
+ font-size:13px;
+ color:#758675;
+ line-height:1.6;
+ margin:0;
+}
+.kd-size-guide-new-note>strong{font-size:16px;color:#3d5641}
+.kd-size-guide-new-note>p{font-size:14px;line-height:1.6;color:#5d755f}
+.kd-brand-guide-config{
+ display:grid;
+ gap:15px;
+ margin-top:16px;
+}
+.kd-brand-guide-config>label{
+ display:grid;
+ gap:8px;
+ color:#425944;
+ font-size:13px;
+ font-weight:800;
+ letter-spacing:.045em;
+}
+.kd-brand-guide-config>label select{
+ min-height:48px;
+ padding:10px 14px;
+ font-size:15px;
+ background:#fff;
+ border:1px solid #c7d6c3;
+}
+@media(max-width:620px){
+ .kd-size-guide-admin{padding:14px}
+ .kd-size-guide-admin-actions button{width:100%}
+}
