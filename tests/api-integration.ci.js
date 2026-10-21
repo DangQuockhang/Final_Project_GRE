@@ -36,7 +36,7 @@ test('Admin permissions and COD stock transactions against disposable PostgreSQL
   const createBundle={
    name:'Bundle Color Tee '+id,brand_id:brands[0].id,category:'clothing',
    product_type:'T-Shirt',price:1300000,sale_price:900000,status:'active',description:'Three-color product',
-   color:'#222222',variants:[
+   color:'#222222',cover_new_index:1,variants:[
     {sku:'B-'+id+'-BLACK-M',size:'M',color:'Black',color_hex:'#222222',stock:5},
     {sku:'B-'+id+'-RED-M',size:'M',color:'Red',color_hex:'#bb3344',stock:2},
     {sku:'B-'+id+'-GRAY-M',size:'M',color:'Gray',color_hex:'#888888',stock:0}
@@ -56,6 +56,7 @@ test('Admin permissions and COD stock transactions against disposable PostgreSQL
   const bundleItem=await fetch(base+'/api/products/'+bundleBody.slug).then(r=>r.json());
   assert.equal(bundleItem.category,'clothing');
   assert.equal(bundleItem.images.length,2);
+  assert.equal(bundleItem.image_url,bundleItem.images[1].image_url,'Chosen uploaded cover must be displayed to customers');
   assert.equal(bundleItem.variants.length,3);
   assert.equal(bundleItem.variants.find(v=>v.color==='Red').color_hex,'#bb3344');
   assert.equal(bundleItem.variants.find(v=>v.color==='Gray').stock,0);
@@ -202,6 +203,21 @@ test('Admin permissions and COD stock transactions against disposable PostgreSQL
   assert.equal(galleryData.images.length,2);
   const withGallery=await fetch(base+'/api/products/'+product.data.slug).then(r=>r.json());
   assert.equal(withGallery.images.length,2);
+  const orderPath=galleryPath+'/order';
+  const photoIds=galleryData.images.map(image=>image.id);
+  assert.equal((await request(orderPath,{image_ids:photoIds.slice().reverse(),cover_image_id:photoIds[1]},user.data.token,'PATCH')).status,403,
+   'Customers cannot reorder or change storefront product images');
+  assert.equal((await request(orderPath,{image_ids:[photoIds[0]],cover_image_id:photoIds[1]},token,'PATCH')).status,409,
+   'Partial lists must not remove/rearrange other gallery entries');
+  assert.equal((await request(orderPath,{image_ids:photoIds,cover_image_id:987654321},token,'PATCH')).status,400,
+   'Cover must belong to the selected product');
+  const reordered=await request(orderPath,{image_ids:[photoIds[1],photoIds[0]],cover_image_id:photoIds[1]},token,'PATCH');
+  assert.equal(reordered.status,200);
+  const reorderedPdp=await fetch(base+'/api/products/'+product.data.slug).then(r=>r.json());
+  assert.deepEqual(reorderedPdp.images.map(image=>image.id),[photoIds[1],photoIds[0]],
+   'Public gallery order must persist after refresh');
+  assert.equal(reorderedPdp.image_url,galleryData.images[1].image_url,
+   'Set-as-cover must update actual storefront product cover');
   assert.equal(withGallery.product_type,'T-Shirt');
   assert.equal(Number(withGallery.sale_price),990000);
   const removedGallery=await request('/api/admin/products/'+product.data.id+'/images/'+galleryData.images[0].id,undefined,token,'DELETE');
