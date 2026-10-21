@@ -60,7 +60,7 @@ test('Admin permissions and COD stock transactions against disposable PostgreSQL
   assert.equal(bundleItem.variants.length,3);
   assert.equal(bundleItem.variants.find(v=>v.color==='Red').color_hex,'#bb3344');
   assert.equal(bundleItem.variants.find(v=>v.color==='Gray').stock,0);
-  const editedPayload={...createBundle,name:'Bundle Color Tee '+id,price:1400000,sale_price:950000,
+  const editedPayload={...createBundle,cover_new_index:undefined,name:'Bundle Color Tee '+id,price:1400000,sale_price:950000,
    variants:bundleItem.variants.map(v=>({...v,stock:v.color==='Red'?4:v.stock}))};
   const updateForm=new FormData();updateForm.append('payload',JSON.stringify(editedPayload));
   const updateBundle=await fetch(base+'/api/admin/products/'+bundleBody.id+'/bundle',{method:'PATCH',headers:{Authorization:'Bearer '+token},body:updateForm});
