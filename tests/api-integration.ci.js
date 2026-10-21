@@ -214,7 +214,7 @@ test('Admin permissions and COD stock transactions against disposable PostgreSQL
   const reordered=await request(orderPath,{image_ids:[photoIds[1],photoIds[0]],cover_image_id:photoIds[1]},token,'PATCH');
   assert.equal(reordered.status,200);
   const reorderedPdp=await fetch(base+'/api/products/'+product.data.slug).then(r=>r.json());
-  assert.deepEqual(reorderedPdp.images.map(image=>image.id),[photoIds[1],photoIds[0]],
+  assert.deepEqual(reorderedPdp.images.map(image=>String(image.id)),[photoIds[1],photoIds[0]].map(String),
    'Public gallery order must persist after refresh');
   assert.equal(reorderedPdp.image_url,galleryData.images[1].image_url,
    'Set-as-cover must update actual storefront product cover');
