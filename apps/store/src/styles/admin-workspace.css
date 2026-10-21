@@ -685,3 +685,284 @@
  .kd-brand-management-toolbar>label{flex:1 1 calc(50% - 12px);min-width:125px}
  .kd-brand-reset{width:100%}
 }
+
+
+/* Sprint 2.18 — inventory is managed in Edit, not shown on every catalog card. */
+.kd-compact-products .kd-admin-panel-header{
+ margin-bottom:24px;
+}
+.kd-compact-create-toggle{display:flex;justify-content:flex-start;margin:0 0 20px}
+.kd-compact-create-toggle .button{display:inline-flex;align-items:center;gap:9px;min-height:48px;padding-inline:23px;font-size:14px}
+.kd-compact-create-panel{padding:22px;background:#f7f9f5;border:1px solid #dbe5d9;margin-bottom:25px}
+.kd-compact-product-toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:22px}
+.kd-compact-product-toolbar>input{flex:1 1 260px;min-width:180px;min-height:48px;font-size:15px}
+.kd-compact-product-toolbar>select{flex:0 0 auto;min-height:48px;font-size:15px}
+.kd-compact-product-toolbar>span{margin-left:auto;color:#6b806e;font-size:14px}
+.kd-compact-product-grid{
+ display:grid;
+ grid-template-columns:repeat(auto-fill,minmax(min(100%,215px),1fr));
+ align-items:stretch;
+ gap:clamp(14px,1.6vw,24px);
+ width:100%;
+}
+.kd-compact-product-grid>.kd-admin-placeholder{grid-column:1/-1}
+.kd-compact-product-card{
+ display:flex;
+ flex-direction:column;
+ min-width:0;
+ min-height:0;
+ border:1px solid #e0e6dd;
+ border-radius:7px;
+ overflow:hidden;
+ background:#fff;
+ box-shadow:0 3px 15px rgba(35,47,37,.035);
+ transition:box-shadow .22s ease,transform .22s ease,border-color .22s ease;
+}
+.kd-compact-product-card:hover{
+ border-color:#bdcebc;
+ box-shadow:0 10px 23px rgba(35,47,37,.1);
+ transform:translateY(-2px);
+}
+.kd-compact-product-picture{
+ display:grid;
+ place-items:center;
+ flex:none;
+ width:100%;
+ aspect-ratio:4/4.3;
+ min-height:185px;
+ border:0;
+ border-bottom:1px solid #f0f2ed;
+ padding:0;
+ cursor:pointer;
+ background:#fff;
+}
+.kd-compact-product-picture:focus-visible,
+.kd-compact-product-actions button:focus-visible{
+ outline:3px solid #7e9c81;
+ outline-offset:-3px;
+}
+.kd-compact-product-picture img{
+ display:block;
+ width:100%;
+ height:100%;
+ max-width:100%;
+ object-fit:contain;
+ object-position:center;
+ padding:clamp(10px,1.15vw,18px);
+ background:#fff;
+}
+.kd-compact-product-no-photo{
+ display:flex;
+ flex-direction:column;
+ align-items:center;
+ justify-content:center;
+ gap:10px;
+ font-size:13px;
+ color:#879587;
+}
+.kd-compact-product-information{
+ display:flex;
+ flex:1;
+ flex-direction:column;
+ gap:7px;
+ padding:16px 16px 12px;
+}
+.kd-compact-product-information small{
+ font-size:12px;
+ line-height:1.4;
+ font-weight:800;
+ text-transform:uppercase;
+ letter-spacing:.07em;
+ color:#778b78;
+}
+.kd-compact-product-information h3{
+ display:-webkit-box;
+ -webkit-box-orient:vertical;
+ -webkit-line-clamp:2;
+ line-clamp:2;
+ overflow:hidden;
+ min-height:2.8em;
+ max-height:2.8em;
+ font-size:16px;
+ line-height:1.4;
+ letter-spacing:-.012em;
+ font-weight:750;
+ color:#27352c;
+ margin:0;
+ overflow-wrap:anywhere;
+}
+.kd-compact-product-actions{
+ display:flex;
+ align-items:center;
+ flex-wrap:wrap;
+ gap:8px;
+ padding:0 16px 17px;
+}
+.kd-compact-product-actions button{
+ flex:1 1 auto;
+ display:inline-flex;
+ align-items:center;
+ justify-content:center;
+ gap:6px;
+ padding:10px 8px;
+ min-height:41px;
+ border:1px solid #ced9cc;
+ background:#fff;
+ color:#344a38;
+ font-size:12px;
+ font-weight:800;
+ cursor:pointer;
+}
+.kd-compact-product-actions button:hover{background:#eef3ec}
+.kd-compact-danger-actions{
+ display:flex;
+ flex-wrap:wrap;
+ justify-content:space-between;
+ align-items:center;
+ gap:15px;
+ margin:18px 22px 27px;
+ padding:19px;
+ background:#fdf6f3;
+ border:1px solid #eadad4;
+}
+.kd-compact-danger-actions>div{flex:1 1 300px}
+.kd-compact-danger-actions strong{font-size:15px;font-weight:800;color:#733e3a}
+.kd-compact-danger-actions p{margin:7px 0 0;color:#806d66;font-size:13px;line-height:1.6}
+.kd-compact-danger-actions button{
+ display:inline-flex;
+ align-items:center;
+ gap:8px;
+ padding:12px 15px;
+ min-height:45px;
+ flex:none;
+}
+.kd-editor-media{display:grid;gap:14px}
+.kd-editor-cover-preview{
+ display:flex;
+ align-items:center;
+ gap:20px;
+ padding:16px;
+ border:1px solid #d8e3d5;
+ background:#f9fbf8;
+}
+.kd-editor-cover-preview>img,
+.kd-editor-cover-preview>div:first-child{
+ flex:none;
+ width:110px;
+ height:125px;
+ object-fit:contain;
+ background:#fff;
+ border:1px solid #e2e9df;
+ border-radius:4px;
+ padding:7px;
+}
+.kd-editor-cover-preview>div:first-child{display:grid;place-items:center;color:#718272;font-size:13px}
+.kd-editor-cover-preview>div:last-child{display:grid;align-content:center;justify-items:start;gap:9px}
+.kd-editor-cover-preview strong{font-size:13px;font-weight:800;letter-spacing:.05em;color:#344d38}
+.kd-editor-cover-preview span{font-size:14px;line-height:1.5;color:#697d6a}
+.kd-editor-cover-preview button{font-size:12px;min-height:37px;padding:8px 11px}
+.kd-editor-gallery-head{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}
+.kd-editor-gallery-head strong{font-size:13px;font-weight:850;letter-spacing:.04em;color:#2b4932}
+.kd-editor-gallery-head span{font-size:13px;color:#6e8072;line-height:1.5}
+.kd-editor-gallery-reorder{
+ display:grid;
+ grid-template-columns:repeat(auto-fill,minmax(128px,1fr));
+ gap:12px;
+}
+.kd-editor-image-tile{
+ display:grid;
+ align-content:start;
+ gap:0;
+ min-width:0;
+ overflow:hidden;
+ border:1px solid #d9e1d6;
+ background:#fff;
+ border-radius:5px;
+}
+.kd-editor-image-tile.is-cover{border:2px solid #709577}
+.kd-editor-image-stage{position:relative;width:100%;aspect-ratio:1/1.08;overflow:hidden;background:#fff}
+.kd-editor-image-stage>img{width:100%;height:100%;object-fit:contain;padding:9px}
+.kd-editor-image-index{
+ position:absolute;
+ left:6px;
+ top:6px;
+ display:grid;
+ place-items:center;
+ min-width:26px;
+ height:26px;
+ padding:3px 6px;
+ border-radius:4px;
+ background:#fff;
+ box-shadow:0 1px 4px rgba(40,51,42,.13);
+ font-size:13px;
+ font-weight:800;
+ color:#324636;
+}
+.kd-editor-cover-tag{
+ position:absolute;
+ left:5px;
+ bottom:5px;
+ display:flex;
+ align-items:center;
+ gap:4px;
+ padding:5px 7px;
+ background:#2f4d38;
+ color:#fff;
+ font-size:11px;
+ font-weight:800;
+ letter-spacing:.04em;
+ border-radius:3px;
+}
+.kd-editor-tile-controls{display:flex;align-items:center;justify-content:space-around;border-top:1px solid #e4ece2;padding:6px 4px;gap:3px}
+.kd-editor-tile-controls button{
+ flex:1 1 0;
+ min-width:27px;
+ min-height:37px;
+ display:grid;
+ place-items:center;
+ background:transparent;
+ border:1px solid transparent;
+ color:#395a42;
+ cursor:pointer;
+}
+.kd-editor-tile-controls button:hover:not(:disabled){background:#ebf1e8;border-color:#cbd8c9}
+.kd-editor-tile-controls button:disabled{color:#b1bdb0;cursor:not-allowed}
+.kd-editor-tile-controls button:last-child{color:#9c5553}
+.kd-save-gallery-order{
+ display:inline-flex;
+ justify-self:start;
+ align-items:center;
+ gap:8px;
+ min-height:44px;
+ padding:10px 15px;
+ font-size:13px;
+ font-weight:850;
+ border:1px solid #a7c1aa;
+ background:#f5faf3;
+ color:#345a3b;
+ cursor:pointer;
+}
+.kd-save-gallery-order:disabled{opacity:.6;cursor:not-allowed}
+.kd-editor-order-unsaved{font-size:13px;color:#936320;margin:0}
+.kd-editor-media-help{padding:12px 15px;margin:0;background:#f2f6f0;border-left:3px solid #9fb69c;font-size:14px;color:#5a735f;line-height:1.6}
+@media(max-width:630px){
+ .kd-compact-product-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+ .kd-compact-product-picture{min-height:155px}
+ .kd-compact-product-information{padding:12px 10px}
+ .kd-compact-product-information h3{font-size:14px}
+ .kd-compact-product-actions{padding:0 10px 12px;gap:6px}
+ .kd-compact-product-actions button{font-size:11px;padding:8px 5px}
+ .kd-compact-product-actions button svg{width:14px}
+ .kd-compact-create-panel{padding:12px}
+ .kd-editor-gallery-reorder{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .kd-editor-cover-preview{gap:12px}
+ .kd-editor-cover-preview>img,.kd-editor-cover-preview>div:first-child{width:95px;height:107px}
+ .kd-compact-danger-actions{margin:16px 10px}
+}
+@media(max-width:360px){
+ .kd-compact-product-grid{grid-template-columns:1fr}
+}
+@media(prefers-reduced-motion:reduce){
+ .kd-compact-product-card{transition:none}
+ .kd-compact-product-card:hover{transform:none}
+}
