@@ -6,6 +6,7 @@ import {buildVariantMatrix,hasMultipleColors,FALLBACK_HEX} from '../../utils/var
 import {duplicateProduct} from '../../utils/duplicateProduct.js';
 import QuickAddBrand from './QuickAddBrand.jsx';
 import ImagePasteZone from '../../components/admin/ImagePasteZone.jsx';
+import SizeGuideEditor from '../../components/admin/SizeGuideEditor.jsx';
 import {appendImages,imageFilesFromClipboard} from '../../utils/clipboardImages.js';
 import {moveItem,galleryInOrder} from '../../utils/productPhotoOrder.js';
 
@@ -310,6 +311,17 @@ export default function ProductEditor({product,duplicateSource=null,duplicateTok
    </div>}
    <p className="kd-editor-media-help">New photos and the selected new cover are saved with SAVE ALL PRODUCT CHANGES. Existing-gallery ordering is saved with SAVE PHOTO ORDER & COVER.</p>
   </section>
+  {product?<SizeGuideEditor
+   key={product.id+'-size-guide'} title="3. Product size guide (optional)"
+   subtitle="This chart overrides the default chart for the chosen brand and category. Keep measurements separate from merchandise photos."
+   url={product.size_guide_image_url||null}
+   inheritedUrl={product.brand_size_guide_image_url||null}
+   uploadPath={'/admin/products/'+product.id+'/size-guide'}
+   api={api} perform={perform} busy={busy||working} report={report}
+  />:<div className="kd-size-guide-admin kd-size-guide-new-note">
+   <strong>3. Product size guide (optional)</strong>
+   <p>Create this product as Draft first, then open Edit to upload a product-specific size chart. You can also configure a default chart under Brand Edit.</p>
+  </div>}
   <div className="kd-quick-save"><button className="button button-dark" type="submit" disabled={busy||working||!brands.length}><Save size={18}/>{working?'SAVING…':product?'SAVE ALL PRODUCT CHANGES':duplicated?'CREATE DUPLICATE DRAFT':'CREATE PRODUCT WITH PHOTOS'}</button><span>{duplicated?'This copy is a separate product. All copied sizes start with zero stock; photos are not shared with the original.': 'New products default to Draft. Order-linked SKU history is protected; confirmed unreferenced SKU removals are applied on Save.'}</span></div>
   {quickBrandOpen&&<QuickAddBrand brands={brands} api={api} perform={perform} busy={busy||working} report={report}
    onCreated={id=>set('brand_id',id)} onClose={closeQuickBrand}/>}
