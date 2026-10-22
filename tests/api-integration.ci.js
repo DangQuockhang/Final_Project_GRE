@@ -89,6 +89,39 @@ test('Admin permissions and COD stock transactions against disposable PostgreSQL
   assert.equal((await request(brandChartPath,undefined,token,'DELETE')).status,200);
   const noGuide=await fetch(base+'/api/products/'+bundleBody.slug).then(r=>r.json());
   assert.equal(noGuide.brand_size_guide_image_url,null);
+  // One-click Add Product creates product + gallery + size chart atomically.
+  const withGuideProduct={
+   ...createBundle,name:'One-step size chart '+id,status:'active',
+   variants:createBundle.variants.map((v,i)=>({...v,sku:'ONESTEP-'+id+'-'+i}))
+  };
+  const makeGuideBundle=(body,chart)=>{
+   const form=bundleForm(body);
+   form.append('size_guide',new Blob([chart],{type:'image/png'}),'size-guide.png');
+   return form;
+  };
+  const deniedWithChart=await fetch(base+'/api/admin/products/bundle',{
+   method:'POST',headers:{Authorization:'Bearer '+user.data.token},
+   body:makeGuideBundle(withGuideProduct,png)
+  });
+  assert.equal(deniedWithChart.status,403);
+  const invalidChart=await fetch(base+'/api/admin/products/bundle',{
+   method:'POST',headers:{Authorization:'Bearer '+token},
+   body:makeGuideBundle(withGuideProduct,Buffer.from('not a PNG file'))
+  });
+  assert.equal(invalidChart.status,400,'Invalid size guide must reject whole product request');
+  const noInvalidProduct=await fetch(base+'/api/products').then(r=>r.json());
+  assert.ok(!noInvalidProduct.some(p=>p.name===withGuideProduct.name),'Rejected upload must not create partial product');
+  const savedWithChart=await fetch(base+'/api/admin/products/bundle',{
+   method:'POST',headers:{Authorization:'Bearer '+token},
+   body:makeGuideBundle(withGuideProduct,png)
+  });
+  assert.equal(savedWithChart.status,201,'Create product and size guide in one request');
+  const savedWithChartBody=await savedWithChart.json();
+  const oneStepPdp=await fetch(base+'/api/products/'+savedWithChartBody.slug).then(r=>r.json());
+  assert.match(oneStepPdp.size_guide_image_url,/^\/media\/products\/[a-f0-9-]{36}\.png$/i);
+  assert.equal(oneStepPdp.images.length,2,'Size chart must not become a gallery slide');
+  assert.equal(oneStepPdp.image_url,oneStepPdp.images[1].image_url);
+
   assert.equal(bundleItem.variants.length,3);
   assert.equal(bundleItem.variants.find(v=>v.color==='Red').color_hex,'#bb3344');
   assert.equal(bundleItem.variants.find(v=>v.color==='Gray').stock,0);
