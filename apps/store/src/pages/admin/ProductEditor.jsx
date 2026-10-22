@@ -7,6 +7,7 @@ import {duplicateProduct} from '../../utils/duplicateProduct.js';
 import QuickAddBrand from './QuickAddBrand.jsx';
 import ImagePasteZone from '../../components/admin/ImagePasteZone.jsx';
 import SizeGuideEditor from '../../components/admin/SizeGuideEditor.jsx';
+import SizeGuideDraftPicker from '../../components/admin/SizeGuideDraftPicker.jsx';
 import {appendImages,imageFilesFromClipboard} from '../../utils/clipboardImages.js';
 import {moveItem,galleryInOrder} from '../../utils/productPhotoOrder.js';
 
@@ -31,6 +32,7 @@ export default function ProductEditor({product,duplicateSource=null,duplicateTok
  const [rows,setRows]=useState(()=>duplicated?.rows||(product?.variants||[]).map(v=>({...v,stock:String(v.stock),color_hex:v.color_hex||initialColors(product).find(c=>normal(c.name)===normal(v.color))?.hex||'#758073'})));
  const [files,setFiles]=useState([]),[defaultStock,setDefaultStock]=useState('0'),[working,setWorking]=useState(false);
  const [pendingCover,setPendingCover]=useState(null);
+ const [newSizeGuide,setNewSizeGuide]=useState(null);
  const [galleryIds,setGalleryIds]=useState(()=>(product?.images||[]).map(image=>image.id));
  const [coverGalleryId,setCoverGalleryId]=useState(null);
  useEffect(()=>{
@@ -187,10 +189,11 @@ export default function ProductEditor({product,duplicateSource=null,duplicateTok
    variants:savingRows.map(v=>({...v,stock:Number(v.stock)})),deleted_variant_ids:deletedIds,confirm_stock_discard:hasOriginalStock,
    ...(files.includes(pendingCover)?{cover_new_index:files.indexOf(pendingCover)}:{})}));
   files.forEach(f=>form.append('images',f));
+  if(!product&&newSizeGuide)form.append('size_guide',newSizeGuide);
   setWorking(true);
   try{
    const ok=await perform(()=>api(product?'/admin/products/'+product.id+'/bundle':'/admin/products/bundle',{method:product?'PATCH':'POST',body:form}),
-    product?'Product, sizes and photos updated.':'Product, sizes and photos created.');
+    product?'Product, sizes and photos updated.':'Product, sizes, photos and optional size guide created.');
    if(ok)onCancel();
   }finally{setWorking(false);}
  }
@@ -318,10 +321,14 @@ export default function ProductEditor({product,duplicateSource=null,duplicateTok
    inheritedUrl={product.brand_size_guide_image_url||null}
    uploadPath={'/admin/products/'+product.id+'/size-guide'}
    api={api} perform={perform} busy={busy||working} report={report}
-  />:<div className="kd-size-guide-admin kd-size-guide-new-note">
-   <strong>3. Product size guide (optional)</strong>
-   <p>Create this product as Draft first, then open Edit to upload a product-specific size chart. You can also configure a default chart under Brand Edit.</p>
-  </div>}
+  />:<SizeGuideDraftPicker
+    file={newSizeGuide}
+    onChange={setNewSizeGuide}
+    brand={brands.find(b=>String(b.id)===String(draft.brand_id))}
+    category={draft.category}
+    disabled={busy||working}
+    report={report}
+  />}
   <div className="kd-quick-save"><button className="button button-dark" type="submit" disabled={busy||working||!brands.length}><Save size={18}/>{working?'SAVING…':product?'SAVE ALL PRODUCT CHANGES':duplicated?'CREATE DUPLICATE DRAFT':'CREATE PRODUCT WITH PHOTOS'}</button><span>{duplicated?'This copy is a separate product. All copied sizes start with zero stock; photos are not shared with the original.': 'New products default to Draft. Order-linked SKU history is protected; confirmed unreferenced SKU removals are applied on Save.'}</span></div>
   {quickBrandOpen&&<QuickAddBrand brands={brands} api={api} perform={perform} busy={busy||working} report={report}
    onCreated={id=>set('brand_id',id)} onClose={closeQuickBrand}/>}
