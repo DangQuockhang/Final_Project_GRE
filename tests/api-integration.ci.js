@@ -122,6 +122,41 @@ test('Admin permissions and COD stock transactions against disposable PostgreSQL
   assert.equal(oneStepPdp.images.length,2,'Size chart must not become a gallery slide');
   assert.equal(oneStepPdp.image_url,oneStepPdp.images[1].image_url);
 
+
+  // Editing uses the same transaction for details, gallery, cover and size guide.
+  const editAll=async(payload,{guide=false,photo=false}={})=>{
+   const form=new FormData();form.append('payload',JSON.stringify(payload));
+   if(photo)form.append('images',new Blob([png],{type:'image/png'}),'new-photo.png');
+   if(guide)form.append('size_guide',new Blob([png],{type:'image/png'}),'replacement-chart.png');
+   return fetch(base+'/api/admin/products/'+savedWithChartBody.id+'/bundle',{
+    method:'PATCH',headers:{Authorization:'Bearer '+token},body:form
+   });
+  };
+  const allPayload={...withGuideProduct,cover_new_index:undefined,variants:oneStepPdp.variants,
+   description:'Saved together',image_ids:oneStepPdp.images.map(x=>x.id).reverse(),
+   cover_image_id:oneStepPdp.images[0].id};
+  assert.equal((await editAll(allPayload,{guide:true,photo:true})).status,200);
+  const allSaved=await fetch(base+'/api/products/'+savedWithChartBody.slug).then(r=>r.json());
+  assert.equal(allSaved.description,'Saved together');
+  assert.deepEqual(allSaved.images.slice(0,2).map(x=>x.id),allPayload.image_ids);
+  assert.equal(allSaved.images.length,3);
+  assert.equal(allSaved.image_url,oneStepPdp.images[0].image_url);
+  assert.notEqual(allSaved.size_guide_image_url,oneStepPdp.size_guide_image_url);
+  const invalidEdit={...allPayload,description:'Must roll back',image_ids:allSaved.images.map(x=>x.id),cover_image_id:987654321};
+  assert.equal((await editAll(invalidEdit,{guide:true,photo:true})).status,400);
+  const unchanged=await fetch(base+'/api/products/'+savedWithChartBody.slug).then(r=>r.json());
+  assert.equal(unchanged.description,allSaved.description);
+  assert.equal(unchanged.size_guide_image_url,allSaved.size_guide_image_url);
+  assert.equal(unchanged.images.length,3);
+  const deleting=allSaved.images.find(x=>x.image_url===allSaved.image_url);
+  const kept=allSaved.images.filter(x=>x.id!==deleting.id);
+  assert.equal((await editAll({...allPayload,image_ids:kept.map(x=>x.id),
+   deleted_image_ids:[deleting.id],cover_image_id:null,remove_size_guide:true})).status,200);
+  const mediaRemoved=await fetch(base+'/api/products/'+savedWithChartBody.slug).then(r=>r.json());
+  assert.equal(mediaRemoved.images.length,2);
+  assert.equal(mediaRemoved.image_url,kept[0].image_url);
+  assert.equal(mediaRemoved.size_guide_image_url,null);
+
   assert.equal(bundleItem.variants.length,3);
   assert.equal(bundleItem.variants.find(v=>v.color==='Red').color_hex,'#bb3344');
   assert.equal(bundleItem.variants.find(v=>v.color==='Gray').stock,0);

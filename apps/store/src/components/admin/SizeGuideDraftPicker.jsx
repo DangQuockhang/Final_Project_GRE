@@ -7,12 +7,13 @@ import {imageFilesFromClipboard,validateImageFiles} from '../../utils/clipboardI
 /** Size guide staged as a multipart file in the parent ProductEditor's single Save.
  * No Product ID or second upload action is needed when adding/duplicating.
  */
-export default function SizeGuideDraftPicker({file,onChange,brand,category,disabled=false,report}){
+export default function SizeGuideDraftPicker({file,onChange,brand,category,disabled=false,report,currentUrl=null,removed=false,onRemoveChange}){
  const preview=useMemo(()=>file?URL.createObjectURL(file):null,[file]);
  useEffect(()=>()=>{if(preview)URL.revokeObjectURL(preview)},[preview]);
  const defaultGuide=brand?.size_guides?.[category];
  const inherited=defaultGuide?productImageUrl(defaultGuide,import.meta.env.VITE_API_URL||apiBase):null;
- const picture=preview||inherited;
+ const current=!removed&&currentUrl?productImageUrl(currentUrl,import.meta.env.VITE_API_URL||apiBase):null;
+ const picture=preview||current||inherited;
  function select(files){
   const candidates=Array.from(files||[]);
   if(!candidates.length)return;
@@ -27,7 +28,7 @@ export default function SizeGuideDraftPicker({file,onChange,brand,category,disab
   event.preventDefault();
   select(images);
  }
- return <section className="kd-size-guide-admin" aria-label="Size guide for new product" onPaste={paste}>
+ return <section className="kd-size-guide-admin" aria-label="Product size guide" onPaste={paste}>
   <div className="kd-quick-step-heading">
    <div><h4><Ruler size={19}/> 3. Size guide (optional)</h4>
     <p>Choose or paste a product-specific size chart now. It is saved with your product in one step, not added to the shopping photo gallery.</p>
@@ -36,7 +37,8 @@ export default function SizeGuideDraftPicker({file,onChange,brand,category,disab
   <div className="kd-size-guide-admin-stage">
    {picture?<img src={picture} alt={file?'Selected size guide':'Default size guide for chosen brand and category'}/>:
     <div className="kd-size-guide-admin-empty"><Ruler size={27}/> No size guide selected</div>}
-   <p>{file?'New size guide ready — will be saved when you create the product.':
+   <p>{file?'New size guide ready — click Save below to apply.':
+    current?'Current product size guide.':removed?'Guide removal queued — click Save below to apply.':
     inherited?'Default chart from '+brand.name+' / '+category+' — no upload required.':
     'No chart yet. You can leave this empty or add one now.'}</p>
   </div>
@@ -45,6 +47,7 @@ export default function SizeGuideDraftPicker({file,onChange,brand,category,disab
    disabled={disabled} onChange={event=>{select(event.target.files);event.target.value='';}}/>
   {file&&<button type="button" className="border-button kd-size-remove" disabled={disabled}
    onClick={()=>onChange(null)}><Trash2 size={16}/> REMOVE SELECTED GUIDE</button>}
+  {currentUrl&&onRemoveChange&&<button type="button" className="border-button kd-size-remove" disabled={disabled} onClick={()=>{onChange(null);onRemoveChange(!removed);}}>{removed?'UNDO GUIDE REMOVAL':'REMOVE CURRENT GUIDE'}</button>}
   <p className="kd-size-guide-help">JPG / PNG / WebP, max 3 MB. Size guide is stored separately from the photo carousel. You can still replace it in Edit later.</p>
  </section>;
 }

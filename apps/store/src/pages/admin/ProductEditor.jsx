@@ -6,7 +6,6 @@ import {buildVariantMatrix,hasMultipleColors,FALLBACK_HEX} from '../../utils/var
 import {duplicateProduct} from '../../utils/duplicateProduct.js';
 import QuickAddBrand from './QuickAddBrand.jsx';
 import ImagePasteZone from '../../components/admin/ImagePasteZone.jsx';
-import SizeGuideEditor from '../../components/admin/SizeGuideEditor.jsx';
 import SizeGuideDraftPicker from '../../components/admin/SizeGuideDraftPicker.jsx';
 import {appendImages,imageFilesFromClipboard} from '../../utils/clipboardImages.js';
 import {moveItem,galleryInOrder} from '../../utils/productPhotoOrder.js';
@@ -33,13 +32,17 @@ export default function ProductEditor({product,duplicateSource=null,duplicateTok
  const [files,setFiles]=useState([]),[defaultStock,setDefaultStock]=useState('0'),[working,setWorking]=useState(false);
  const [pendingCover,setPendingCover]=useState(null);
  const [newSizeGuide,setNewSizeGuide]=useState(null);
+ const [removeSizeGuide,setRemoveSizeGuide]=useState(false);
+ const [deletedImages,setDeletedImages]=useState([]);
+ const [removeCover,setRemoveCover]=useState(false);
+ const saving=useRef(false);
  const [galleryIds,setGalleryIds]=useState(()=>(product?.images||[]).map(image=>image.id));
  const [coverGalleryId,setCoverGalleryId]=useState(null);
  useEffect(()=>{
   setGalleryIds((product?.images||[]).map(image=>image.id));
   setCoverGalleryId(null);
  },[product?.images,product?.image_url]);
- const orderedGallery=galleryInOrder(product?.images||[],galleryIds);
+ const orderedGallery=galleryInOrder((product?.images||[]).filter(image=>!deletedImages.includes(image.id)),galleryIds);
  const galleryChanged=galleryIds.some((id,i)=>String(id)!==String(product?.images?.[i]?.id));
  const coverChanged=coverGalleryId!=null&&
   !orderedGallery.some(image=>String(image.id)===String(coverGalleryId)&&image.image_url===product?.image_url);
@@ -47,7 +50,7 @@ export default function ProductEditor({product,duplicateSource=null,duplicateTok
  const [quickBrandOpen,setQuickBrandOpen]=useState(false);
  const quickBrandButton=useRef(null);
  const closeQuickBrand=()=>{setQuickBrandOpen(false);quickBrandButton.current?.focus();};
- const limit=Math.min(6,8-(product?.images?.length||0));
+ const limit=Math.min(6,8-(product?.images?.length||0)+deletedImages.length);
  const urls=useMemo(()=>files.map(file=>({name:file.name,url:URL.createObjectURL(file)})),[files]);
  useEffect(()=>()=>urls.forEach(x=>URL.revokeObjectURL(x.url)),[urls]);
  const set=(k,v)=>{
@@ -129,21 +132,17 @@ export default function ProductEditor({product,duplicateSource=null,duplicateTok
   if(files[index]===pendingCover)setPendingCover(null);
   setFiles(previous=>previous.filter((_,i)=>i!==index));
  }
- async function savePhotoOrder(){
-  if(!product)return;
-  const ok=await perform(()=>api('/admin/products/'+product.id+'/images/order',{
-   method:'PATCH',
-   body:{image_ids:galleryIds,...(coverGalleryId!=null?{cover_image_id:coverGalleryId}:{})}
-  }),'Gallery order and cover image saved.');
-  if(ok)setCoverGalleryId(null);
- }
  async function removeExistingImage(image){
   if(!product||!window.confirm('Remove this product gallery photo?'))return;
-  await perform(()=>api('/admin/products/'+product.id+'/images/'+image.id,{method:'DELETE'}),'Gallery photo removed.');
+  setDeletedImages(ids=>[...ids,image.id]);
+  setGalleryIds(ids=>ids.filter(id=>id!==image.id));
+  if(coverGalleryId===image.id)setCoverGalleryId(null);
  }
  async function removeCurrentCover(){
   if(!product?.image_url||!window.confirm('Remove the current cover? The earliest gallery image will become the cover when available.'))return;
-  await perform(()=>api('/admin/products/'+product.id+'/image',{method:'DELETE'}),'Cover image removed.');
+  setRemoveCover(true);
+  setCoverGalleryId(null);
+  setPendingCover(null);
  }
  function paste(e){
   if(quickBrandOpen)return;
@@ -155,6 +154,7 @@ export default function ProductEditor({product,duplicateSource=null,duplicateTok
  }
  async function save(e){
   e.preventDefault();
+  if(saving.current||busy||working)return;
   const data={...draft,color:multipleColors?(colors[0]?.hex||FALLBACK_HEX):(product?.color||FALLBACK_HEX),tryon_enabled:false,
    ...(duplicated?{slug:duplicated.getSlug(draft.name)}:{})};
   const issue=validateProduct(data);
@@ -187,18 +187,21 @@ export default function ProductEditor({product,duplicateSource=null,duplicateTok
   const hasOriginalStock=removedVariants.some(v=>(product?.variants||[]).some(original=>String(original.id)===String(v.id)&&Number(original.stock)>0));
   form.append('payload',JSON.stringify({...data,price:Number(data.price),sale_price:data.sale_price===''?null:Number(data.sale_price),
    variants:savingRows.map(v=>({...v,stock:Number(v.stock)})),deleted_variant_ids:deletedIds,confirm_stock_discard:hasOriginalStock,
+   ...(product?{image_ids:galleryIds,deleted_image_ids:deletedImages,remove_cover:removeCover,cover_image_id:coverGalleryId,remove_size_guide:removeSizeGuide}:{}),
    ...(files.includes(pendingCover)?{cover_new_index:files.indexOf(pendingCover)}:{})}));
   files.forEach(f=>form.append('images',f));
-  if(!product&&newSizeGuide)form.append('size_guide',newSizeGuide);
+  if(newSizeGuide)form.append('size_guide',newSizeGuide);
+  saving.current=true;
   setWorking(true);
   try{
    const ok=await perform(()=>api(product?'/admin/products/'+product.id+'/bundle':'/admin/products/bundle',{method:product?'PATCH':'POST',body:form}),
-    product?'Product, sizes and photos updated.':'Product, sizes, photos and optional size guide created.');
+    'Product, sizes, photos, cover and size guide saved.');
    if(ok)onCancel();
-  }finally{setWorking(false);}
+  }finally{saving.current=false;setWorking(false);}
  }
  const gallery=[...new Set([product?.image_url,...(product?.images||[]).map(i=>i.image_url)].filter(Boolean))];
  return <form onSubmit={save} onPaste={paste} className="kd-quick-editor">
+  <fieldset disabled={busy||working} style={{border:0,padding:0,margin:0,minWidth:0}}>
   <div className="kd-quick-title"><div><span>PRODUCT WORKSPACE</span><h3>{product?'Edit '+product.name:duplicated?'Duplicate '+duplicateSource.name:'New product — one step'}</h3>
    <p>{duplicated?'A new independent draft. Details and sizes copied; stock reset to zero, new SKUs assigned. Select new photos before publishing.':'Details, color and size inventory, and photos — save together.'}</p>
   </div>{(product||duplicated)&&<button type="button" className="border-button" onClick={onCancel}><RotateCcw size={16}/> CANCEL {product?'EDIT':'DUPLICATE'}</button>}</div>
@@ -271,6 +274,7 @@ export default function ProductEditor({product,duplicateSource=null,duplicateTok
      {product.image_url&&<button type="button" className="border-button" disabled={busy||working} onClick={removeCurrentCover}>REMOVE COVER</button>}
     </div>
    </div>}
+   {(deletedImages.length>0||removeCover)&&<p role="status">Photo removal queued. Click Save to apply or Cancel to discard.</p>}
    {product&&orderedGallery.length>0&&<>
     <div className="kd-editor-gallery-head"><strong>EXISTING GALLERY — {orderedGallery.length} PHOTOS</strong><span>Arrange from left to right, then save the order.</span></div>
     <div className="kd-editor-gallery-reorder">
@@ -283,14 +287,13 @@ export default function ProductEditor({product,duplicateSource=null,duplicateTok
        <div className="kd-editor-tile-controls">
         <button type="button" title="Move photo left" aria-label={'Move existing photo '+(i+1)+' left'} disabled={busy||working||i===0} onClick={()=>setGalleryIds(prev=>moveItem(prev,i,-1))}><ArrowLeft size={17}/></button>
         <button type="button" title="Move photo right" aria-label={'Move existing photo '+(i+1)+' right'} disabled={busy||working||i===orderedGallery.length-1} onClick={()=>setGalleryIds(prev=>moveItem(prev,i,1))}><ArrowRight size={17}/></button>
-        <button type="button" title="Set as main cover" aria-label={'Use existing photo '+(i+1)+' as cover'} disabled={busy||working} onClick={()=>setCoverGalleryId(image.id)}><Star size={17}/></button>
+        <button type="button" title="Set as main cover" aria-label={'Use existing photo '+(i+1)+' as cover'} disabled={busy||working} onClick={()=>{setCoverGalleryId(image.id);setPendingCover(null);}}><Star size={17}/></button>
         <button type="button" title="Remove gallery photo" aria-label={'Remove existing photo '+(i+1)} disabled={busy||working} onClick={()=>removeExistingImage(image)}><Trash2 size={17}/></button>
        </div>
       </div>;
      })}
     </div>
-    <button className="border-button kd-save-gallery-order" disabled={busy||working||(!galleryChanged&&!coverChanged)} type="button" onClick={savePhotoOrder}><Save size={17}/> SAVE PHOTO ORDER & COVER</button>
-    {(galleryChanged||coverChanged)&&<p className="kd-editor-order-unsaved" role="status">Photo order or cover changed. Click SAVE PHOTO ORDER & COVER to apply to the storefront.</p>}
+    {(galleryChanged||coverChanged)&&<p className="kd-editor-order-unsaved" role="status">Photo order or cover changed. Click Save below to apply all changes.</p>}
    </>}
    <div className="kd-editor-gallery-head"><strong>{product?'ADD NEW PHOTOS':'NEW PRODUCT PHOTOS'}</strong><span>Maximum {limit} new images, 3 MB per file.</span></div>
    <ImagePasteZone label="product photos" onImages={choose} disabled={busy||working}/>
@@ -306,30 +309,27 @@ export default function ProductEditor({product,duplicateSource=null,duplicateTok
       <div className="kd-editor-tile-controls">
        <button type="button" title="Move image left" aria-label={'Move new photo '+(i+1)+' left'} disabled={i===0||busy||working} onClick={()=>movePending(i,-1)}><ArrowLeft size={17}/></button>
        <button type="button" title="Move image right" aria-label={'Move new photo '+(i+1)+' right'} disabled={i===files.length-1||busy||working} onClick={()=>movePending(i,1)}><ArrowRight size={17}/></button>
-       <button type="button" title="Make cover" aria-label={'Set new photo '+(i+1)+' as cover'} disabled={busy||working} onClick={()=>setPendingCover(files[i])}><Star size={17}/></button>
+       <button type="button" title="Make cover" aria-label={'Set new photo '+(i+1)+' as cover'} disabled={busy||working} onClick={()=>{setPendingCover(files[i]);setCoverGalleryId(null);}}><Star size={17}/></button>
        <button type="button" title="Remove pending image" aria-label={'Remove new photo '+(i+1)} disabled={busy||working} onClick={()=>removePending(i)}><Trash2 size={17}/></button>
       </div>
      </div>;
     })}
    </div>}
-   <p className="kd-editor-media-help">New photos and the selected new cover are saved with SAVE ALL PRODUCT CHANGES. Existing-gallery ordering is saved with SAVE PHOTO ORDER & COVER.</p>
+   <p className="kd-editor-media-help">Photos, gallery order, cover and size guide are saved together using Save below.</p>
   </section>
-  {product?<SizeGuideEditor
-   key={product.id+'-size-guide'} title="3. Product size guide (optional)"
-   subtitle="This chart overrides the default chart for the chosen brand and category. Keep measurements separate from merchandise photos."
-   url={product.size_guide_image_url||null}
-   inheritedUrl={product.brand_size_guide_image_url||null}
-   uploadPath={'/admin/products/'+product.id+'/size-guide'}
-   api={api} perform={perform} busy={busy||working} report={report}
-  />:<SizeGuideDraftPicker
+  <SizeGuideDraftPicker
     file={newSizeGuide}
     onChange={setNewSizeGuide}
+    currentUrl={product?.size_guide_image_url||null}
+    removed={removeSizeGuide}
+    onRemoveChange={setRemoveSizeGuide}
     brand={brands.find(b=>String(b.id)===String(draft.brand_id))}
     category={draft.category}
     disabled={busy||working}
     report={report}
-  />}
-  <div className="kd-quick-save"><button className="button button-dark" type="submit" disabled={busy||working||!brands.length}><Save size={18}/>{working?'SAVING…':product?'SAVE ALL PRODUCT CHANGES':duplicated?'CREATE DUPLICATE DRAFT':'CREATE PRODUCT WITH PHOTOS'}</button><span>{duplicated?'This copy is a separate product. All copied sizes start with zero stock; photos are not shared with the original.': 'New products default to Draft. Order-linked SKU history is protected; confirmed unreferenced SKU removals are applied on Save.'}</span></div>
+  />
+  <div className="kd-quick-save"><button className="button button-dark" type="submit" disabled={busy||working||!brands.length}><Save size={18}/>{working?'SAVING…':'SAVE'}</button><span>{duplicated?'This copy is a separate product. All copied sizes start with zero stock; photos are not shared with the original.': 'New products default to Draft. Order-linked SKU history is protected; confirmed unreferenced SKU removals are applied on Save.'}</span></div>
+  </fieldset>
   {quickBrandOpen&&<QuickAddBrand brands={brands} api={api} perform={perform} busy={busy||working} report={report}
    onCreated={id=>set('brand_id',id)} onClose={closeQuickBrand}/>}
  </form>;
