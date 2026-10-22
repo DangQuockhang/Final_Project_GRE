@@ -181,13 +181,16 @@ const saveProductBundle=wrap(async(req,res)=>{
   if(!sku||sku.length>100||!size||size.length>20||!c||c.length>40||!Number.isSafeInteger(stock)||stock<0||(hex&&!/^#[0-9a-f]{6}$/i.test(hex))||seen.has(key)||seenSku.has(sku.toLowerCase())||(v.id!==undefined&&!isId(v.id)))return fail(res,'Invalid or duplicated size, color, SKU or stock.');
   seen.add(key);seenSku.add(sku.toLowerCase());
  }
- const photos=(req.files||[]).map(file=>({buffer:file.buffer,ext:detectImage(file.buffer,file.mimetype)}));
+ const photos=(req.files?.images||[]).map(file=>({buffer:file.buffer,ext:detectImage(file.buffer,file.mimetype)}));
+ const sizeGuideFile=req.files?.size_guide?.[0]||null;
+ const sizeGuideImage=sizeGuideFile?{buffer:sizeGuideFile.buffer,ext:detectImage(sizeGuideFile.buffer,sizeGuideFile.mimetype)}:null;
+ if(sizeGuideImage&&!sizeGuideImage.ext)return fail(res,'Size guide must contain valid JPG, PNG or WebP image data.');
  const coverNewIndex=body.cover_new_index;
  if(coverNewIndex!==undefined&&
   (!Number.isSafeInteger(coverNewIndex)||coverNewIndex<0||coverNewIndex>=photos.length))
    return fail(res,'The selected cover must be one of the new uploaded photos.');
  if(photos.some(p=>!p.ext))return fail(res,'Photos must contain valid JPG, PNG or WebP data.');
- const client=await pool.connect(),saved=[];let committed=false;
+ const client=await pool.connect(),saved=[];let committed=false,oldSizeGuideUrl=null;
  try{
   await client.query('BEGIN');
   let product;
@@ -231,7 +234,13 @@ const saveProductBundle=wrap(async(req,res)=>{
    await client.query('INSERT INTO product_images(product_id,image_url,position) VALUES($1,$2,$3)',[product.id,url,galleryStats.next_position+i]);
   }
   if(saved.length&&(coverNewIndex!==undefined||!product.image_url))await client.query('UPDATE products SET image_url=$1 WHERE id=$2',[saved[coverNewIndex??0],product.id]);
+  if(sizeGuideImage){
+   oldSizeGuideUrl=product.size_guide_image_url;
+   const guideUrl=await saveImage(sizeGuideImage.buffer,sizeGuideImage.ext);saved.push(guideUrl);
+   await client.query('UPDATE products SET size_guide_image_url=$1 WHERE id=$2',[guideUrl,product.id]);
+  }
   await client.query('COMMIT');committed=true;
+  if(oldSizeGuideUrl)await removeImage(oldSizeGuideUrl).catch(()=>{});
   res.status(editing?200:201).json({id:product.id,slug:product.slug,created:!editing});
  }catch(e){
   await client.query('ROLLBACK').catch(()=>{});
