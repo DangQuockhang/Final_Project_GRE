@@ -190,7 +190,11 @@ const saveProductBundle=wrap(async(req,res)=>{
   (!Number.isSafeInteger(coverNewIndex)||coverNewIndex<0||coverNewIndex>=photos.length))
    return fail(res,'The selected cover must be one of the new uploaded photos.');
  if(photos.some(p=>!p.ext))return fail(res,'Photos must contain valid JPG, PNG or WebP data.');
- const client=await pool.connect(),saved=[];let committed=false,oldSizeGuideUrl=null;
+ const imageIds=body.image_ids,deletedImageIds=body.deleted_image_ids||[],coverImageId=body.cover_image_id;
+ if((imageIds!==undefined&&(!Array.isArray(imageIds)||imageIds.length>8||imageIds.some(id=>!isId(id))||new Set(imageIds.map(String)).size!==imageIds.length))||
+  !Array.isArray(deletedImageIds)||deletedImageIds.length>8||deletedImageIds.some(id=>!isId(id))||new Set(deletedImageIds.map(String)).size!==deletedImageIds.length||
+  (coverImageId!=null&&!isId(coverImageId)))return fail(res,'Invalid gallery selection.');
+ const client=await pool.connect(),saved=[],obsolete=[];let committed=false,oldSizeGuideUrl=null;
  try{
   await client.query('BEGIN');
   let product;
@@ -227,6 +231,29 @@ const saveProductBundle=wrap(async(req,res)=>{
       VALUES($1,$2,$3,$4,$5,$6)`,[product.id,...vals]);
    }
   }
+  const existingImages=(await client.query('SELECT id,image_url FROM product_images WHERE product_id=$1 ORDER BY position,id FOR UPDATE',[product.id])).rows;
+  const available=new Map(existingImages.map(image=>[String(image.id),image]));
+  if(deletedImageIds.some(id=>!available.has(String(id))))error('Gallery changed. Reload the editor.',409);
+  const deletedSet=new Set(deletedImageIds.map(String));
+  const remaining=existingImages.filter(image=>!deletedSet.has(String(image.id)));
+  if(imageIds!==undefined&&(imageIds.length!==remaining.length||imageIds.some(id=>!available.has(String(id))||deletedSet.has(String(id)))))
+   error('Gallery changed. Reload the editor before saving.',409);
+  if(coverImageId!=null&&(!available.has(String(coverImageId))||deletedSet.has(String(coverImageId))))
+   error('Selected cover is not part of the remaining gallery.',400);
+  for(const id of deletedImageIds){
+   await client.query('DELETE FROM product_images WHERE product_id=$1 AND id=$2',[product.id,id]);
+   obsolete.push(available.get(String(id)).image_url);
+  }
+  const order=imageIds??remaining.map(image=>image.id);
+  for(const [position,id] of order.entries()){
+   await client.query('UPDATE product_images SET position=$1 WHERE product_id=$2 AND id=$3',[position,product.id,id]);
+  }
+  if(coverImageId!=null||body.remove_cover===true||obsolete.includes(product.image_url)){
+   const nextCover=coverImageId!=null?available.get(String(coverImageId)).image_url:(available.get(String(order[0]))?.image_url||null);
+   if(product.image_url&&!remaining.some(image=>image.image_url===product.image_url))obsolete.push(product.image_url);
+   product.image_url=nextCover;
+   await client.query('UPDATE products SET image_url=$1 WHERE id=$2',[nextCover,product.id]);
+  }
   const galleryStats=(await client.query('SELECT COUNT(*)::int AS n,COALESCE(MAX(position),-1)::int+1 AS next_position FROM product_images WHERE product_id=$1',[product.id])).rows[0];
   if(galleryStats.n+photos.length>8)error('Maximum 8 gallery photos per product.',409);
   for(const [i,file] of photos.entries()){
@@ -234,13 +261,18 @@ const saveProductBundle=wrap(async(req,res)=>{
    await client.query('INSERT INTO product_images(product_id,image_url,position) VALUES($1,$2,$3)',[product.id,url,galleryStats.next_position+i]);
   }
   if(saved.length&&(coverNewIndex!==undefined||!product.image_url))await client.query('UPDATE products SET image_url=$1 WHERE id=$2',[saved[coverNewIndex??0],product.id]);
+  if(!sizeGuideImage&&body.remove_size_guide===true){
+   oldSizeGuideUrl=product.size_guide_image_url;
+   await client.query('UPDATE products SET size_guide_image_url=NULL WHERE id=$1',[product.id]);
+  }
   if(sizeGuideImage){
    oldSizeGuideUrl=product.size_guide_image_url;
    const guideUrl=await saveImage(sizeGuideImage.buffer,sizeGuideImage.ext);saved.push(guideUrl);
    await client.query('UPDATE products SET size_guide_image_url=$1 WHERE id=$2',[guideUrl,product.id]);
   }
   await client.query('COMMIT');committed=true;
-  if(oldSizeGuideUrl)await removeImage(oldSizeGuideUrl).catch(()=>{});
+  if(oldSizeGuideUrl)obsolete.push(oldSizeGuideUrl);
+  await Promise.all([...new Set(obsolete)].filter(Boolean).map(url=>removeImage(url).catch(()=>{})));
   res.status(editing?200:201).json({id:product.id,slug:product.slug,created:!editing});
  }catch(e){
   await client.query('ROLLBACK').catch(()=>{});
