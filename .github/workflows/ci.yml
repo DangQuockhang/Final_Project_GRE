@@ -3,7 +3,7 @@ on:
   push:
     branches: [main, develop, feature/sprint-2, experiment/react-retail]
   pull_request:
-    branches: [main]
+    branches: [main, feature/sprint-2]
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
