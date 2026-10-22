@@ -1,10 +1,11 @@
 import React,{useEffect,useRef,useState} from 'react';
 import {createPortal} from 'react-dom';
-import {Pencil,ImagePlus,Trash2,X,CopyPlus,Plus} from 'lucide-react';
+import {Pencil,ImagePlus,Trash2,X,CopyPlus,Plus,RotateCcw} from 'lucide-react';
 import {apiBase,productImageUrl} from '@kd/catalog';
 import PermanentDeleteDialog from '../../components/admin/PermanentDeleteDialog.jsx';
 import {PRODUCT_STATUSES} from '../../utils/adminValidation.js';
 import ProductEditor from './ProductEditor.jsx';
+import {filterAdminProducts} from '../../utils/adminProductFilters.js';
 
 function EditProductDialog({product=null,duplicateSource=null,duplicateToken='',brands,api,perform,busy,report,onClose,onDelete}){
  const closeButton=useRef(null);
@@ -40,9 +41,19 @@ export default function ProductsPanel({products,brands,api,perform,busy,report})
  const [showCreator,setShowCreator]=useState(false);
  const [editing,setEditing]=useState(null);
  const [duplicating,setDuplicating]=useState(null);
- const [search,setSearch]=useState(''),[statusFilter,setStatusFilter]=useState('all');
+ const [search,setSearch]=useState(''),[statusFilter,setStatusFilter]=useState('all'),[brandFilter,setBrandFilter]=useState('all');
  const [deleting,setDeleting]=useState(null),[deletionCheck,setDeletionCheck]=useState(null),[checkingDelete,setCheckingDelete]=useState(false);
- const rows=products.filter(p=>(statusFilter==='all'||p.status===statusFilter)&&[p.name,p.brand_name,p.slug].join(' ').toLowerCase().includes(search.toLowerCase()));
+ const rows=filterAdminProducts(products,{search,status:statusFilter,brandId:brandFilter});
+ const sortedBrands=[...brands].sort((a,b)=>a.name.localeCompare(b.name,'vi',{sensitivity:'base'}));
+ const brandCounts=new Map();
+ products.forEach(product=>{
+  if(product.brand_id!=null){
+   const key=String(product.brand_id);
+   brandCounts.set(key,(brandCounts.get(key)||0)+1);
+  }
+ });
+ const filtersActive=Boolean(search.trim()||statusFilter!=='all'||brandFilter!=='all');
+ const resetFilters=()=>{setSearch('');setStatusFilter('all');setBrandFilter('all');};
  function reset(){setEditing(null)}
  function begin(p){setEditing(p.id)}
  function beginDuplicate(p){setDuplicating({sourceId:p.id,token:Date.now().toString(36)+Math.random().toString(36).slice(2,8)})}
@@ -76,13 +87,24 @@ export default function ProductsPanel({products,brands,api,perform,busy,report})
   </div>}
   <div className="kd-admin-filter-row kd-compact-product-toolbar">
    <input aria-label="Search admin products" placeholder="Search products or brand…" value={search} onChange={e=>setSearch(e.target.value)}/>
+   <select aria-label="Filter products by brand" value={brandFilter} onChange={e=>setBrandFilter(e.target.value)}>
+    <option value="all">All Brands</option>
+    {sortedBrands.map(brand=><option value={String(brand.id)} key={brand.id}>
+     {brand.name} ({brandCounts.get(String(brand.id))||0})
+    </option>)}
+   </select>
    <select aria-label="Filter product status" value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}>
     <option value="all">All statuses</option>{PRODUCT_STATUSES.map(s=><option key={s} value={s}>{s.toUpperCase()}</option>)}
    </select>
-   <span>{rows.length} shown</span>
+   {filtersActive&&<button type="button" className="kd-product-filter-reset" onClick={resetFilters}><RotateCcw size={15}/> RESET</button>}
+   <span role="status" aria-live="polite">{rows.length} of {products.length} shown</span>
   </div>
   <div className="kd-compact-product-grid">
-   {rows.length===0&&<div className="kd-admin-placeholder">No products match your search or status filter.</div>}
+   {rows.length===0&&<div className="kd-admin-placeholder kd-product-filter-empty">
+    <strong>No products match your filters.</strong>
+    <span>Try a different brand, status or search term.</span>
+    {filtersActive&&<button className="border-button" type="button" onClick={resetFilters}>SHOW ALL PRODUCTS</button>}
+   </div>}
    {rows.map(p=><article className="kd-compact-product-card" key={p.id}>
     <button type="button" className="kd-compact-product-picture" aria-label={'Edit '+p.name}
      onClick={()=>begin(p)}>
