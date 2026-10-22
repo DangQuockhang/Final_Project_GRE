@@ -54,10 +54,13 @@ export function galleryUpload(req,res,next){
  });
 }
 
-const bundleMulter=multer({storage:multer.memoryStorage(),limits:{fileSize:MAX_IMAGE_BYTES,files:6,fields:1,parts:7}}).array('images',6);
+// A single product-save request may include six merchandise photos AND one
+// separate size chart. The chart never occupies a storefront-gallery position.
+const bundleMulter=multer({storage:multer.memoryStorage(),limits:{fileSize:MAX_IMAGE_BYTES,files:7,fields:1,parts:8}})
+ .fields([{name:'images',maxCount:6},{name:'size_guide',maxCount:1}]);
 export function bundleUpload(req,res,next){
  bundleMulter(req,res,error=>{
   if(!error)return next();
-  res.status(error.code==='LIMIT_FILE_SIZE'?413:400).json({error:error.code==='LIMIT_FILE_SIZE'?'Each image must be under 3 MB.':'Upload at most 6 JPG/PNG/WebP images at a time.'});
+  res.status(error.code==='LIMIT_FILE_SIZE'?413:400).json({error:error.code==='LIMIT_FILE_SIZE'?'Each image must be under 3 MB.':'Upload at most 6 product images plus 1 size guide (JPG/PNG/WebP).'});
  });
 }
