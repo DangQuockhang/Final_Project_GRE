@@ -31,6 +31,49 @@ test('Admin permissions and COD stock transactions against disposable PostgreSQL
   const user=await request('/api/auth/register',{name:'Test Customer',email:'test-'+id+'@example.test',password:'TestCustomerPassword2026'});
   assert.equal(user.status,201);
   const brands=await fetch(base+'/api/brands').then(r=>r.json());
+
+  // Product types create normalized, category-scoped collections automatically.
+  const makeTyped=(name,product_type,category='accessories',status='active')=>request('/api/products',{
+   name:name+' '+id,brand_id:brands[0].id,category,product_type,price:100000,status
+  },token);
+  const typed=await makeTyped('Collection charm','  CHARM  ');
+  assert.equal(typed.status,201);
+  assert.equal(typed.data.product_type,'Charm');
+  assert.ok(typed.data.collection_id);
+  const [mixedA,mixedB]=await Promise.all([
+   makeTyped('Collection mixed a','cHaRm'),makeTyped('Collection mixed b','CHARM')
+  ]);
+  assert.equal(mixedA.status,201);assert.equal(mixedB.status,201);
+  assert.equal(mixedA.data.collection_id,typed.data.collection_id);
+  assert.equal(mixedB.data.collection_id,typed.data.collection_id);
+  const colId=typed.data.collection_id,colPath='/api/admin/collections/'+colId;
+  let publicCollections=await fetch(base+'/api/collections').then(r=>r.json());
+  assert.equal(publicCollections.find(c=>c.id===colId).active_count,3);
+  assert.equal((await request('/api/admin/collections',undefined,user.data.token,'GET')).status,403);
+  assert.equal((await request(colPath,{hidden:true},user.data.token,'PATCH')).status,403);
+  assert.equal((await request(colPath,undefined,user.data.token,'DELETE')).status,403);
+  assert.equal((await request(colPath,undefined,token,'DELETE')).status,409);
+  assert.equal((await request(colPath,{hidden:true},token,'PATCH')).status,200);
+  assert.ok(!(await fetch(base+'/api/collections').then(r=>r.json())).some(c=>c.id===colId));
+  await request('/api/products/'+typed.data.id,{product_type:'CHarm'},token,'PATCH');
+  assert.ok(!(await fetch(base+'/api/collections').then(r=>r.json())).some(c=>c.id===colId),'Saving a product must not unhide its collection');
+  assert.equal((await request(colPath,{hidden:false},token,'PATCH')).status,200);
+  for(const p of [typed,mixedA,mixedB])await request('/api/products/'+p.data.id,{status:'draft'},token,'PATCH');
+  assert.ok(!(await fetch(base+'/api/collections').then(r=>r.json())).some(c=>c.id===colId),'Collections without active products are automatically omitted');
+  assert.equal((await request(colPath,undefined,token,'DELETE')).status,409,'Draft products still protect the collection');
+  for(const p of [typed,mixedA,mixedB])await request('/api/products/'+p.data.id,{product_type:''},token,'PATCH');
+  assert.equal((await request(colPath,undefined,token,'DELETE')).status,200);
+  assert.ok(!(await request('/api/admin/collections',undefined,token,'GET')).data.some(c=>c.id===colId));
+  const shirt=await makeTyped('Collection shirt','SHirt','clothing');
+  const sameShirt=await makeTyped('Collection same shirt','shirt','clothing');
+  assert.equal(shirt.data.product_type,'Shirt');
+  assert.equal(shirt.data.collection_id,sameShirt.data.collection_id);
+  const changedCategory=await request('/api/products/'+sameShirt.data.id,{category:'accessories'},token,'PATCH');
+  assert.equal(changedCategory.status,200);
+  assert.notEqual(changedCategory.data.collection_id,shirt.data.collection_id);
+  const movedBack=await request('/api/products/'+sameShirt.data.id,{category:'clothing'},token,'PATCH');
+  assert.equal(movedBack.data.collection_id,shirt.data.collection_id);
+
   // A size-free accessory still has stock-backed SKUs and can be checked out.
   const accessoryPayload={name:'Size-free accessory '+id,brand_id:brands[0].id,category:'accessories',
    price:250000,status:'active',variants:[{sku:'NOSIZE-'+id,color:'Standard',stock:4,size:'  '}]};
@@ -84,6 +127,19 @@ test('Admin permissions and COD stock transactions against disposable PostgreSQL
   assert.equal(bundle.status,201); 
   const bundleBody=await bundle.json();
   const bundleItem=await fetch(base+'/api/products/'+bundleBody.slug).then(r=>r.json());
+
+  // A failed bundle must roll back its automatically-created collection too.
+  const failedType='Rollback '+id;
+  const failedForm=new FormData();
+  failedForm.append('payload',JSON.stringify({...createBundle,name:'Failed collection '+id,
+   product_type:failedType,cover_new_index:undefined,
+   variants:[{...bundleItem.variants[0],id:undefined}]}));
+  const failedBundle=await fetch(base+'/api/admin/products/bundle',{method:'POST',
+   headers:{Authorization:'Bearer '+token},body:failedForm});
+  assert.equal(failedBundle.status,409);
+  const afterFailedCollections=await request('/api/admin/collections',undefined,token,'GET');
+  assert.ok(!afterFailedCollections.data.some(c=>c.name===failedType));
+
   assert.equal(bundleItem.category,'clothing');
   assert.equal(bundleItem.images.length,2);
   assert.equal(bundleItem.image_url,bundleItem.images[1].image_url,'Chosen uploaded cover must be displayed to customers');
@@ -348,7 +404,7 @@ test('Admin permissions and COD stock transactions against disposable PostgreSQL
    'Public gallery order must persist after refresh');
   assert.equal(reorderedPdp.image_url,galleryData.images[1].image_url,
    'Set-as-cover must update actual storefront product cover');
-  assert.equal(withGallery.product_type,'T-Shirt');
+  assert.equal(withGallery.product_type,'T-shirt');
   assert.equal(Number(withGallery.sale_price),990000);
   const removedGallery=await request('/api/admin/products/'+product.data.id+'/images/'+galleryData.images[0].id,undefined,token,'DELETE');
   assert.equal(removedGallery.status,200);

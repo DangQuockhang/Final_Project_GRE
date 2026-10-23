@@ -4,6 +4,8 @@ import {apiBase,productImageUrl} from '@kd/catalog';
 import {PRODUCT_CATEGORIES,PRODUCT_STATUSES,validateProduct} from '../../utils/adminValidation.js';
 import {buildVariantMatrix,hasMultipleColors,hasOptionalSize,FALLBACK_HEX} from '../../utils/variantBuilder.js';
 import {duplicateProduct} from '../../utils/duplicateProduct.js';
+import ProductTypeInput from '../../components/admin/ProductTypeInput.jsx';
+import {normalizeCollectionName} from '../../utils/collections.js';
 import QuickAddBrand from './QuickAddBrand.jsx';
 import ImagePasteZone from '../../components/admin/ImagePasteZone.jsx';
 import SizeGuideDraftPicker from '../../components/admin/SizeGuideDraftPicker.jsx';
@@ -21,7 +23,7 @@ const initialColors=p=>{
  if(!p?.variants?.length)return [{...shades[0]}];
  return [...new Map(p.variants.map(v=>[normal(v.color),{name:v.color,hex:v.color_hex||shades.find(s=>normal(s.name)===normal(v.color))?.hex||'#758073'}])).values()];
 };
-export default function ProductEditor({product,duplicateSource=null,duplicateToken='',brands,api,perform,busy,report,onCancel}){
+export default function ProductEditor({product,duplicateSource=null,duplicateToken='',brands,collections=[],api,perform,busy,report,onCancel}){
  const duplicated=useMemo(()=>duplicateSource?duplicateProduct(duplicateSource,duplicateToken):null,[duplicateSource,duplicateToken]);
  const reference=duplicateSource||product;
  const [draft,setDraft]=useState(()=>duplicated?.draft||start(product));
@@ -156,7 +158,7 @@ export default function ProductEditor({product,duplicateSource=null,duplicateTok
  async function save(e){
   e.preventDefault();
   if(saving.current||busy||working)return;
-  const data={...draft,color:multipleColors?(colors[0]?.hex||FALLBACK_HEX):(product?.color||FALLBACK_HEX),tryon_enabled:false,
+  const data={...draft,product_type:normalizeCollectionName(draft.product_type),color:multipleColors?(colors[0]?.hex||FALLBACK_HEX):(product?.color||FALLBACK_HEX),tryon_enabled:false,
    ...(duplicated?{slug:duplicated.getSlug(draft.name)}:{})};
   const issue=validateProduct(data);
   if(issue){report(issue);return;}
@@ -213,7 +215,7 @@ export default function ProductEditor({product,duplicateSource=null,duplicateTok
     <button ref={quickBrandButton} type="button" className="border-button kd-quick-add-brand-trigger" disabled={busy||working} onClick={()=>setQuickBrandOpen(true)}><Plus size={17}/> QUICK ADD BRAND</button>
    </div>
    <label>CATEGORY<select value={draft.category} onChange={e=>set('category',e.target.value)}>{PRODUCT_CATEGORIES.map(c=><option value={c} key={c}>{c.toUpperCase()}</option>)}</select></label>
-   <label>PRODUCT TYPE<input value={draft.product_type} maxLength={60} onChange={e=>set('product_type',e.target.value)} placeholder="T-Shirt, Jacket, Tote Bag…"/></label>
+   <ProductTypeInput value={draft.product_type} onChange={value=>set('product_type',value)} category={draft.category} collections={collections} disabled={busy||working}/>
    <label>PRICE (VND)<input type="number" min="0" required value={draft.price} onChange={e=>set('price',e.target.value)}/></label>
    <label>SALE PRICE (OPTIONAL)<input type="number" min="0" value={draft.sale_price} onChange={e=>set('sale_price',e.target.value)}/></label>
    <label>STATUS<select value={draft.status} onChange={e=>set('status',e.target.value)}>{PRODUCT_STATUSES.map(s=><option key={s} value={s}>{s.toUpperCase()}</option>)}</select></label>

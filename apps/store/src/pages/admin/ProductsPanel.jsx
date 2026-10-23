@@ -7,7 +7,7 @@ import {PRODUCT_STATUSES} from '../../utils/adminValidation.js';
 import ProductEditor from './ProductEditor.jsx';
 import {filterAdminProducts} from '../../utils/adminProductFilters.js';
 
-function EditProductDialog({product=null,duplicateSource=null,duplicateToken='',brands,api,perform,busy,report,onClose,onDelete}){
+function EditProductDialog({product=null,duplicateSource=null,duplicateToken='',brands,collections,api,perform,busy,report,onClose,onDelete}){
  const closeButton=useRef(null);
  useEffect(()=>{
   const oldOverflow=document.body.style.overflow;
@@ -26,7 +26,7 @@ function EditProductDialog({product=null,duplicateSource=null,duplicateToken='',
    </div>
    <div className="kd-edit-modal-scroll">
     <ProductEditor key={product?.id||'duplicate-'+duplicateToken} product={product} duplicateSource={duplicateSource}
-     duplicateToken={duplicateToken} brands={brands} api={api} perform={perform} busy={busy} report={report} onCancel={onClose}/>
+     duplicateToken={duplicateToken} brands={brands} collections={collections} api={api} perform={perform} busy={busy} report={report} onCancel={onClose}/>
     {product&&<div className="kd-compact-danger-actions">
      <div><strong>Permanent deletion</strong><p>Only a non-active product with zero remaining SKU stock can be checked for permanent deletion. Past orders are protected.</p></div>
      <button type="button" className="border-button kd-delete-product-button" disabled={busy||!canDelete}
@@ -37,7 +37,7 @@ function EditProductDialog({product=null,duplicateSource=null,duplicateToken='',
   </section>
  </div>,document.body);
 }
-export default function ProductsPanel({products,brands,api,perform,busy,report}){
+export default function ProductsPanel({products,brands,collections,api,perform,busy,report}){
  const [showCreator,setShowCreator]=useState(false);
  const [editing,setEditing]=useState(null);
  const [duplicating,setDuplicating]=useState(null);
@@ -83,7 +83,7 @@ export default function ProductsPanel({products,brands,api,perform,busy,report})
     onClick={()=>setShowCreator(old=>!old)}><Plus size={18}/>{showCreator?'CLOSE NEW PRODUCT FORM':'ADD NEW PRODUCT'}</button>
   </div>
   {showCreator&&<div id="kd-admin-new-product" className="kd-compact-create-panel">
-   <ProductEditor key="new-product" product={null} brands={brands} api={api} perform={perform} busy={busy} report={report} onCancel={()=>setShowCreator(false)}/>
+   <ProductEditor key="new-product" product={null} brands={brands} collections={collections} api={api} perform={perform} busy={busy} report={report} onCancel={()=>setShowCreator(false)}/>
   </div>}
   <div className="kd-admin-filter-row kd-compact-product-toolbar">
    <input aria-label="Search admin products" placeholder="Search products or brand…" value={search} onChange={e=>setSearch(e.target.value)}/>
@@ -122,10 +122,10 @@ export default function ProductsPanel({products,brands,api,perform,busy,report})
    </article>)}
   </div>
   {editing&&products.some(p=>p.id===editing)&&<EditProductDialog product={products.find(p=>p.id===editing)}
-   brands={brands} api={api} perform={perform} busy={busy} report={report} onClose={reset} onDelete={openDelete}/>}
+   brands={brands} collections={collections} api={api} perform={perform} busy={busy} report={report} onClose={reset} onDelete={openDelete}/>}
   {duplicating&&products.some(p=>p.id===duplicating.sourceId)&&<EditProductDialog
    duplicateSource={products.find(p=>p.id===duplicating.sourceId)} duplicateToken={duplicating.token}
-   brands={brands} api={api} perform={perform} busy={busy} report={report} onClose={()=>setDuplicating(null)}/>}
+   brands={brands} collections={collections} api={api} perform={perform} busy={busy} report={report} onClose={()=>setDuplicating(null)}/>}
   {deleting&&<PermanentDeleteDialog product={deleting} check={deletionCheck} checking={checkingDelete} busy={busy}
    onConfirm={confirmPermanentDelete} onClose={()=>{setDeleting(null);setDeletionCheck(null)}}/>}
  </section>;

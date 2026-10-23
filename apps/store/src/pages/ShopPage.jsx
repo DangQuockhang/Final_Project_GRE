@@ -7,14 +7,14 @@ import {ProductCard} from '../components/product/ProductCard.jsx';
 const categories=[['','All categories'],['accessories','Accessories'],['bags','Bags'],['clothing','Clothing'],['shoes','Shoes']];
 const sorts=[['featured','Featured'],['name','Alphabetically, A–Z'],['low','Price: Low to high'],['high','Price: High to low']];
 const priceBands=[['','Any price'],['under1500','Under 1.5 million ₫'],['mid','1.5 – 2.5 million ₫'],['over2500','Over 2.5 million ₫']];
-export default function ShopPage({products=[],brands=[]}){
+export default function ShopPage({products=[],brands=[],collections=[]}){
  const [params,setParams]=useSearchParams();
  const fields=['q','brand','category','type','price','stock','sale','sort'];
  const f=Object.fromEntries(fields.map(key=>[key,params.get(key)||'']));
  const results=filterProducts(products,brands,f);
  const page=paginateProducts(results,params.get('page'),10);
  const selectedBrand=brands.find(b=>b.slug===f.brand);
- const types=[...new Set(products.map(p=>p.product_type).filter(Boolean))].sort();
+ const types=[...new Set(collections.filter(c=>!c.hidden&&Number(c.active_count)>0&&(!f.category||c.category===f.category)).map(c=>c.name))].sort();
  const active=fields.filter(key=>f[key]&&!(key==='sort'&&f[key]==='featured'));
  const title=selectedBrand?.name||(f.sale==='1'?'SALE EDIT':f.category?categories.find(([id])=>id===f.category)?.[1]?.toUpperCase():null)||'ALL PRODUCTS';
  const change=(field,value)=>setParams(old=>{const next=new URLSearchParams(old);if(value&&!(field==='sort'&&value==='featured'))next.set(field,value);else next.delete(field);next.delete('page');next.delete('size');return next;});
