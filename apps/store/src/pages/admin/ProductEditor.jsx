@@ -2,7 +2,7 @@ import React,{useEffect,useMemo,useRef,useState} from 'react';
 import {ImagePlus,Plus,Trash2,Layers,Save,RotateCcw,ArrowLeft,ArrowRight,Star} from 'lucide-react';
 import {apiBase,productImageUrl} from '@kd/catalog';
 import {PRODUCT_CATEGORIES,PRODUCT_STATUSES,validateProduct} from '../../utils/adminValidation.js';
-import {buildVariantMatrix,hasMultipleColors,FALLBACK_HEX} from '../../utils/variantBuilder.js';
+import {buildVariantMatrix,hasMultipleColors,hasOptionalSize,FALLBACK_HEX} from '../../utils/variantBuilder.js';
 import {duplicateProduct} from '../../utils/duplicateProduct.js';
 import QuickAddBrand from './QuickAddBrand.jsx';
 import ImagePasteZone from '../../components/admin/ImagePasteZone.jsx';
@@ -25,6 +25,7 @@ export default function ProductEditor({product,duplicateSource=null,duplicateTok
  const duplicated=useMemo(()=>duplicateSource?duplicateProduct(duplicateSource,duplicateToken):null,[duplicateSource,duplicateToken]);
  const reference=duplicateSource||product;
  const [draft,setDraft]=useState(()=>duplicated?.draft||start(product));
+ const optionalSize=hasOptionalSize(draft.category);
  const [colors,setColors]=useState(()=>initialColors(reference));
  const [multipleColors,setMultipleColors]=useState(()=>hasMultipleColors(reference?.variants));
  const [sizes,setSizes]=useState(()=>duplicated?.sizes||[...new Set((product?.variants||[]).map(v=>v.size))].join(', ')||'ONE SIZE');
@@ -55,7 +56,7 @@ export default function ProductEditor({product,duplicateSource=null,duplicateTok
  useEffect(()=>()=>urls.forEach(x=>URL.revokeObjectURL(x.url)),[urls]);
  const set=(k,v)=>{
   setDraft(o=>({...o,[k]:v}));
-  if(k==='category'&&!product&&!rows.length)setSizes(v==='clothing'?'S, M, L':v==='shoes'?'39, 40, 41, 42':'ONE SIZE');
+  if(k==='category'&&!product&&!rows.length)setSizes(v==='clothing'?'S, M, L':v==='shoes'?'39, 40, 41, 42':'');
  };
  function addColor(){
   const next=shades.find(s=>!colors.some(c=>normal(c.name)===normal(s.name)))||{name:'New color',hex:'#758073'};
@@ -116,7 +117,7 @@ export default function ProductEditor({product,duplicateSource=null,duplicateTok
  }
  function buildMatrix(){
   try{
-   const generated=buildVariantMatrix({name:draft.name,sizes,colors,rows,defaultStock,multipleColors});
+   const generated=buildVariantMatrix({name:draft.name,sizes,colors,rows,defaultStock,multipleColors,category:draft.category});
    setRows(generated);
   }catch(error){report(error.message);}
  }
@@ -165,9 +166,9 @@ export default function ProductEditor({product,duplicateSource=null,duplicateTok
   }
   // Newly created one-color/no-color products get an internal SKU automatically.
   // The admin does not have to add a color or press Generate before saving.
-  let savingRows=rows;
-  if(!product&&!multipleColors&&rows.length===0){
-   try{savingRows=buildVariantMatrix({name:draft.name,sizes,rows:[],defaultStock,multipleColors:false});}
+  let savingRows=rows.map(row=>({...row,size:optionalSize&&!String(row.size??'').trim()?'ONE SIZE':row.size}));
+  if(rows.length===0&&removedVariants.length===0&&((!product&&!multipleColors)||optionalSize)){
+   try{savingRows=buildVariantMatrix({name:draft.name,sizes,colors,rows:[],defaultStock,multipleColors,category:draft.category});}
    catch(error){report(error.message);return;}
   }
   if(multipleColors&&(colors.length===0||colors.some(c=>!c.name.trim()||!/^#[a-f0-9]{6}$/i.test(c.hex)))){
@@ -240,10 +241,11 @@ export default function ProductEditor({product,duplicateSource=null,duplicateTok
     </div>)}</div>
    </div>:<p className="kd-optional-color-hint">No color selection needed. Product images show the item as sold. A standard internal SKU is created automatically for a new product.</p>}
    <div className="kd-size-builder">
-    <label>SIZE OPTIONS (COMMA-SEPARATED)<input value={sizes} onChange={e=>setSizes(e.target.value)} placeholder="ONE SIZE or S, M, L"/></label>
+    <label>{optionalSize?'SIZE OPTIONS (OPTIONAL)':'SIZE OPTIONS (COMMA-SEPARATED)'}<input value={sizes} onChange={e=>setSizes(e.target.value)} placeholder={optionalSize?'Leave empty for one size':'S, M, L'}/></label>
     <label>DEFAULT STOCK PER SKU<input type="number" min="0" value={defaultStock} onChange={e=>setDefaultStock(e.target.value)}/></label>
     <button type="button" className="button button-dark" onClick={buildMatrix}><Layers size={16}/>{multipleColors?'GENERATE COLOR × SIZE':'GENERATE SIZE / STOCK'}</button>
    </div>
+   {optionalSize&&<p className="kd-optional-color-hint">Size is optional for accessories and bags. Leave it empty for one size, enter stock, then click Save. You can still specify sizes for items such as rings or belts.</p>}
    {!product&&!multipleColors&&rows.length===0&&<p className="kd-optional-color-hint">You may skip Generate — Save will create the standard SKU using these sizes and stock. Set stock above 0 to make it purchasable.</p>}
    {rows.length>0?<div className={'kd-quick-variants'+(!multipleColors?' is-no-color':'')}>
     <div className="kd-quick-table-head">{multipleColors&&<span>COLOR</span>}<span>SIZE</span><span>SKU</span><span>STOCK</span><span>ACTION</span></div>

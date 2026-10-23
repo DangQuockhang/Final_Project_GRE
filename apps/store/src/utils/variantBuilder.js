@@ -1,6 +1,7 @@
 // Catalog SKU editor: a product may have no customer-facing color choices.
 // PostgreSQL still requires a nonempty internal color for each SKU.
 export const INTERNAL_COLOR = 'Standard';
+export const hasOptionalSize=category=>['accessories','bags'].includes(category);
 export const FALLBACK_HEX = '#758073';
 const norm=value=>String(value??'').trim().toLowerCase();
 const slug=value=>norm(value).normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'item';
@@ -8,8 +9,9 @@ const slug=value=>norm(value).normalize('NFD').replace(/[\u0300-\u036f]/g,'').re
 export const hasMultipleColors=variants=>
  new Set((variants||[]).map(v=>norm(v.color)).filter(Boolean)).size>1;
 
-export function buildVariantMatrix({name,sizes,colors=[],rows=[],defaultStock=0,multipleColors=false}){
+export function buildVariantMatrix({name,sizes,colors=[],rows=[],defaultStock=0,multipleColors=false,category}){
  const parsed=[...new Map(String(sizes||'').split(',').map(x=>x.trim()).filter(Boolean).map(x=>[norm(x),x])).values()];
+ if(!parsed.length&&hasOptionalSize(category))parsed.push('ONE SIZE');
  if(!parsed.length||parsed.some(size=>size.length>20))
   throw new Error('Enter valid sizes, for example ONE SIZE or S, M, L.');
  const stock=Number(defaultStock);
