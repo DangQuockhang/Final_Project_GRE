@@ -1,16 +1,12 @@
 import React,{useEffect,useRef,useState} from 'react';
 import {Link,useLocation,useNavigate} from 'react-router-dom';
 import {ArrowUpRight,ChevronDown,CircleUserRound,Menu,Search,Settings,ShoppingBag,X} from 'lucide-react';
+import {groupCollections} from '../../utils/collections.js';
 import {isOutsidePanel} from '../../utils/navigationMenu.js';
 
-const collections={
- ACCESSORIES:[['Bracelet','accessories'],['Necklace','accessories'],['Earring','accessories'],['Bucket Hat','accessories'],['Cap','accessories'],['Belt','accessories'],['Glasses','accessories'],['Watches','accessories'],['Hair Accessories','accessories'],['Wallet','accessories']],
- BAGS:[['Clutch','bags'],['Crossbody Bag','bags'],['Handle Bag','bags'],['Messenger Bag','bags'],['Mini Bag','bags'],['Shoulder Bag','bags'],['Tote Bag','bags'],['Backpack','bags']],
- CLOTHING:[['Cardigan','clothing'],['T-Shirt','clothing'],['Hoodie','clothing'],['Polo','clothing'],['Jacket','clothing'],['Shirt','clothing'],['Shorts','clothing'],['Skirt','clothing'],['Sweater','clothing'],['Jeans','clothing'],['Pants','clothing']],
- SHOES:[['Sneakers','shoes'],['Slides','shoes'],['Slippers','shoes'],['Slip-On','shoes'],['Loafers','shoes'],['Pumps','shoes'],['Mules','shoes'],['Boots','shoes'],['Sandals','shoes']]
-};
+
 const bandDefs=[['A – B',/^[A-B]/i],['C – F',/^[C-F]/i],['G – L',/^[G-L]/i],['M – Q',/^[M-Q]/i],['R – Z',/^[R-Z]/i],['0 – 9',/^\d/]];
-export default function Navbar({user,count,fittingUrl,brands=[]}){
+export default function Navbar({user,count,fittingUrl,brands=[],collections=[]}){
  const [menu,setMenu]=useState(''),[mobile,setMobile]=useState(false),[searchOpen,setSearchOpen]=useState(false),[query,setQuery]=useState(''),[scrolled,setScrolled]=useState(false);
  const location=useLocation(),nav=useNavigate();
  const menuRef=useRef(menu);
@@ -47,6 +43,7 @@ export default function Navbar({user,count,fittingUrl,brands=[]}){
  },[menu,searchOpen,mobile]);
  const go=url=>{nav(url);setMenu('');setMobile(false);setSearchOpen(false)};
  const toggle=which=>{setSearchOpen(false);setMobile(false);setMenu(prev=>prev===which?'':which)};
+ const collectionGroups=groupCollections(collections);
  const brandGroups=bandDefs.map(([label,pattern])=>({label,items:brands.filter(b=>pattern.test(b.name))})).filter(g=>g.items.length);
  function submitSearch(e){e.preventDefault();if(!query.trim())return;go('/shop?q='+encodeURIComponent(query.trim()));}
  return <>
@@ -70,9 +67,10 @@ export default function Navbar({user,count,fittingUrl,brands=[]}){
    </div>
    {menu==='collections'&&<div ref={megaPanel} id="kd-retail-collections" className="kd-retail-mega" role="region" aria-label="Collections directory">
      <div className="kd-retail-mega-columns">
-      {Object.entries(collections).map(([title,items])=><div className="kd-retail-mega-column" key={title}>
+      {!collectionGroups.length&&<p>No collections available yet.</p>}
+      {collectionGroups.map(({category,name:title,items})=><div className="kd-retail-mega-column" key={title}>
        <h3>{title}</h3>
-       {items.map(([label,category])=><button key={label} type="button" onClick={()=>go('/shop?category='+encodeURIComponent(category)+'&type='+encodeURIComponent(label))}>{label}</button>)}
+       {items.map(collection=><button key={collection.id} type="button" onClick={()=>go('/shop?category='+encodeURIComponent(category)+'&type='+encodeURIComponent(collection.name))}>{collection.name}</button>)}
       </div>)}
      </div>
      <button className="kd-retail-mega-all" type="button" onClick={()=>go('/shop')}>VIEW ALL PRODUCTS <ArrowUpRight size={18}/></button>
