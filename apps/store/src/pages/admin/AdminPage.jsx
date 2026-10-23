@@ -5,20 +5,22 @@ import Eyebrow from '../../components/common/Eyebrow.jsx';
 import {adminMetrics} from '../../utils/adminValidation.js';
 import BrandsPanel from './BrandsPanel.jsx';
 import ProductsPanel from './ProductsPanel.jsx';
+import CollectionsPanel from './CollectionsPanel.jsx';
 import OrdersPanel from './OrdersPanel.jsx';
 
-const TABS=[['overview','Overview',ChartNoAxesColumn],['products','Products / Inventory',Package],['brands','Brands',Tags],['orders','Orders',ClipboardList]];
+const TABS=[['overview','Overview',ChartNoAxesColumn],['products','Products / Inventory',Package],['collections','Collections',Tags],['brands','Brands',Tags],['orders','Orders',ClipboardList]];
 export default function AdminPage({user,token,request,refreshCatalog}){
   const [tab,setTab]=useState('overview');
   const [products,setProducts]=useState([]),[brands,setBrands]=useState([]),[orders,setOrders]=useState([]);
+  const [collections,setCollections]=useState([]);
   const [busy,setBusy]=useState(false),[loading,setLoading]=useState(true);
   const [error,setError]=useState(''),[notice,setNotice]=useState('');
   const api=(path,options={})=>request(path,{...options,token});
   async function reload(){
-    const [p,b,o]=await Promise.all([
-      api('/admin/products'),api('/brands'),api('/admin/orders')
+    const [p,b,o,c]=await Promise.all([
+      api('/admin/products'),api('/brands'),api('/admin/orders'),api('/admin/collections')
     ]);
-    setProducts(p);setBrands(b);setOrders(o);
+    setProducts(p);setBrands(b);setOrders(o);setCollections(c);
     await refreshCatalog();
   }
   useEffect(()=>{
@@ -26,9 +28,10 @@ export default function AdminPage({user,token,request,refreshCatalog}){
     Promise.all([
       request('/admin/products',{token}),
       request('/brands',{token}),
-      request('/admin/orders',{token})
-    ]).then(([p,b,o])=>{
-      if(live){setProducts(p);setBrands(b);setOrders(o);}
+      request('/admin/orders',{token}),
+      request('/admin/collections',{token})
+     ]).then(([p,b,o,c])=>{
+      if(live){setProducts(p);setBrands(b);setOrders(o);setCollections(c);}
     }).catch(e=>{if(live)setError(e.message||'Unable to load admin data.');})
       .finally(()=>{if(live)setLoading(false);});
     return ()=>{live=false};
@@ -79,8 +82,9 @@ export default function AdminPage({user,token,request,refreshCatalog}){
           </div>
           <p className="kd-admin-hint">Categories are Accessories, Bags, Clothing and Shoes. Use Product Type to classify subcategories such as Jacket, T-Shirt or Slides.</p>
         </section>}
+        {tab==='collections'&&<CollectionsPanel {...common} collections={collections}/>}
         {tab==='brands'&&<BrandsPanel {...common} brands={brands} products={products}/>}
-        {tab==='products'&&<ProductsPanel {...common} products={products} brands={brands}/>}
+        {tab==='products'&&<ProductsPanel {...common} products={products} brands={brands} collections={collections}/>}
         {tab==='orders'&&<OrdersPanel {...common} orders={orders}/>}
       </div>}
   </div>;
