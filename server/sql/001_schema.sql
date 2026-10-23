@@ -152,3 +152,38 @@ CREATE TABLE IF NOT EXISTS brand_size_guides (
  PRIMARY KEY (brand_id,category)
 );
 ALTER TABLE products ADD COLUMN IF NOT EXISTS size_guide_image_url TEXT;
+
+
+-- Product types drive persistent collections. Normalize old and new names alike.
+CREATE OR REPLACE FUNCTION normalize_collection_name(value TEXT) RETURNS TEXT
+LANGUAGE SQL IMMUTABLE AS $$
+ SELECT upper(left(n,1)) || substring(n FROM 2)
+ FROM (SELECT lower(trim(regexp_replace(COALESCE(value,''),'[[:space:]]+',' ','g'))) AS n) normalized;
+$$;
+CREATE TABLE IF NOT EXISTS collections (
+ id SERIAL PRIMARY KEY,
+ category VARCHAR(40) NOT NULL CHECK (category IN ('accessories','bags','clothing','shoes')),
+ name VARCHAR(60) NOT NULL CHECK (name<>'' AND name=normalize_collection_name(name)),
+ hidden BOOLEAN NOT NULL DEFAULT false,
+ UNIQUE(category,name)
+);
+ALTER TABLE products ADD COLUMN IF NOT EXISTS collection_id INTEGER REFERENCES collections(id) ON DELETE RESTRICT;
+CREATE INDEX IF NOT EXISTS products_collection_idx ON products(collection_id);
+CREATE OR REPLACE FUNCTION sync_product_collection() RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+ NEW.product_type := NULLIF(normalize_collection_name(NEW.product_type),'');
+ IF NEW.product_type IS NULL THEN
+  NEW.collection_id := NULL;
+ ELSE
+  INSERT INTO collections(category,name) VALUES(NEW.category,NEW.product_type)
+   ON CONFLICT(category,name) DO UPDATE SET name=EXCLUDED.name
+   RETURNING id INTO NEW.collection_id;
+ END IF;
+ RETURN NEW;
+END;
+$$;
+DROP TRIGGER IF EXISTS products_collection_sync ON products;
+CREATE TRIGGER products_collection_sync BEFORE INSERT OR UPDATE OF product_type,category,collection_id
+ ON products FOR EACH ROW EXECUTE FUNCTION sync_product_collection();
+-- Backfill safely on existing databases; hidden flags remain unchanged on reruns.
+UPDATE products SET product_type=product_type;
