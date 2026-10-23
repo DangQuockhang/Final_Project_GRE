@@ -20,6 +20,7 @@ export default function ProductDetailPage({products=[],online=false,loading=fals
  const activeColor=palette.some(c=>c.name===selectedColor)?selectedColor:(variants.find(v=>Number(v.stock)>0)?.color||variants[0]?.color||'');
  const showColorChoices=palette.length>1;
  const sizeOptions=variants.filter(v=>v.color===activeColor);
+ const noSizeChoice=['accessories','bags'].includes(item?.category)&&sizeOptions.length===1&&['','ONE SIZE'].includes(String(sizeOptions[0].size??'').trim().toUpperCase());
  const variant=sizeOptions.find(v=>String(v.id)===selected)||sizeOptions.find(v=>Number(v.stock)>0)||sizeOptions[0];
  const available=Number(variant?.stock)||0,max=Math.max(0,Math.min(20,available));
  const inStock=sizeOptions.some(v=>Number(v.stock)>0);
@@ -60,6 +61,7 @@ export default function ProductDetailPage({products=[],online=false,loading=fals
         </button>)}
        </div>
       </>}
+      {!noSizeChoice&&<>
       <div className="kd-v2-size-header">
        <div className="kd-retail-label">SIZE <span style={{fontWeight:400,color:'#748077'}}>{variant?'· '+variant.size:''}</span></div>
        {guideUrl&&<button type="button" className="kd-v2-size-link" onClick={()=>setSizeGuideOpen(true)}><Ruler size={19}/> Size guide</button>}
@@ -67,6 +69,8 @@ export default function ProductDetailPage({products=[],online=false,loading=fals
       <div className="kd-retail-sizes" role="group" aria-label="Select size for chosen color">
        {sizeOptions.map(v=><button type="button" key={v.id} className={String(variant?.id)===String(v.id)?'active':''} aria-pressed={String(variant?.id)===String(v.id)} disabled={Number(v.stock)<=0} title={v.size+' / '+v.color} onClick={()=>{setSelected(String(v.id));setQuantity(1);setAdded(false)}}>{v.size}</button>)}
       </div>
+      </>}
+      {noSizeChoice&&guideUrl&&<button type="button" className="kd-v2-size-link" onClick={()=>setSizeGuideOpen(true)}><Ruler size={19}/> Size guide</button>}
       <div className="kd-retail-stock" role="status" aria-live="polite"><span className={'kd-retail-stock-dot'+(!inStock?' out':'')}/>{inStock?'In stock':'Out of stock'}{fetching?' · Refreshing stock…':''}</div>
       {fetchError&&<p className="kd-warning" role="alert">{fetchError}</p>}
       <div className="kd-retail-buy-row">
