@@ -1,4 +1,5 @@
 import React,{useState} from 'react';
+import {Search} from 'lucide-react';
 export default function CollectionsPanel({collections=[],api,perform,busy}){
  const [search,setSearch]=useState('');
  const rows=collections.filter(c=>(c.name+' '+c.category).toLowerCase().includes(search.trim().toLowerCase()));
@@ -9,7 +10,9 @@ export default function CollectionsPanel({collections=[],api,perform,busy}){
  return <section className="kd-admin-panel">
   <div className="kd-admin-panel-header"><div><h2>Collections</h2>
    <p>Collections are created from Product Type when a product is saved. Empty collections do not appear in the customer menu.</p></div></div>
-  <input aria-label="Search collections" placeholder="Search name or category…" value={search} onChange={e=>setSearch(e.target.value)}/>
+  <div className="kd-order-management-toolbar">
+   <label><Search size={19} aria-hidden="true"/><input type="search" aria-label="Search collections" placeholder="Search name or category…" value={search} onChange={e=>setSearch(e.target.value)}/></label>
+  </div>
   <div className="kd-collection-list">
    {rows.map(c=><article key={c.id} className="kd-collection-row">
     <div><h3>{c.name}</h3><small>{c.category} · {c.total_count} products · {c.active_count} active</small>

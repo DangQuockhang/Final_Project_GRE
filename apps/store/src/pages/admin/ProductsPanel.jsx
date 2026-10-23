@@ -1,6 +1,6 @@
 import React,{useEffect,useRef,useState} from 'react';
 import {createPortal} from 'react-dom';
-import {Pencil,ImagePlus,Trash2,X,CopyPlus,Plus,RotateCcw} from 'lucide-react';
+import {Pencil,ImagePlus,Trash2,X,CopyPlus,Plus,RotateCcw,Search} from 'lucide-react';
 import {apiBase,productImageUrl} from '@kd/catalog';
 import PermanentDeleteDialog from '../../components/admin/PermanentDeleteDialog.jsx';
 import {PRODUCT_STATUSES} from '../../utils/adminValidation.js';
@@ -85,8 +85,8 @@ export default function ProductsPanel({products,brands,collections,api,perform,b
   {showCreator&&<div id="kd-admin-new-product" className="kd-compact-create-panel">
    <ProductEditor key="new-product" product={null} brands={brands} collections={collections} api={api} perform={perform} busy={busy} report={report} onCancel={()=>setShowCreator(false)}/>
   </div>}
-  <div className="kd-admin-filter-row kd-compact-product-toolbar">
-   <input aria-label="Search admin products" placeholder="Search products or brand…" value={search} onChange={e=>setSearch(e.target.value)}/>
+  <div className="kd-compact-product-toolbar kd-order-management-toolbar">
+   <label><Search size={19} aria-hidden="true"/><input type="search" aria-label="Search admin products" placeholder="Search products or brand…" value={search} onChange={e=>setSearch(e.target.value)}/></label>
    <select aria-label="Filter products by brand" value={brandFilter} onChange={e=>setBrandFilter(e.target.value)}>
     <option value="all">All Brands</option>
     {sortedBrands.map(brand=><option value={String(brand.id)} key={brand.id}>
