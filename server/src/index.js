@@ -172,6 +172,10 @@ const saveProductBundle=wrap(async(req,res)=>{
  if(!Array.isArray(deletedIds)||deletedIds.length>80||deletedIds.some(id=>!isId(id))||new Set(deletedIds.map(String)).size!==deletedIds.length||(!editing&&deletedIds.length)){
   return fail(res,'Invalid list of SKU deletions.');
  }
+ // Accessories and bags may omit a size; keep a real SKU for stock and checkout.
+ if(['accessories','bags'].includes(category)){
+  for(const v of variants)if(!clean(v.size))v.size='ONE SIZE';
+ }
  const activeIds=new Set(variants.filter(v=>v.id!=null).map(v=>String(v.id)));
  if(deletedIds.some(id=>activeIds.has(String(id))))return fail(res,'A SKU cannot be updated and deleted together.');
  const seen=new Set(),seenSku=new Set();
