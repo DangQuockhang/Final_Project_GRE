@@ -31,6 +31,36 @@ test('Admin permissions and COD stock transactions against disposable PostgreSQL
   const user=await request('/api/auth/register',{name:'Test Customer',email:'test-'+id+'@example.test',password:'TestCustomerPassword2026'});
   assert.equal(user.status,201);
   const brands=await fetch(base+'/api/brands').then(r=>r.json());
+  // A size-free accessory still has stock-backed SKUs and can be checked out.
+  const accessoryPayload={name:'Size-free accessory '+id,brand_id:brands[0].id,category:'accessories',
+   price:250000,status:'active',variants:[{sku:'NOSIZE-'+id,color:'Standard',stock:4,size:'  '}]};
+  const submitAccessory=async(payload,productId)=>{
+   const form=new FormData();form.append('payload',JSON.stringify(payload));
+   return fetch(base+'/api/admin/products/'+(productId?productId+'/bundle':'bundle'),{
+    method:productId?'PATCH':'POST',headers:{Authorization:'Bearer '+token},body:form
+   });
+  };
+  const accessoryResponse=await submitAccessory(accessoryPayload);
+  assert.equal(accessoryResponse.status,201);
+  const accessoryInfo=await accessoryResponse.json();
+  let accessory=await fetch(base+'/api/products/'+accessoryInfo.slug).then(r=>r.json());
+  assert.equal(accessory.variants.length,1);
+  assert.equal(accessory.variants[0].size,'ONE SIZE');
+  assert.equal(accessory.variants[0].stock,4);
+  const savedSku=accessory.variants[0].id;
+  assert.equal((await submitAccessory({...accessoryPayload,variants:[{...accessory.variants[0],size:null,stock:5}]},accessoryInfo.id)).status,200);
+  accessory=await fetch(base+'/api/products/'+accessoryInfo.slug).then(r=>r.json());
+  assert.equal(accessory.variants[0].id,savedSku);
+  assert.equal(accessory.variants[0].size,'ONE SIZE');
+  const accessoryOrder=await request('/api/orders',{recipient:'Accessory Buyer',phone:'0000000000',
+   address:'Test accessory checkout address',items:[{variant_id:savedSku,quantity:2}]},user.data.token);
+  assert.equal(accessoryOrder.status,201);
+  accessory=await fetch(base+'/api/products/'+accessoryInfo.slug).then(r=>r.json());
+  assert.equal(accessory.variants[0].stock,3);
+  for(const category of ['clothing','shoes']){
+   assert.equal((await submitAccessory({...accessoryPayload,name:'Invalid size '+category+' '+id,category,
+    variants:[{sku:'INVALID-'+category+'-'+id,color:'Standard',size:'',stock:2}]})).status,400);
+  }
   // One-submit workflow and color variants: atomically persist product, photos and stock.
   const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6TuYAAAAASUVORK5CYII=','base64');
   const createBundle={
