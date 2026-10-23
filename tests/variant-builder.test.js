@@ -45,3 +45,31 @@ test('rejects invalid size, stock and duplicate color labels',()=>{
   {name:'Black',hex:'#111111'},{name:'black',hex:'#222222'}
  ]}),/unique/);
 });
+
+test('accessories and bags can omit size without losing inventory',()=>{
+ for(const category of ['accessories','bags']){
+  for(const sizes of [undefined,'','   ', ' , ']){
+   const rows=buildVariantMatrix({name:'Everyday Item',category,sizes,defaultStock:7});
+   assert.equal(rows.length,1);
+   assert.equal(rows[0].size,'ONE SIZE');
+   assert.equal(rows[0].stock,'7');
+   assert.ok(rows[0].sku);
+  }
+ }
+});
+test('size-free accessories preserve color choices and saved SKU IDs',()=>{
+ const colors=[{name:'Black',hex:'#111111'},{name:'Red',hex:'#cc0000'}];
+ const old={id:42,sku:'KEEP-ME',color:'Black',color_hex:'#111111',size:'ONE SIZE',stock:'9'};
+ const rows=buildVariantMatrix({name:'Cap',category:'accessories',sizes:'',colors,multipleColors:true,rows:[old],defaultStock:4});
+ assert.equal(rows.length,2);
+ assert.deepEqual(rows[0],old);
+ assert.equal(rows[1].size,'ONE SIZE');
+ assert.equal(rows[1].stock,'4');
+});
+test('explicit accessory sizes remain selectable; clothing and shoes require sizes',()=>{
+ const rows=buildVariantMatrix({name:'Ring',category:'accessories',sizes:'6, 7',defaultStock:2});
+ assert.deepEqual(rows.map(v=>v.size),['6','7']);
+ for(const category of ['clothing','shoes']){
+  assert.throws(()=>buildVariantMatrix({name:'Sized item',category,sizes:'',defaultStock:2}),/valid sizes/);
+ }
+});
