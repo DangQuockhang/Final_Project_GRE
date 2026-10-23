@@ -29,6 +29,7 @@ import './styles/checkout-cart.css';
 import './styles/order-management.css';
 import './styles/product-gallery-v2.css';
 import './styles/brand-refresh.css';
+import './styles/collections.css';
 import AdminPage from './pages/admin/AdminPage.jsx';
 
 const API=import.meta.env.VITE_API_URL||apiBase;
@@ -43,8 +44,9 @@ const useAuth=()=>useContext(authContext),useCart=()=>useContext(cartContext),us
 function Providers({children}){
  const [session,setSession]=useState(()=>{try{return JSON.parse(localStorage.getItem('kd_session')||'null')}catch{return null}});
  const [cart,setCart]=useState(()=>{try{return JSON.parse(localStorage.getItem('kd_cart')||'[]')}catch{return []}});
+ const [collections,setCollections]=useState([]);
  const [products,setProducts]=useState(demoProducts),[brands,setBrands]=useState(demoBrands),[online,setOnline]=useState(false),[loading,setLoading]=useState(true);
- const refresh=async()=>{try{const [p,b]=await Promise.all([request('/products'),request('/brands')]);setProducts(p);setBrands(b);setOnline(true);}catch{setProducts(demoProducts);setBrands(demoBrands);setOnline(false);}finally{setLoading(false)}};
+ const refresh=async()=>{try{const [p,b,c]=await Promise.all([request('/products'),request('/brands'),request('/collections')]);setProducts(p);setBrands(b);setCollections(c);setOnline(true);}catch{setProducts(demoProducts);setBrands(demoBrands);setCollections([]);setOnline(false);}finally{setLoading(false)}};
  useEffect(()=>{refresh();},[]);
  useEffect(()=>{localStorage.setItem('kd_cart',JSON.stringify(cart))},[cart]);
  useEffect(()=>{if(session)localStorage.setItem('kd_session',JSON.stringify(session));else localStorage.removeItem('kd_session')},[session]);
@@ -52,12 +54,12 @@ function Providers({children}){
  const add=(product,variant,qty=1)=>{const key=String(variant.id);setCart(old=>{const i=old.findIndex(x=>x.key===key);if(i===-1)return [...old,{key,product,variant,quantity:qty}];return old.map((x,j)=>j===i?{...x,quantity:Math.min(20,x.quantity+qty)}:x)});};
  const update=(key,qty)=>setCart(old=>qty<=0?old.filter(x=>x.key!==key):old.map(x=>x.key===key?{...x,quantity:Math.max(1,Math.min(20,qty))}:x));
  const cartValue={cart,add,update,clear:()=>setCart([]),count:cart.reduce((s,x)=>s+x.quantity,0),total:cartDisplayTotal(cart,products)};
- return <authContext.Provider value={auth}><catalogContext.Provider value={{products,brands,online,loading,refresh}}><cartContext.Provider value={cartValue}>{children}</cartContext.Provider></catalogContext.Provider></authContext.Provider>
+ return <authContext.Provider value={auth}><catalogContext.Provider value={{products,brands,collections,online,loading,refresh}}><cartContext.Provider value={cartValue}>{children}</cartContext.Provider></catalogContext.Provider></authContext.Provider>
 }
-function Header(){const {count}=useCart(),{user}=useAuth(),{brands}=useCatalog();return <Navbar count={count} user={user} brands={brands}/> }
+function Header(){const {count}=useCart(),{user}=useAuth(),{brands,collections}=useCatalog();return <Navbar count={count} user={user} brands={brands} collections={collections}/> }
 function Layout({children}){const {online,loading}=useCatalog();return <><Header/>{!loading&&!online&&<div className="demo-banner">API unavailable — product previews may be outdated. Ordering requires a connection to our server.</div>}<main>{children}</main><Footer/></>}
 function Home(){const {products,brands}=useCatalog();return <Layout><HomePage products={products} brands={brands}/></Layout>}
-function Shop(){const {products,brands}=useCatalog();return <Layout><ShopPage products={products} brands={brands}/></Layout>}
+function Shop(){const {products,brands,collections}=useCatalog();return <Layout><ShopPage products={products} brands={brands} collections={collections}/></Layout>}
 function Brands(){const {brands,products}=useCatalog();return <Layout><BrandsPage brands={brands} products={products}/></Layout>}
 function Product(){const {products,online,loading}=useCatalog(),{add}=useCart();return <Layout><ProductDetailPage products={products} online={online} loading={loading} addToCart={add}/></Layout>}
 function Cart(){
