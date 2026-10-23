@@ -141,13 +141,45 @@ route.delete('/admin/products/:id/size-guide',authorize,admin,wrap(async(req,res
  res.json({ok:true});
 }));
 
+
+const collectionSelect=`SELECT c.*,COUNT(p.id)::int AS total_count,
+ COUNT(p.id) FILTER (WHERE p.status='active')::int AS active_count
+ FROM collections c LEFT JOIN products p ON p.collection_id=c.id`;
+route.get('/collections',wrap(async(req,res)=>{
+ const result=await query(`${collectionSelect} WHERE NOT c.hidden GROUP BY c.id
+ HAVING COUNT(p.id) FILTER (WHERE p.status='active')>0 ORDER BY c.category,c.name`);
+ res.json(result.rows);
+}));
+route.get('/admin/collections',authorize,admin,wrap(async(req,res)=>{
+ const result=await query(`${collectionSelect} GROUP BY c.id ORDER BY c.category,c.name`);
+ res.json(result.rows);
+}));
+route.patch('/admin/collections/:id',authorize,admin,wrap(async(req,res)=>{
+ if(!isId(req.params.id)||typeof req.body.hidden!=='boolean')return fail(res,'Invalid collection visibility.');
+ const result=await query('UPDATE collections SET hidden=$1 WHERE id=$2 RETURNING *',[req.body.hidden,req.params.id]);
+ if(!result.rowCount)return fail(res,'Collection not found.',404);
+ res.json(result.rows[0]);
+}));
+route.delete('/admin/collections/:id',authorize,admin,wrap(async(req,res)=>{
+ if(!isId(req.params.id))return fail(res,'Invalid collection ID.');
+ // The FK also protects against products added concurrently with deletion.
+ try{
+  const result=await query('DELETE FROM collections WHERE id=$1 RETURNING id',[req.params.id]);
+  if(!result.rowCount)return fail(res,'Collection not found.',404);
+  res.json({ok:true});
+ }catch(error){
+  if(error.code==='23503')return fail(res,'Collection still has products. Hide it or move its products before deleting.',409);
+  throw error;
+ }
+}));
+
 const baseSelect=`SELECT p.*,b.name AS brand_name,b.slug AS brand_slug,b.logo_url AS brand_logo_url,(SELECT g.image_url FROM brand_size_guides g WHERE g.brand_id=p.brand_id AND g.category=p.category) AS brand_size_guide_image_url, COALESCE((SELECT json_agg(json_build_object('id',v.id,'sku',v.sku,'size',v.size,'color',v.color,'color_hex',v.color_hex,'chest_cm',v.chest_cm,'stock',v.stock) ORDER BY v.id) FROM product_variants v WHERE v.product_id=p.id),'[]'::json) AS variants, COALESCE((SELECT json_agg(json_build_object('id',i.id,'image_url',i.image_url,'position',i.position) ORDER BY i.position,i.id) FROM product_images i WHERE i.product_id=p.id),'[]'::json) AS images FROM products p JOIN brands b ON b.id=p.brand_id`;
 route.get('/products',wrap(async(req,res)=>{
  const where=[`p.status='active'`],params=[];
  if(req.query.brand){params.push(clean(req.query.brand));where.push(`b.slug=$${params.length}`);}
  if(req.query.q){params.push(`%${clean(req.query.q)}%`);where.push(`(p.name ILIKE $${params.length} OR b.name ILIKE $${params.length})`);}
  if(req.query.category){params.push(clean(req.query.category));where.push(`p.category=$${params.length}`);}
- const r=await query(`${baseSelect} WHERE ${where.join(' AND ')} ORDER BY p.created_at DESC,p.id DESC LIMIT 100`,params);res.json(r.rows);
+ const r=await query(`${baseSelect} WHERE ${where.join(' AND ')} ORDER BY p.created_at DESC,p.id DESC`,params);res.json(r.rows);
 }));
 route.get('/admin/products',authorize,admin,wrap(async(req,res)=>{
  const r=await query(`${baseSelect} ORDER BY p.id DESC LIMIT 200`);res.json(r.rows);
