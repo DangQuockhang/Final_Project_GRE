@@ -145,7 +145,7 @@ test('Admin permissions and COD stock transactions against disposable PostgreSQL
    ]
   };
   const bundleForm=body=>{
-   const form=new FormData();form.append('payload',JSON.stringify(body));
+   const form=new FormData();form.append('payload',JSON.stringify({...body,new_image_colors:['Black','Red']}));
    form.append('images',new Blob([png],{type:'image/png'}),'view1.png');
    form.append('images',new Blob([png],{type:'image/png'}),'view2.png');
    return form;
@@ -156,6 +156,29 @@ test('Admin permissions and COD stock transactions against disposable PostgreSQL
   assert.equal(bundle.status,201); 
   const bundleBody=await bundle.json();
   const bundleItem=await fetch(base+'/api/products/'+bundleBody.slug).then(r=>r.json());
+
+  // Photo color metadata survives bundle saves and is scoped to this product.
+  assert.deepEqual(bundleItem.images.map(image=>image.color),['Black','Red']);
+  const colorEdit=async assignments=>{
+   const form=new FormData();
+   form.append('payload',JSON.stringify({...createBundle,cover_new_index:undefined,new_image_colors:undefined,
+    variants:bundleItem.variants,image_colors:assignments}));
+   return fetch(base+'/api/admin/products/'+bundleBody.id+'/bundle',{
+    method:'PATCH',headers:{Authorization:'Bearer '+token},body:form
+   });
+  };
+  assert.equal((await colorEdit([{id:bundleItem.images[0].id,color:' red '}])).status,200);
+  let colored=await fetch(base+'/api/products/'+bundleBody.slug).then(r=>r.json());
+  assert.equal(colored.images[0].color,'Red');
+  assert.equal((await colorEdit([{id:bundleItem.images[0].id,color:'Unknown'}])).status,400);
+  assert.equal((await colorEdit([{id:987654321,color:'Black'}])).status,400);
+  colored=await fetch(base+'/api/products/'+bundleBody.slug).then(r=>r.json());
+  assert.equal(colored.images[0].color,'Red','Rejected assignments roll back');
+  assert.equal((await colorEdit([{id:bundleItem.images[0].id,color:null}])).status,200);
+  colored=await fetch(base+'/api/products/'+bundleBody.slug).then(r=>r.json());
+  assert.equal(colored.images[0].color,null);
+  // Restore the association for later bundle updates that omit metadata.
+  assert.equal((await colorEdit([{id:bundleItem.images[0].id,color:'Black'}])).status,200);
 
   // A failed bundle must roll back its automatically-created collection too.
   const failedType='Rollback '+id;
@@ -282,6 +305,7 @@ test('Admin permissions and COD stock transactions against disposable PostgreSQL
   assert.equal(updateBundle.status,200);
   const edited=await fetch(base+'/api/products/'+bundleBody.slug).then(r=>r.json());
   assert.equal(Number(edited.sale_price),950000);
+  assert.deepEqual(edited.images.map(image=>image.color),['Black','Red'],'Older clients can omit photo colors without clearing them');
   assert.equal(edited.variants.find(v=>v.color==='Red').stock,4);
   // Deleting duplicate or unwanted color/size SKUs is staged in the Product Editor.
   // The server accepts explicit deletes in the same atomic edit, but never breaks order history.
