@@ -1,5 +1,5 @@
 import React,{useEffect,useMemo,useRef,useState} from 'react';
-import {ImagePlus,Plus,Trash2,Layers,Save,RotateCcw,ArrowLeft,ArrowRight,Star} from 'lucide-react';
+import {ImagePlus,Plus,Trash2,Layers,Save,ArrowLeft,ArrowRight,Star} from 'lucide-react';
 import {apiBase,productImageUrl} from '@kd/catalog';
 import {PRODUCT_CATEGORIES,PRODUCT_STATUSES,validateProduct} from '../../utils/adminValidation.js';
 import {buildVariantMatrix,hasMultipleColors,hasOptionalSize,FALLBACK_HEX} from '../../utils/variantBuilder.js';
@@ -217,7 +217,7 @@ export default function ProductEditor({product,duplicateSource=null,duplicateTok
   <fieldset disabled={busy||working} style={{border:0,padding:0,margin:0,minWidth:0}}>
   <div className="kd-quick-title"><div><span>PRODUCT WORKSPACE</span><h3>{product?'Edit '+product.name:duplicated?'Duplicate '+duplicateSource.name:'New product — one step'}</h3>
    <p>{duplicated?'A new independent draft. Details and sizes copied; stock reset to zero, new SKUs assigned. Select new photos before publishing.':'Details, color and size inventory, and photos — save together.'}</p>
-  </div>{(product||duplicated)&&<button type="button" className="border-button" onClick={onCancel}><RotateCcw size={16}/> CANCEL {product?'EDIT':'DUPLICATE'}</button>}</div>
+  </div></div>
   <div className="kd-quick-grid">
    <label>PRODUCT NAME<input required value={draft.name} onChange={e=>set('name',e.target.value)} placeholder="Classic Overshirt"/></label>
    <div className="kd-product-brand-field">
