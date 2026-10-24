@@ -5,3 +5,10 @@ export function galleryUrls(product,resolve){
  const urls=ordered.filter(Boolean).map(resolve).filter(Boolean);
  return [...new Set(urls)];
 }
+
+export function colorImageUrl(product,color,resolve){
+ const key=String(color||'').trim().toLowerCase();
+ if(!key)return null;
+ const photo=(product?.images||[]).find(photo=>String(photo.color||'').trim().toLowerCase()===key&&photo.image_url);
+ return photo?resolve(photo.image_url):null;
+}
