@@ -58,7 +58,7 @@ export default function ProductEditor({product,duplicateSource=null,duplicateTok
  const [quickBrandOpen,setQuickBrandOpen]=useState(false);
  const quickBrandButton=useRef(null);
  const closeQuickBrand=()=>{setQuickBrandOpen(false);quickBrandButton.current?.focus();};
- const limit=Math.min(6,8-(product?.images?.length||0)+deletedImages.length);
+ const limit=Math.max(0,20-(product?.images?.length||0)+deletedImages.length);
  const urls=useMemo(()=>files.map(file=>({name:file.name,url:URL.createObjectURL(file)})),[files]);
  useEffect(()=>()=>urls.forEach(x=>URL.revokeObjectURL(x.url)),[urls]);
  const set=(k,v)=>{
