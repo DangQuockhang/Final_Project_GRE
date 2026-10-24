@@ -198,7 +198,10 @@ export default function ProductEditor({product,duplicateSource=null,duplicateTok
   setWorking(true);
   try{
    const ok=await perform(()=>api(product?'/admin/products/'+product.id+'/bundle':'/admin/products/bundle',{method:product?'PATCH':'POST',body:form}),
-    'Product, sizes, photos, cover and size guide saved.');
+    'Product, sizes, photos, cover and size guide saved.'+
+     (data.product_type?' Product Type: '+data.product_type+'.':'')+
+     (data.status!=='active'?' This product is '+data.status.toUpperCase()+' and is not visible to customers. A collection needs at least one ACTIVE product to appear in the storefront menu.':
+      collections.some(c=>c.category===data.category&&c.name.toLowerCase()===data.product_type.toLowerCase()&&c.hidden)?' This collection is hidden. Use SHOW in Admin → Collections to display it in the storefront menu.':''));
    if(ok)onCancel();
   }finally{saving.current=false;setWorking(false);}
  }
@@ -215,7 +218,7 @@ export default function ProductEditor({product,duplicateSource=null,duplicateTok
     <button ref={quickBrandButton} type="button" className="border-button kd-quick-add-brand-trigger" disabled={busy||working} onClick={()=>setQuickBrandOpen(true)}><Plus size={17}/> QUICK ADD BRAND</button>
    </div>
    <label>CATEGORY<select value={draft.category} onChange={e=>set('category',e.target.value)}>{PRODUCT_CATEGORIES.map(c=><option value={c} key={c}>{c.toUpperCase()}</option>)}</select></label>
-   <ProductTypeInput value={draft.product_type} onChange={value=>set('product_type',value)} category={draft.category} collections={collections} disabled={busy||working}/>
+   <ProductTypeInput value={draft.product_type} onChange={value=>set('product_type',value)} category={draft.category} collections={collections} status={draft.status} disabled={busy||working}/>
    <label>PRICE (VND)<input type="number" min="0" required value={draft.price} onChange={e=>set('price',e.target.value)}/></label>
    <label>SALE PRICE (OPTIONAL)<input type="number" min="0" value={draft.sale_price} onChange={e=>set('sale_price',e.target.value)}/></label>
    <label>STATUS<select value={draft.status} onChange={e=>set('status',e.target.value)}>{PRODUCT_STATUSES.map(s=><option key={s} value={s}>{s.toUpperCase()}</option>)}</select></label>

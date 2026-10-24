@@ -1,7 +1,7 @@
 import React,{useId,useState} from 'react';
 import {collectionSuggestions,normalizeCollectionName} from '../../utils/collections.js';
 
-export default function ProductTypeInput({value,onChange,category,collections=[],disabled=false}){
+export default function ProductTypeInput({value,onChange,category,collections=[],status='draft',disabled=false}){
  const id=useId(),[open,setOpen]=useState(false),[active,setActive]=useState(-1);
  const matches=collectionSuggestions(collections,category,value);
  const normalized=normalizeCollectionName(value);
@@ -34,5 +34,10 @@ export default function ProductTypeInput({value,onChange,category,collections=[]
   <small className="kd-type-hint">{!normalized?'Choose an existing collection or enter a new name.':
    existing?'Uses existing collection: '+existing.name+(existing.hidden?' (hidden from storefront).':'.'):
    'New collection: '+normalized+' — created when you save the product.'}</small>
+  {normalized&&<small className="kd-type-hint" role="status">
+   {status!=='active'?'This product is '+status.toUpperCase()+'. Its Product Type is saved in Admin → Collections, but this product is not visible to customers. The storefront menu only shows collections with at least one ACTIVE product.':
+    existing?.hidden?'This collection is hidden from customers. Use SHOW in Admin → Collections to display it.':
+    'After saving, this ACTIVE product makes the collection available in the storefront menu.'}
+  </small>}
  </div>;
 }

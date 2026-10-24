@@ -74,6 +74,35 @@ test('Admin permissions and COD stock transactions against disposable PostgreSQL
   const movedBack=await request('/api/products/'+sameShirt.data.id,{category:'clothing'},token,'PATCH');
   assert.equal(movedBack.data.collection_id,shirt.data.collection_id);
 
+
+  // Reproduce editing a draft Jacket to Cardigan through the editor's bundle API.
+  const draftJacket=await makeTyped('Draft cardigan edit','Jacket '+id,'clothing','draft');
+  assert.equal(draftJacket.status,201);
+  const cardiganType='Cardigan '+id;
+  const changeDraftType=async status=>{
+   const form=new FormData();
+   form.append('payload',JSON.stringify({name:draftJacket.data.name,brand_id:brands[0].id,
+    category:'clothing',product_type:cardiganType.toUpperCase(),price:100000,status,
+    variants:[],image_ids:[],deleted_image_ids:[]}));
+   return fetch(base+'/api/admin/products/'+draftJacket.data.id+'/bundle',{
+    method:'PATCH',headers:{Authorization:'Bearer '+token},body:form
+   });
+  };
+  assert.equal((await changeDraftType('draft')).status,200);
+  const adminCollections=(await request('/api/admin/collections',undefined,token,'GET')).data;
+  const cardigan=adminCollections.find(c=>c.name.toLowerCase()===cardiganType.toLowerCase());
+  assert.ok(cardigan,'Saving a draft edit creates its new collection in admin');
+  assert.equal(cardigan.total_count,1);
+  assert.equal(cardigan.active_count,0);
+  assert.equal(adminCollections.find(c=>c.id===draftJacket.data.collection_id).total_count,0);
+  assert.ok(!(await fetch(base+'/api/collections').then(r=>r.json())).some(c=>c.id===cardigan.id));
+  assert.equal((await changeDraftType('active')).status,200);
+  const activeCardigan=(await fetch(base+'/api/collections').then(r=>r.json())).find(c=>c.id===cardigan.id);
+  assert.equal(activeCardigan.active_count,1,'Activating the edited product reveals Cardigan');
+  assert.equal((await changeDraftType('active')).status,200);
+  assert.equal((await request('/api/admin/collections',undefined,token,'GET')).data
+   .filter(c=>c.name.toLowerCase()===cardiganType.toLowerCase()).length,1);
+
   // A size-free accessory still has stock-backed SKUs and can be checked out.
   const accessoryPayload={name:'Size-free accessory '+id,brand_id:brands[0].id,category:'accessories',
    price:250000,status:'active',variants:[{sku:'NOSIZE-'+id,color:'Standard',stock:4,size:'  '}]};
