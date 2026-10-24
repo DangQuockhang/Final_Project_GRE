@@ -5,6 +5,7 @@ import {fileURLToPath} from 'node:url';
 import {join} from 'node:path';
 
 export const imageDir=fileURLToPath(new URL('../uploads/products/',import.meta.url));
+export const MAX_PRODUCT_IMAGES=20;
 export const MAX_IMAGE_BYTES=3*1024*1024;
 const validPath=/^\/media\/products\/[a-f0-9-]{36}\.(png|jpg|webp)$/i;
 /**
@@ -46,21 +47,21 @@ export async function removeImage(path){
  catch(e){if(e.code!=='ENOENT')throw e;}
 }
 
-const galleryMulter=multer({storage:multer.memoryStorage(),limits:{fileSize:MAX_IMAGE_BYTES,files:6,parts:7,fields:1}}).array('images',6);
+const galleryMulter=multer({storage:multer.memoryStorage(),limits:{fileSize:MAX_IMAGE_BYTES,files:MAX_PRODUCT_IMAGES,parts:MAX_PRODUCT_IMAGES+2,fields:1}}).array('images',MAX_PRODUCT_IMAGES);
 export function galleryUpload(req,res,next){
  galleryMulter(req,res,error=>{
   if(!error)return next();
-  res.status(error.code==='LIMIT_FILE_SIZE'?413:400).json({error:error.code==='LIMIT_FILE_SIZE'?'Each image must be under 3 MB.':'Invalid image gallery request (max 6 images per upload).'});
+  res.status(error.code==='LIMIT_FILE_SIZE'?413:400).json({error:error.code==='LIMIT_FILE_SIZE'?'Each image must be under 3 MB.':'Invalid image gallery request (max 20 images per upload).'});
  });
 }
 
-// A single product-save request may include six merchandise photos AND one
+// A single product-save request may include 20 merchandise photos AND one
 // separate size chart. The chart never occupies a storefront-gallery position.
-const bundleMulter=multer({storage:multer.memoryStorage(),limits:{fileSize:MAX_IMAGE_BYTES,files:7,fields:1,parts:8}})
- .fields([{name:'images',maxCount:6},{name:'size_guide',maxCount:1}]);
+const bundleMulter=multer({storage:multer.memoryStorage(),limits:{fileSize:MAX_IMAGE_BYTES,files:MAX_PRODUCT_IMAGES+1,fields:1,parts:MAX_PRODUCT_IMAGES+3}})
+ .fields([{name:'images',maxCount:MAX_PRODUCT_IMAGES},{name:'size_guide',maxCount:1}]);
 export function bundleUpload(req,res,next){
  bundleMulter(req,res,error=>{
   if(!error)return next();
-  res.status(error.code==='LIMIT_FILE_SIZE'?413:400).json({error:error.code==='LIMIT_FILE_SIZE'?'Each image must be under 3 MB.':'Upload at most 6 product images plus 1 size guide (JPG/PNG/WebP).'});
+  res.status(error.code==='LIMIT_FILE_SIZE'?413:400).json({error:error.code==='LIMIT_FILE_SIZE'?'Each image must be under 3 MB.':'Upload at most 20 product images plus 1 size guide (JPG/PNG/WebP).'});
  });
 }

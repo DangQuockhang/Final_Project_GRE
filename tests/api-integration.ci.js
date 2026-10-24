@@ -157,6 +157,29 @@ test('Admin permissions and COD stock transactions against disposable PostgreSQL
   const bundleBody=await bundle.json();
   const bundleItem=await fetch(base+'/api/products/'+bundleBody.slug).then(r=>r.json());
 
+  // A full 20-photo gallery and separate size chart fit in one Save.
+  const largePayload={...createBundle,name:'Large gallery '+id,cover_new_index:19,
+   variants:createBundle.variants.map((v,i)=>({...v,sku:'LARGE-'+id+'-'+i})),
+   new_image_colors:Array.from({length:20},(_,i)=>i%2?'Red':'Black')};
+  const largeForm=new FormData();largeForm.append('payload',JSON.stringify(largePayload));
+  for(let i=0;i<20;i++)largeForm.append('images',new Blob([png],{type:'image/png'}),'photo-'+i+'.png');
+  largeForm.append('size_guide',new Blob([png],{type:'image/png'}),'chart.png');
+  const largeResponse=await fetch(base+'/api/admin/products/bundle',{method:'POST',headers:{Authorization:'Bearer '+token},body:largeForm});
+  assert.equal(largeResponse.status,201);
+  const largeInfo=await largeResponse.json();
+  const large=await fetch(base+'/api/products/'+largeInfo.slug).then(r=>r.json());
+  assert.equal(large.images.length,20);
+  assert.equal(large.image_url,large.images[19].image_url);
+  assert.ok(large.size_guide_image_url);
+  const largeEdit=new FormData();
+  largeEdit.append('payload',JSON.stringify({...largePayload,cover_new_index:undefined,new_image_colors:undefined,
+   variants:large.variants,image_ids:large.images.map(x=>x.id).reverse(),
+   image_colors:large.images.map(x=>({id:x.id,color:x.color}))}));
+  assert.equal((await fetch(base+'/api/admin/products/'+largeInfo.id+'/bundle',{method:'PATCH',headers:{Authorization:'Bearer '+token},body:largeEdit})).status,200);
+  const extra=new FormData();extra.append('images',new Blob([png],{type:'image/png'}),'extra.png');
+  assert.equal((await fetch(base+'/api/admin/products/'+largeInfo.id+'/images',{method:'POST',headers:{Authorization:'Bearer '+token},body:extra})).status,409);
+  assert.equal((await fetch(base+'/api/products/'+largeInfo.slug).then(r=>r.json())).images.length,20);
+
   // Photo color metadata survives bundle saves and is scoped to this product.
   assert.deepEqual(bundleItem.images.map(image=>image.color),['Black','Red']);
   const colorEdit=async assignments=>{
