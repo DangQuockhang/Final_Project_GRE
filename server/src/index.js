@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import {pool,query} from './db.js';
 import 'dotenv/config';
-import {imageDir,detectImage,imageUpload,galleryUpload,bundleUpload,saveImage,removeImage} from './productImages.js';
+import {MAX_PRODUCT_IMAGES,imageDir,detectImage,imageUpload,galleryUpload,bundleUpload,saveImage,removeImage} from './productImages.js';
 import {evaluateProductDeletion} from './productDeletion.js';
 import {makeOrderCode} from './orderCode.js';
 
@@ -227,11 +227,11 @@ const saveProductBundle=wrap(async(req,res)=>{
    return fail(res,'The selected cover must be one of the new uploaded photos.');
  if(photos.some(p=>!p.ext))return fail(res,'Photos must contain valid JPG, PNG or WebP data.');
  const imageColors=body.image_colors||[],newImageColors=body.new_image_colors;
- if(!Array.isArray(imageColors)||imageColors.length>8||imageColors.some(x=>!x||!isId(x.id)||(x.color!=null&&typeof x.color!=='string')||clean(x.color).length>40)||new Set(imageColors.map(x=>String(x.id))).size!==imageColors.length||
+ if(!Array.isArray(imageColors)||imageColors.length>MAX_PRODUCT_IMAGES||imageColors.some(x=>!x||!isId(x.id)||(x.color!=null&&typeof x.color!=='string')||clean(x.color).length>40)||new Set(imageColors.map(x=>String(x.id))).size!==imageColors.length||
   (newImageColors!==undefined&&(!Array.isArray(newImageColors)||newImageColors.length!==photos.length||newImageColors.some(c=>(c!=null&&typeof c!=='string')||clean(c).length>40))))return fail(res,'Invalid photo color assignments.');
  const imageIds=body.image_ids,deletedImageIds=body.deleted_image_ids||[],coverImageId=body.cover_image_id;
- if((imageIds!==undefined&&(!Array.isArray(imageIds)||imageIds.length>8||imageIds.some(id=>!isId(id))||new Set(imageIds.map(String)).size!==imageIds.length))||
-  !Array.isArray(deletedImageIds)||deletedImageIds.length>8||deletedImageIds.some(id=>!isId(id))||new Set(deletedImageIds.map(String)).size!==deletedImageIds.length||
+ if((imageIds!==undefined&&(!Array.isArray(imageIds)||imageIds.length>MAX_PRODUCT_IMAGES||imageIds.some(id=>!isId(id))||new Set(imageIds.map(String)).size!==imageIds.length))||
+  !Array.isArray(deletedImageIds)||deletedImageIds.length>MAX_PRODUCT_IMAGES||deletedImageIds.some(id=>!isId(id))||new Set(deletedImageIds.map(String)).size!==deletedImageIds.length||
   (coverImageId!=null&&!isId(coverImageId)))return fail(res,'Invalid gallery selection.');
  const client=await pool.connect(),saved=[],obsolete=[];let committed=false,oldSizeGuideUrl=null;
  try{
@@ -306,7 +306,7 @@ const saveProductBundle=wrap(async(req,res)=>{
    await client.query('UPDATE products SET image_url=$1 WHERE id=$2',[nextCover,product.id]);
   }
   const galleryStats=(await client.query('SELECT COUNT(*)::int AS n,COALESCE(MAX(position),-1)::int+1 AS next_position FROM product_images WHERE product_id=$1',[product.id])).rows[0];
-  if(galleryStats.n+photos.length>8)error('Maximum 8 gallery photos per product.',409);
+  if(galleryStats.n+photos.length>MAX_PRODUCT_IMAGES)error('Maximum 20 gallery photos per product.',409);
   for(const [i,file] of photos.entries()){
    const url=await saveImage(file.buffer,file.ext);saved.push(url);
    await client.query('INSERT INTO product_images(product_id,image_url,position,color) VALUES($1,$2,$3,$4)',[product.id,url,galleryStats.next_position+i,photoColor(newImageColors?.[i])]);
@@ -425,7 +425,7 @@ route.delete('/admin/products/:id/permanent',authorize,admin,wrap(async(req,res)
  res.json({ok:true,method:'permanent-delete',id:removed.id,audit_id:auditId});
 }));
 
-// Product galleries: Admin-only multipart uploads, maximum 8 extra pictures.
+// Product galleries: Admin-only multipart uploads, maximum 20 extra pictures.
 route.post('/admin/products/:id/images',authorize,admin,galleryUpload,wrap(async(req,res)=>{
  if(!isId(req.params.id))return fail(res,'Invalid product ID.');
  if(!req.files?.length)return fail(res,'Choose at least one product image.');
@@ -437,7 +437,7 @@ route.post('/admin/products/:id/images',authorize,admin,galleryUpload,wrap(async
   const product=(await client.query('SELECT id,image_url FROM products WHERE id=$1 FOR UPDATE',[req.params.id])).rows[0];
   if(!product){await client.query('ROLLBACK');return fail(res,'Product not found.',404);}
   const count=await client.query('SELECT COUNT(*)::int AS n,COALESCE(MAX(position),-1)::int+1 AS next_position FROM product_images WHERE product_id=$1',[product.id]);
-  if(count.rows[0].n+prepared.length>8){await client.query('ROLLBACK');return fail(res,'Gallery limited to 8 uploaded images.',409);}
+  if(count.rows[0].n+prepared.length>MAX_PRODUCT_IMAGES){await client.query('ROLLBACK');return fail(res,'Gallery limited to 20 uploaded images.',409);}
   const rows=[];
   for(const [i,file] of prepared.entries()){
    const url=await saveImage(file.buffer,file.ext);saved.push(url);
@@ -460,7 +460,7 @@ route.post('/admin/products/:id/images',authorize,admin,galleryUpload,wrap(async
 route.patch('/admin/products/:id/images/order',authorize,admin,wrap(async(req,res)=>{
  if(!isId(req.params.id))return fail(res,'Invalid product ID.');
  const ids=req.body.image_ids,coverId=req.body.cover_image_id;
- if(!Array.isArray(ids)||ids.length>8||ids.some(id=>!isId(id))||
+ if(!Array.isArray(ids)||ids.length>MAX_PRODUCT_IMAGES||ids.some(id=>!isId(id))||
   new Set(ids.map(String)).size!==ids.length||
   (coverId!==undefined&&coverId!==null&&!isId(coverId)))
    return fail(res,'Invalid gallery photo order.');
