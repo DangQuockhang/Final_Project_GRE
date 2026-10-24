@@ -13,12 +13,10 @@ function EditProductDialog({product=null,duplicateSource=null,duplicateToken='',
   const oldOverflow=document.body.style.overflow;
   document.body.style.overflow='hidden';
   closeButton.current?.focus();
-  const escape=e=>{if(e.key==='Escape'&&!busy&&!document.querySelector('.kd-quick-brand-modal'))onClose();};
-  window.addEventListener('keydown',escape);
-  return ()=>{document.body.style.overflow=oldOverflow;window.removeEventListener('keydown',escape)};
- },[busy,onClose]);
+  return ()=>{document.body.style.overflow=oldOverflow;};
+ },[]);
  const canDelete=product&&product.status!=='active'&&!(product.variants||[]).some(v=>Number(v.stock)>0);
- return createPortal(<div className="kd-edit-modal-backdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget&&!busy)onClose()}}>
+ return createPortal(<div className="kd-edit-modal-backdrop" role="presentation">
   <section className="kd-edit-modal" role="dialog" aria-modal="true" aria-labelledby="kd-edit-product-title">
    <div className="kd-edit-modal-header">
     <div><span>PRODUCT WORKSPACE</span><h2 id="kd-edit-product-title">{duplicateSource?'Duplicate: '+duplicateSource.name:'Edit: '+product?.name}</h2></div>
