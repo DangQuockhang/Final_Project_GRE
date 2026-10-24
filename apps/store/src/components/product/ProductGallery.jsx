@@ -87,11 +87,13 @@ function Viewer({images,index,setIndex,onClose,name}){
   </section>
  </div>,document.body);
 }
-export default function ProductGallery({product,images=[]}){
+export default function ProductGallery({product,images=[],colorImage=null,colorClick=0}){
  const [index,setIndex]=useState(0),[open,setOpen]=useState(false);
  const firstTouch=useRef(null),lastSwipe=useRef(0);
  useEffect(()=>{setIndex(0);setOpen(false)},[product?.slug]);
  useEffect(()=>{setIndex(i=>Math.min(i,Math.max(0,images.length-1)))},[images.length]);
+ const colorIndex=colorImage?images.indexOf(colorImage):-1;
+ useEffect(()=>{if(colorIndex>=0)setIndex(colorIndex)},[colorIndex,colorImage,colorClick]);
  const change=delta=>setIndex(i=>nextImage(i,delta,images.length));
  const touchStart=e=>{firstTouch.current={x:e.touches[0]?.clientX,y:e.touches[0]?.clientY}};
  const touchEnd=e=>{

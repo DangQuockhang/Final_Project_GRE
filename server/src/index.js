@@ -173,7 +173,7 @@ route.delete('/admin/collections/:id',authorize,admin,wrap(async(req,res)=>{
  }
 }));
 
-const baseSelect=`SELECT p.*,b.name AS brand_name,b.slug AS brand_slug,b.logo_url AS brand_logo_url,(SELECT g.image_url FROM brand_size_guides g WHERE g.brand_id=p.brand_id AND g.category=p.category) AS brand_size_guide_image_url, COALESCE((SELECT json_agg(json_build_object('id',v.id,'sku',v.sku,'size',v.size,'color',v.color,'color_hex',v.color_hex,'chest_cm',v.chest_cm,'stock',v.stock) ORDER BY v.id) FROM product_variants v WHERE v.product_id=p.id),'[]'::json) AS variants, COALESCE((SELECT json_agg(json_build_object('id',i.id,'image_url',i.image_url,'position',i.position) ORDER BY i.position,i.id) FROM product_images i WHERE i.product_id=p.id),'[]'::json) AS images FROM products p JOIN brands b ON b.id=p.brand_id`;
+const baseSelect=`SELECT p.*,b.name AS brand_name,b.slug AS brand_slug,b.logo_url AS brand_logo_url,(SELECT g.image_url FROM brand_size_guides g WHERE g.brand_id=p.brand_id AND g.category=p.category) AS brand_size_guide_image_url, COALESCE((SELECT json_agg(json_build_object('id',v.id,'sku',v.sku,'size',v.size,'color',v.color,'color_hex',v.color_hex,'chest_cm',v.chest_cm,'stock',v.stock) ORDER BY v.id) FROM product_variants v WHERE v.product_id=p.id),'[]'::json) AS variants, COALESCE((SELECT json_agg(json_build_object('id',i.id,'image_url',i.image_url,'position',i.position,'color',i.color) ORDER BY i.position,i.id) FROM product_images i WHERE i.product_id=p.id),'[]'::json) AS images FROM products p JOIN brands b ON b.id=p.brand_id`;
 route.get('/products',wrap(async(req,res)=>{
  const where=[`p.status='active'`],params=[];
  if(req.query.brand){params.push(clean(req.query.brand));where.push(`b.slug=$${params.length}`);}
@@ -226,6 +226,9 @@ const saveProductBundle=wrap(async(req,res)=>{
   (!Number.isSafeInteger(coverNewIndex)||coverNewIndex<0||coverNewIndex>=photos.length))
    return fail(res,'The selected cover must be one of the new uploaded photos.');
  if(photos.some(p=>!p.ext))return fail(res,'Photos must contain valid JPG, PNG or WebP data.');
+ const imageColors=body.image_colors||[],newImageColors=body.new_image_colors;
+ if(!Array.isArray(imageColors)||imageColors.length>8||imageColors.some(x=>!x||!isId(x.id)||(x.color!=null&&typeof x.color!=='string')||clean(x.color).length>40)||new Set(imageColors.map(x=>String(x.id))).size!==imageColors.length||
+  (newImageColors!==undefined&&(!Array.isArray(newImageColors)||newImageColors.length!==photos.length||newImageColors.some(c=>(c!=null&&typeof c!=='string')||clean(c).length>40))))return fail(res,'Invalid photo color assignments.');
  const imageIds=body.image_ids,deletedImageIds=body.deleted_image_ids||[],coverImageId=body.cover_image_id;
  if((imageIds!==undefined&&(!Array.isArray(imageIds)||imageIds.length>8||imageIds.some(id=>!isId(id))||new Set(imageIds.map(String)).size!==imageIds.length))||
   !Array.isArray(deletedImageIds)||deletedImageIds.length>8||deletedImageIds.some(id=>!isId(id))||new Set(deletedImageIds.map(String)).size!==deletedImageIds.length||
@@ -276,6 +279,18 @@ const saveProductBundle=wrap(async(req,res)=>{
    error('Gallery changed. Reload the editor before saving.',409);
   if(coverImageId!=null&&(!available.has(String(coverImageId))||deletedSet.has(String(coverImageId))))
    error('Selected cover is not part of the remaining gallery.',400);
+  const productColors=(await client.query('SELECT DISTINCT color FROM product_variants WHERE product_id=$1',[product.id])).rows;
+  const colorNames=new Map(productColors.map(v=>[clean(v.color).toLowerCase(),v.color]));
+  const photoColor=value=>{
+   if(!clean(value))return null;
+   const matched=colorNames.get(clean(value).toLowerCase());
+   if(!matched)error('Photo color must match a color in this product’s size/stock rows.');
+   return matched;
+  };
+  for(const assignment of imageColors){
+   if(!available.has(String(assignment.id))||deletedSet.has(String(assignment.id)))error('Photo color does not belong to the remaining product gallery.');
+   await client.query('UPDATE product_images SET color=$1 WHERE id=$2 AND product_id=$3',[photoColor(assignment.color),assignment.id,product.id]);
+  }
   for(const id of deletedImageIds){
    await client.query('DELETE FROM product_images WHERE product_id=$1 AND id=$2',[product.id,id]);
    obsolete.push(available.get(String(id)).image_url);
@@ -294,7 +309,7 @@ const saveProductBundle=wrap(async(req,res)=>{
   if(galleryStats.n+photos.length>8)error('Maximum 8 gallery photos per product.',409);
   for(const [i,file] of photos.entries()){
    const url=await saveImage(file.buffer,file.ext);saved.push(url);
-   await client.query('INSERT INTO product_images(product_id,image_url,position) VALUES($1,$2,$3)',[product.id,url,galleryStats.next_position+i]);
+   await client.query('INSERT INTO product_images(product_id,image_url,position,color) VALUES($1,$2,$3,$4)',[product.id,url,galleryStats.next_position+i,photoColor(newImageColors?.[i])]);
   }
   if(saved.length&&(coverNewIndex!==undefined||!product.image_url))await client.query('UPDATE products SET image_url=$1 WHERE id=$2',[saved[coverNewIndex??0],product.id]);
   if(!sizeGuideImage&&body.remove_size_guide===true){

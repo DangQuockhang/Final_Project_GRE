@@ -33,6 +33,11 @@ export default function ProductEditor({product,duplicateSource=null,duplicateTok
  const [sizes,setSizes]=useState(()=>duplicated?.sizes||[...new Set((product?.variants||[]).map(v=>v.size))].join(', ')||'ONE SIZE');
  const [rows,setRows]=useState(()=>duplicated?.rows||(product?.variants||[]).map(v=>({...v,stock:String(v.stock),color_hex:v.color_hex||initialColors(product).find(c=>normal(c.name)===normal(v.color))?.hex||'#758073'})));
  const [files,setFiles]=useState([]),[defaultStock,setDefaultStock]=useState('0'),[working,setWorking]=useState(false);
+ const [imageColors,setImageColors]=useState(() => Object.fromEntries((product?.images||[]).map(image=>[image.id,image.color||''])));
+ const [fileColors,setFileColors]=useState(()=>new Map());
+ const photoColors=[...new Set(rows.map(row=>row.color).filter(Boolean))];
+ const assignedColor=value=>photoColors.find(color=>normal(color)===normal(value))||'';
+ const colorPicker=(value,onChange,label)=><label className="kd-photo-color">PHOTO COLOR<select aria-label={label} value={assignedColor(value)} onChange={e=>onChange(e.target.value)}><option value="">Unassigned / general photo</option>{photoColors.map(color=><option key={color} value={color}>{color}</option>)}</select></label>;
  const [pendingCover,setPendingCover]=useState(null);
  const [newSizeGuide,setNewSizeGuide]=useState(null);
  const [removeSizeGuide,setRemoveSizeGuide]=useState(false);
@@ -189,6 +194,8 @@ export default function ProductEditor({product,duplicateSource=null,duplicateTok
   const deletedIds=removedVariants.map(v=>v.id);
   const hasOriginalStock=removedVariants.some(v=>(product?.variants||[]).some(original=>String(original.id)===String(v.id)&&Number(original.stock)>0));
   form.append('payload',JSON.stringify({...data,price:Number(data.price),sale_price:data.sale_price===''?null:Number(data.sale_price),
+   image_colors:orderedGallery.map(image=>({id:image.id,color:assignedColor(imageColors[image.id])||null})),
+   new_image_colors:files.map(file=>assignedColor(fileColors.get(file))||null),
    variants:savingRows.map(v=>({...v,stock:Number(v.stock)})),deleted_variant_ids:deletedIds,confirm_stock_discard:hasOriginalStock,
    ...(product?{image_ids:galleryIds,deleted_image_ids:deletedImages,remove_cover:removeCover,cover_image_id:coverGalleryId,remove_size_guide:removeSizeGuide}:{}),
    ...(files.includes(pendingCover)?{cover_new_index:files.indexOf(pendingCover)}:{})}));
@@ -291,6 +298,7 @@ export default function ProductEditor({product,duplicateSource=null,duplicateTok
        <div className="kd-editor-image-stage"><img src={productImageUrl(image.image_url,import.meta.env.VITE_API_URL||apiBase)} alt={'Gallery photo '+(i+1)}/>
         <span className="kd-editor-image-index">{i+1}</span>{isCover&&<span className="kd-editor-cover-tag"><Star size={13}/> COVER</span>}
        </div>
+       {colorPicker(imageColors[image.id],color=>setImageColors(old=>({...old,[image.id]:color})),'Color for existing photo '+(i+1))}
        <div className="kd-editor-tile-controls">
         <button type="button" title="Move photo left" aria-label={'Move existing photo '+(i+1)+' left'} disabled={busy||working||i===0} onClick={()=>setGalleryIds(prev=>moveItem(prev,i,-1))}><ArrowLeft size={17}/></button>
         <button type="button" title="Move photo right" aria-label={'Move existing photo '+(i+1)+' right'} disabled={busy||working||i===orderedGallery.length-1} onClick={()=>setGalleryIds(prev=>moveItem(prev,i,1))}><ArrowRight size={17}/></button>
@@ -313,6 +321,7 @@ export default function ProductEditor({product,duplicateSource=null,duplicateTok
       <div className="kd-editor-image-stage"><img src={x.url} alt={x.name||'Selected product photo'}/>
        <span className="kd-editor-image-index">{i+1}</span>{isCover&&<span className="kd-editor-cover-tag"><Star size={13}/> COVER</span>}
       </div>
+      {colorPicker(fileColors.get(files[i]),color=>setFileColors(old=>new Map(old).set(files[i],color)),'Color for new photo '+(i+1))}
       <div className="kd-editor-tile-controls">
        <button type="button" title="Move image left" aria-label={'Move new photo '+(i+1)+' left'} disabled={i===0||busy||working} onClick={()=>movePending(i,-1)}><ArrowLeft size={17}/></button>
        <button type="button" title="Move image right" aria-label={'Move new photo '+(i+1)+' right'} disabled={i===files.length-1||busy||working} onClick={()=>movePending(i,1)}><ArrowRight size={17}/></button>
@@ -322,7 +331,7 @@ export default function ProductEditor({product,duplicateSource=null,duplicateTok
      </div>;
     })}
    </div>}
-   <p className="kd-editor-media-help">Photos, gallery order, cover and size guide are saved together using Save below.</p>
+   <p className="kd-editor-media-help">Assign each photo a color from the size/stock rows. Choosing that color in the store opens its first matching photo. Unassigned photos remain in the gallery. All changes are saved together using Save below.</p>
   </section>
   <SizeGuideDraftPicker
     file={newSizeGuide}

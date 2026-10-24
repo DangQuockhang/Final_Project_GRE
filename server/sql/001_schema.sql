@@ -187,3 +187,6 @@ CREATE TRIGGER products_collection_sync BEFORE INSERT OR UPDATE OF product_type,
  ON products FOR EACH ROW EXECUTE FUNCTION sync_product_collection();
 -- Backfill safely on existing databases; hidden flags remain unchanged on reruns.
 UPDATE products SET product_type=product_type;
+
+-- Optional gallery color association; existing photos remain unassigned.
+ALTER TABLE product_images ADD COLUMN IF NOT EXISTS color VARCHAR(40);
