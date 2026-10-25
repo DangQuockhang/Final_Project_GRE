@@ -2,8 +2,8 @@ import React from 'react';
 import {Link} from 'react-router-dom';
 import {ArrowUpRight,Instagram} from 'lucide-react';
 export default function Footer({fittingUrl}){
- return <footer className="footer kd26-footer">
-  <div className="kd26-footer-intro"><span>YOUR STYLE, YOUR WAY</span><p>Less noise. More pieces you love. Discover a considered approach to everyday dressing.</p><Link to="/shop">Explore the collection <ArrowUpRight size={19}/></Link></div>
+ return <footer className="footer kd-footer">
+  <div className="kd-footer-intro"><span>YOUR STYLE, YOUR WAY</span><p>Less noise. More pieces you love. Discover a considered approach to everyday dressing.</p><Link to="/shop">Explore the collection <ArrowUpRight size={19}/></Link></div>
   <div className="footer-main">
    <div><div className="footer-logo">KD <span>DESIGN</span></div><p>Contemporary multi-brand fashion, curated for your everyday. A student-built e-commerce concept.</p></div>
    <div><b>EXPLORE</b><Link to="/shop">Shop all</Link><Link to="/shop?category=clothing">Clothing</Link><Link to="/shop?category=bags">Bags</Link><Link to="/shop?category=shoes">Shoes</Link><Link to="/shop?category=accessories">Accessories</Link></div>
