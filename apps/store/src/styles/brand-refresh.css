@@ -216,60 +216,60 @@
  cursor:pointer;
 }
 /* Homepage: show five real-brand cards rather than oversized, mostly empty panels. */
-.kd26-home .kd26-section{
+.kd-home .kd-section{
  padding-block:clamp(55px,5.3vw,79px);
 }
-.kd26-home .kd26-section-head{
+.kd-home .kd-section-head{
  margin-bottom:clamp(21px,2.5vw,32px);
 }
-.kd26-home .kd-brand-featured{
+.kd-home .kd-brand-featured{
  padding-block:clamp(48px,4.6vw,72px);
 }
-.kd26-home .kd-brand-featured-grid{
+.kd-home .kd-brand-featured-grid{
  grid-template-columns:repeat(auto-fit,minmax(min(100%,215px),1fr));
 }
-.kd26-home .kd-brand-featured .kd-brand-showcase-card{
+.kd-home .kd-brand-featured .kd-brand-showcase-card{
  background:#fff;
  min-height:0;
 }
-.kd26-home .kd-brand-featured .kd-brand-art{
+.kd-home .kd-brand-featured .kd-brand-art{
  height:clamp(135px,12vw,180px);
  min-height:135px;
  padding:15px;
 }
-.kd26-home .kd-brand-featured .kd-brand-showcase-copy{
+.kd-home .kd-brand-featured .kd-brand-showcase-copy{
  gap:9px;
  padding:17px 18px 19px;
 }
-.kd26-home .kd-brand-featured .kd-brand-showcase-copy h3{
+.kd-home .kd-brand-featured .kd-brand-showcase-copy h3{
  font-size:clamp(23px,1.9vw,31px);
 }
-.kd26-home .kd-brand-featured .kd-brand-showcase-action{
+.kd-home .kd-brand-featured .kd-brand-showcase-action{
  min-height:36px;
 }
-.kd26-home .kd26-close{
+.kd-home .kd-close{
  width:min(100%,1550px);
  max-width:1550px;
  padding:clamp(36px,3.8vw,56px) clamp(26px,5.2vw,85px);
  gap:24px;
  align-items:center;
 }
-.kd26-home .kd26-close h2{
+.kd-home .kd-close h2{
  font-size:clamp(40px,4.5vw,63px);
  margin:7px 0 7px;
 }
-.kd26-home .kd26-close p{font-size:16px;line-height:1.6}
+.kd-home .kd-close p{font-size:16px;line-height:1.6}
 /* Less dead space in the editorial split at mainstream laptop sizes. */
-.kd26-home .kd26-editorial{min-height:480px}
-.kd26-home .kd26-editorial-image{min-height:445px}
-.kd26-home .kd26-editorial-copy{
+.kd-home .kd-editorial{min-height:480px}
+.kd-home .kd-editorial-image{min-height:445px}
+.kd-home .kd-editorial-copy{
  padding:clamp(36px,5vw,74px);
  gap:18px;
 }
 @media(max-width:930px){
  .kd-brand-directory-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr))}
- .kd26-home .kd-brand-featured-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
- .kd26-home .kd-brand-featured .kd-brand-art{min-height:145px}
+ .kd-home .kd-brand-featured-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .kd-home .kd-brand-featured .kd-brand-art{min-height:145px}
 }
 @media(max-width:700px){
  .kd-brand-directory-intro,.kd-brand-directory-results{width:calc(100% - 34px)}
@@ -288,19 +288,19 @@
  .kd-brand-showcase-copy p{font-size:13px}
  .kd-brand-showcase-action{font-size:12px;gap:4px;min-height:42px}
  .kd-brand-showcase-action svg{width:17px}
- .kd26-home .kd26-section{padding:46px 19px}
- .kd26-home .kd-brand-featured-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
- .kd26-home .kd-brand-featured .kd-brand-art{height:140px}
- .kd26-home .kd-brand-featured .kd-brand-showcase-copy{padding:14px 12px}
- .kd26-home .kd-brand-featured .kd-brand-showcase-copy h3{font-size:clamp(19px,4.5vw,26px)}
- .kd26-home .kd26-close{padding:39px 20px;align-items:flex-start}
- .kd26-home .kd26-close h2{font-size:clamp(39px,8.5vw,52px)}
- .kd26-home .kd26-editorial{min-height:0}
- .kd26-home .kd26-editorial-image{min-height:340px}
- .kd26-home .kd26-editorial-copy{min-height:0;padding:46px 23px}
+ .kd-home .kd-section{padding:46px 19px}
+ .kd-home .kd-brand-featured-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+ .kd-home .kd-brand-featured .kd-brand-art{height:140px}
+ .kd-home .kd-brand-featured .kd-brand-showcase-copy{padding:14px 12px}
+ .kd-home .kd-brand-featured .kd-brand-showcase-copy h3{font-size:clamp(19px,4.5vw,26px)}
+ .kd-home .kd-close{padding:39px 20px;align-items:flex-start}
+ .kd-home .kd-close h2{font-size:clamp(39px,8.5vw,52px)}
+ .kd-home .kd-editorial{min-height:0}
+ .kd-home .kd-editorial-image{min-height:340px}
+ .kd-home .kd-editorial-copy{min-height:0;padding:46px 23px}
 }
 @media(max-width:390px){
- .kd-brand-directory-grid,.kd26-home .kd-brand-featured-grid{grid-template-columns:1fr}
+ .kd-brand-directory-grid,.kd-home .kd-brand-featured-grid{grid-template-columns:1fr}
 }
 @media(prefers-reduced-motion:reduce){
  .kd-brand-showcase-card,
