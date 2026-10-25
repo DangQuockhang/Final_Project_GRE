@@ -83,7 +83,7 @@ export default function Navbar({user,count,fittingUrl,brands=[],collections=[]})
      </div>
      <button className="kd-retail-mega-all" type="button" onClick={()=>go('/brands')}>EXPLORE BRANDS <ArrowUpRight size={18}/></button>
    </div>}
-   {searchOpen&&<form ref={searchPanel} className="kd26-search-panel kd-retail-search" role="search" onSubmit={submitSearch}><label htmlFor="kd-retail-query">Find your next favorite</label><div><Search size={22}/><input id="kd-retail-query" autoFocus type="search" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search products, brands or styles…" required/><button className="kd26-search-submit">Search <ArrowUpRight size={17}/></button></div></form>}
+   {searchOpen&&<form ref={searchPanel} className="kd-search-panel kd-retail-search" role="search" onSubmit={submitSearch}><label htmlFor="kd-retail-query">Find your next favorite</label><div><Search size={22}/><input id="kd-retail-query" autoFocus type="search" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search products, brands or styles…" required/><button className="kd-search-submit">Search <ArrowUpRight size={17}/></button></div></form>}
   </header>
  </>;
 }
