@@ -496,7 +496,7 @@
 .kd-retail-five-grid .product-card:hover .visual{
   transform:scale(1.035);
 }
-.kd-retail-five-grid .product-card-photo .kd26-card-action{
+.kd-retail-five-grid .product-card-photo .kd-card-action{
   display:none;
 }
 .kd-retail-five-grid .product-card-meta{
