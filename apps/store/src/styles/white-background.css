@@ -1,0 +1,7 @@
+/* Main page surfaces use white; component states and photographic overlays keep their contrast. */
+:root,html,body,#root,main{background-color:#fff}
+.kd-home{--kd-ivory:#fff;background:#fff}
+.kd-brand-directory{--brand-ivory:#fff;background:#fff}
+.kd-header,.kd-retail-header,.kd-retail-mega,.kd-search-panel,
+.kd-retail-nav,.kd-benefits,.kd-categories,.kd-brands,
+.kd-hero,.kd-hero-copy,.kd-editorial{background:#fff}
