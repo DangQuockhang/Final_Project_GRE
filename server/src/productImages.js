@@ -57,11 +57,11 @@ export function galleryUpload(req,res,next){
 
 // A single product-save request may include 20 merchandise photos AND one
 // separate size chart. The chart never occupies a storefront-gallery position.
-const bundleMulter=multer({storage:multer.memoryStorage(),limits:{fileSize:MAX_IMAGE_BYTES,files:MAX_PRODUCT_IMAGES+1,fields:1,parts:MAX_PRODUCT_IMAGES+3}})
- .fields([{name:'images',maxCount:MAX_PRODUCT_IMAGES},{name:'size_guide',maxCount:1}]);
+const bundleMulter=multer({storage:multer.memoryStorage(),limits:{fileSize:MAX_IMAGE_BYTES,files:MAX_PRODUCT_IMAGES+11,fields:1,parts:MAX_PRODUCT_IMAGES+13}})
+ .fields([{name:'images',maxCount:MAX_PRODUCT_IMAGES},{name:'size_guide',maxCount:1},{name:'detail_images',maxCount:10}]);
 export function bundleUpload(req,res,next){
  bundleMulter(req,res,error=>{
   if(!error)return next();
-  res.status(error.code==='LIMIT_FILE_SIZE'?413:400).json({error:error.code==='LIMIT_FILE_SIZE'?'Each image must be under 3 MB.':'Upload at most 20 product images plus 1 size guide (JPG/PNG/WebP).'});
+  res.status(error.code==='LIMIT_FILE_SIZE'?413:400).json({error:error.code==='LIMIT_FILE_SIZE'?'Each image must be under 3 MB.':'Upload at most 20 product images plus 1 size guide and 10 detail images (JPG/PNG/WebP).'});
  });
 }
