@@ -157,6 +157,31 @@ test('Admin permissions and COD stock transactions against disposable PostgreSQL
   const bundleBody=await bundle.json();
   const bundleItem=await fetch(base+'/api/products/'+bundleBody.slug).then(r=>r.json());
 
+  // Rich detail images save atomically and remain separate from the gallery.
+  const detailEdit=async(blocks,upload=false)=>{
+   const form=new FormData();
+   form.append('payload',JSON.stringify({...createBundle,cover_new_index:undefined,
+    variants:bundleItem.variants,detail_blocks:blocks}));
+   if(upload)form.append('detail_images',new Blob([png],{type:'image/png'}),'detail.png');
+   return fetch(base+'/api/admin/products/'+bundleBody.id+'/bundle',{
+    method:'PATCH',headers:{Authorization:'Bearer '+token},body:form});
+  };
+  const detailBlocks=[{type:'heading',text:'Materials & care'},{type:'paragraph',text:'Cotton blend.\nWash gently.'},
+   {type:'image',upload_index:0,caption:'Fabric detail'}];
+  assert.equal((await detailEdit(detailBlocks,true)).status,200);
+  const detailed=await fetch(base+'/api/products/'+bundleBody.slug).then(r=>r.json());
+  assert.equal(detailed.images.length,2);
+  assert.equal(detailed.detail_blocks[0].text,'Materials & care');
+  assert.match(detailed.detail_blocks[2].url,/^\/media\/products\//);
+  assert.equal((await fetch(base+detailed.detail_blocks[2].url)).status,200);
+  assert.equal((await detailEdit([{type:'image',url:bundleItem.images[0].image_url}])).status,400);
+  assert.equal((await detailEdit([{type:'image',url:'https://example.com/remote.png'}])).status,400);
+  const detailUnchanged=await fetch(base+'/api/products/'+bundleBody.slug).then(r=>r.json());
+  assert.deepEqual(detailUnchanged.detail_blocks,detailed.detail_blocks);
+  assert.equal((await detailEdit(detailed.detail_blocks)).status,200,'Existing owned detail image is reusable');
+  assert.equal((await detailEdit([])).status,200);
+  assert.equal((await fetch(base+detailed.detail_blocks[2].url)).status,404,'Removed detail file is cleaned up');
+
   // A full 20-photo gallery and separate size chart fit in one Save.
   const largePayload={...createBundle,name:'Large gallery '+id,cover_new_index:19,
    variants:createBundle.variants.map((v,i)=>({...v,sku:'LARGE-'+id+'-'+i})),
