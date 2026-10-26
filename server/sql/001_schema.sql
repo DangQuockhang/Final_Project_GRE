@@ -190,3 +190,6 @@ UPDATE products SET product_type=product_type;
 
 -- Optional gallery color association; existing photos remain unassigned.
 ALTER TABLE product_images ADD COLUMN IF NOT EXISTS color VARCHAR(40);
+
+-- Structured product details; legacy descriptions remain readable.
+ALTER TABLE products ADD COLUMN IF NOT EXISTS detail_blocks JSONB NOT NULL DEFAULT '[]'::jsonb;
