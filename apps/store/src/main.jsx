@@ -31,6 +31,7 @@ import './styles/product-gallery-v2.css';
 import './styles/brand-refresh.css';
 import './styles/collections.css';
 import './styles/white-background.css';
+import './styles/home-products.css';
 import AdminPage from './pages/admin/AdminPage.jsx';
 
 const API=import.meta.env.VITE_API_URL||apiBase;
