@@ -1,3 +1,4 @@
+import ProductDetailsEditor from '../../components/admin/ProductDetailsEditor.jsx';
 import React,{useEffect,useMemo,useRef,useState} from 'react';
 import {ImagePlus,Plus,Trash2,Layers,Save,ArrowLeft,ArrowRight,Star} from 'lucide-react';
 import {apiBase,productImageUrl} from '@kd/catalog';
@@ -26,6 +27,8 @@ const initialColors=p=>{
 export default function ProductEditor({product,duplicateSource=null,duplicateToken='',brands,collections=[],api,perform,busy,report,onCancel}){
  const duplicated=useMemo(()=>duplicateSource?duplicateProduct(duplicateSource,duplicateToken):null,[duplicateSource,duplicateToken]);
  const reference=duplicateSource||product;
+ const [detailBlocks,setDetailBlocks]=useState(()=>product?.detail_blocks?.length?product.detail_blocks:
+  duplicateSource?.detail_blocks?.length?duplicateSource.detail_blocks.filter(b=>b.type!=='image'):[]);
  const [draft,setDraft]=useState(()=>duplicated?.draft||start(product));
  const optionalSize=hasOptionalSize(draft.category);
  const [colors,setColors]=useState(()=>initialColors(reference));
@@ -190,10 +193,16 @@ export default function ProductEditor({product,duplicateSource=null,duplicateTok
   }
   if(savingRows.length>80){report('Maximum 80 variants.');return;}
   if(files.length>limit){report('Too many photos for this product.');return;}
+  if(detailBlocks.reduce((n,b)=>n+(b.text?.length||0),0)>12000){report('Product details must be under 12000 characters.');return;}
   const form=new FormData();
+  let detailIndex=0;
+  const details=detailBlocks.map(block=>{
+   if(block.file){form.append('detail_images',block.file);return {type:'image',caption:block.caption||'',upload_index:detailIndex++};}
+   return block;
+  });
   const deletedIds=removedVariants.map(v=>v.id);
   const hasOriginalStock=removedVariants.some(v=>(product?.variants||[]).some(original=>String(original.id)===String(v.id)&&Number(original.stock)>0));
-  form.append('payload',JSON.stringify({...data,price:Number(data.price),sale_price:data.sale_price===''?null:Number(data.sale_price),
+  form.append('payload',JSON.stringify({...data,detail_blocks:details,price:Number(data.price),sale_price:data.sale_price===''?null:Number(data.sale_price),
    image_colors:orderedGallery.map(image=>({id:image.id,color:assignedColor(imageColors[image.id])||null})),
    new_image_colors:files.map(file=>assignedColor(fileColors.get(file))||null),
    variants:savingRows.map(v=>({...v,stock:Number(v.stock)})),deleted_variant_ids:deletedIds,confirm_stock_discard:hasOriginalStock,
@@ -229,8 +238,9 @@ export default function ProductEditor({product,duplicateSource=null,duplicateTok
    <label>PRICE (VND)<input type="number" min="0" required value={draft.price} onChange={e=>set('price',e.target.value)}/></label>
    <label>SALE PRICE (OPTIONAL)<input type="number" min="0" value={draft.sale_price} onChange={e=>set('sale_price',e.target.value)}/></label>
    <label>STATUS<select value={draft.status} onChange={e=>set('status',e.target.value)}>{PRODUCT_STATUSES.map(s=><option key={s} value={s}>{s.toUpperCase()}</option>)}</select></label>
-   <label className="kd-quick-full">DESCRIPTION<textarea rows={3} maxLength={2000} value={draft.description} onChange={e=>set('description',e.target.value)} placeholder="Product details…"/></label>
+   <label className="kd-quick-full">SHORT DESCRIPTION<textarea rows={3} maxLength={2000} value={draft.description} onChange={e=>set('description',e.target.value)} placeholder="Brief introduction to the product…"/></label>
   </div>
+  <ProductDetailsEditor blocks={detailBlocks} onChange={setDetailBlocks} report={report}/>
   <section className="kd-quick-step">
    <div className="kd-quick-step-heading">
     <div><h4>1. Sizes & Inventory</h4>

@@ -1,3 +1,4 @@
+import {validateDetails} from './productDetails.js';
 import express from 'express';
 import cors from 'cors';
 import bcrypt from 'bcryptjs';
@@ -218,6 +219,9 @@ const saveProductBundle=wrap(async(req,res)=>{
   seen.add(key);seenSku.add(sku.toLowerCase());
  }
  const photos=(req.files?.images||[]).map(file=>({buffer:file.buffer,ext:detectImage(file.buffer,file.mimetype)}));
+ const detailFiles=(req.files?.detail_images||[]).map(file=>({buffer:file.buffer,ext:detectImage(file.buffer,file.mimetype)}));
+ if(detailFiles.some(f=>!f.ext))return fail(res,'Detail images must be JPG, PNG or WebP.');
+ if(detailFiles.length&&body.detail_blocks===undefined)return fail(res,'Missing detail content.');
  const sizeGuideFile=req.files?.size_guide?.[0]||null;
  const sizeGuideImage=sizeGuideFile?{buffer:sizeGuideFile.buffer,ext:detectImage(sizeGuideFile.buffer,sizeGuideFile.mimetype)}:null;
  if(sizeGuideImage&&!sizeGuideImage.ext)return fail(res,'Size guide must contain valid JPG, PNG or WebP image data.');
@@ -246,6 +250,20 @@ const saveProductBundle=wrap(async(req,res)=>{
    product=(await client.query(`INSERT INTO products(name,slug,brand_id,category,product_type,price,sale_price,description,status,color,tryon_enabled)
     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,false) RETURNING *`,
     [name,slug,Number(brand_id),category,type||null,price,sale,clean(body.description),status,color])).rows[0];
+  }
+  if(body.detail_blocks!==undefined){
+   const previous=product.detail_blocks||[];
+   const blocks=validateDetails(body.detail_blocks,detailFiles,previous);
+   for(const block of blocks){
+    if(block.upload_index!==undefined){
+     const file=detailFiles[block.upload_index];
+     block.url=await saveImage(file.buffer,file.ext);saved.push(block.url);
+     delete block.upload_index;
+    }
+   }
+   await client.query('UPDATE products SET detail_blocks=$1::jsonb WHERE id=$2',[JSON.stringify(blocks),product.id]);
+   const kept=new Set(blocks.filter(b=>b.type==='image').map(b=>b.url));
+   obsolete.push(...previous.filter(b=>b.type==='image'&&!kept.has(b.url)).map(b=>b.url));
   }
   // Delete explicitly selected SKU rows atomically with the other product edits.
   // Order-linked variants must remain for COD history, even on cancelled orders.
@@ -414,7 +432,7 @@ route.delete('/admin/products/:id/permanent',authorize,admin,wrap(async(req,res)
   // Only unused SKU rows cascade; order_items FK protects history.
   await client.query('DELETE FROM products WHERE id=$1',[product.id]);
   await client.query('COMMIT');
-  removed={...product,allImageUrls:[product.image_url,product.size_guide_image_url,...galleryImages]};
+  removed={...product,allImageUrls:[product.image_url,product.size_guide_image_url,...(product.detail_blocks||[]).filter(b=>b.type==='image').map(b=>b.url),...galleryImages]};
  }catch(error){
   await client.query('ROLLBACK').catch(()=>{});
   if(error.code==='23503')return fail(res,'Product is linked to order data. Archive it instead.',409);
