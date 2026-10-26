@@ -1,58 +1,97 @@
-import '../../styles/product-details.css';
 import React,{useEffect,useRef} from 'react';
 import {apiBase,productImageUrl} from '@kd/catalog';
-function Preview({block}){
- const ref=useRef(null);
+import '../../styles/product-details.css';
+
+import {readDocument} from '../../utils/detailDocument.js';
+export default function ProductDetailsEditor({blocks,onChange,report,disabled=false}){
+ const editor=useRef(null),picker=useRef(null),selection=useRef(null),images=useRef(new Map()),counter=useRef(0);
+ const urls=useRef([]),initial=useRef(blocks);
+ const history=useRef([]),position=useRef(-1);
+ const emit=()=>onChange(readDocument(editor.current,images.current));
+ function checkpoint(){
+  const html=editor.current.innerHTML;
+  if(history.current[position.current]===html)return;
+  history.current=history.current.slice(0,position.current+1);
+  history.current.push(html);
+  if(history.current.length>100)history.current.shift();
+  position.current=history.current.length-1;emit();
+ }
+ function imageNode(block){
+  const id=String(++counter.current);images.current.set(id,block);
+  const img=document.createElement('img');img.dataset.detailId=id;
+  img.alt=block.caption||'Product detail';img.draggable=false;
+  if(block.file){img.src=URL.createObjectURL(block.file);urls.current.push(img.src);}
+  else img.src=productImageUrl(block.url,import.meta.env.VITE_API_URL||apiBase);
+  return img;
+ }
  useEffect(()=>{
-  if(!block.file)return;
-  const url=URL.createObjectURL(block.file);
-  if(ref.current)ref.current.src=url;
-  return()=>URL.revokeObjectURL(url);
- },[block.file]);
- return <img ref={ref} src={block.file?undefined:productImageUrl(block.url,import.meta.env.VITE_API_URL||apiBase)} alt={block.caption||'Detail image preview'}/>;
-}
-export default function ProductDetailsEditor({blocks,onChange,report}){
- const focused=useRef(-1),picker=useRef(null);
- const update=(i,patch)=>onChange(blocks.map((b,j)=>i===j?{...b,...patch}:b));
+  const root=editor.current;root.replaceChildren();images.current.clear();
+  for(const block of initial.current){
+   if(block.type==='image')root.append(imageNode(block));
+   else{const p=document.createElement(block.type==='heading'?'h3':'p');p.textContent=block.text;root.append(p);}
+  }
+  if(!root.childNodes.length)root.append(document.createElement('p'));
+  history.current=[root.innerHTML];position.current=0;
+  return()=>{urls.current.forEach(url=>URL.revokeObjectURL(url));urls.current=[];};
+ },[]);
+ function remember(){
+  const s=window.getSelection();
+  if(s?.rangeCount&&editor.current.contains(s.anchorNode)&&editor.current.contains(s.focusNode))selection.current=s.getRangeAt(0).cloneRange();
+ }
+ function range(){
+  editor.current.focus();
+  let r=selection.current;
+  if(!r||!editor.current.contains(r.startContainer)||!editor.current.contains(r.endContainer)){
+   r=document.createRange();r.selectNodeContents(editor.current);r.collapse(false);
+  }
+  const s=window.getSelection();s.removeAllRanges();s.addRange(r);return r;
+ }
+ function insert(fragment){
+  const r=range();r.deleteContents();
+  const last=fragment.lastChild;r.insertNode(fragment);
+  if(last){r.setStartAfter(last);r.collapse(true);const s=window.getSelection();s.removeAllRanges();s.addRange(r);selection.current=r.cloneRange();}
+  checkpoint();
+ }
  function addImages(files){
-  const selected=Array.from(files||[]);
-  if(!selected.length)return;
-  if(blocks.filter(b=>b.type==='image').length+selected.length>10||blocks.length+selected.length>40){report('Maximum 10 detail images and 40 blocks.');return;}
-  if(selected.some(f=>!['image/png','image/jpeg','image/webp'].includes(f.type)||f.size>3*1024*1024)){report('Use JPG, PNG or WebP images under 3 MB.');return;}
-  const index=focused.current<0?blocks.length:Math.min(blocks.length,focused.current+1);
-  onChange([...blocks.slice(0,index),...selected.map(file=>({type:'image',file,caption:''})),...blocks.slice(index)]);
-  focused.current=index+selected.length-1;
+  if(disabled)return;
+  const list=Array.from(files||[]);
+  if(!list.length)return;
+  if(editor.current.querySelectorAll('img').length+list.length>10){report('Maximum 10 detail images.');return;}
+  if(list.some(f=>!['image/png','image/jpeg','image/webp'].includes(f.type)||f.size>3*1024*1024)){report('Use JPG, PNG or WebP images under 3 MB.');return;}
+  const fragment=document.createDocumentFragment();
+  for(const file of list){fragment.append(imageNode({type:'image',file,caption:''}));fragment.append(document.createElement('br'));}
+  insert(fragment);
  }
- function paste(event){
-  event.stopPropagation();
-  const files=Array.from(event.clipboardData?.items||[]).filter(item=>item.kind==='file'&&item.type.startsWith('image/')).map(item=>item.getAsFile()).filter(Boolean);
-  if(files.length){event.preventDefault();addImages(files);}
+ function paste(e){
+  e.preventDefault();e.stopPropagation();if(disabled)return;remember();
+  const files=Array.from(e.clipboardData.items||[]).filter(x=>x.kind==='file'&&x.type.startsWith('image/')).map(x=>x.getAsFile()).filter(Boolean);
+  if(files.length){addImages(files);return;}
+  // Plain text keeps copied content readable without importing website scripts/styles.
+  const text=e.clipboardData.getData('text/plain');
+  if(!text)return;
+  const fragment=document.createDocumentFragment();
+  text.split(/\r?\n/).forEach((line,i)=>{if(i)fragment.append(document.createElement('br'));fragment.append(document.createTextNode(line));});
+  insert(fragment);
  }
- function move(i,delta){
-  const next=[...blocks],target=i+delta;
-  if(target<0||target>=next.length)return;
-  [next[i],next[target]]=[next[target],next[i]];onChange(next);focused.current=target;
+ function undo(delta){
+  const next=position.current+delta;if(next<0||next>=history.current.length)return;
+  position.current=next;editor.current.innerHTML=history.current[next];selection.current=null;emit();range();
  }
- return <section className="kd-details-editor kd-quick-full" aria-label="Product detail editor" onPaste={paste}>
-  <header><strong>PRODUCT DETAILS</strong><p>Add paragraphs, headings and images. Click inside this box and paste an image with Ctrl+V, or use Add image. Save applies all changes.</p></header>
-  <div className="kd-details-toolbar">
-   <button type="button" disabled={blocks.length>=40} onClick={()=>onChange([...blocks,{type:'paragraph',text:''}])}>+ Paragraph</button>
-   <button type="button" disabled={blocks.length>=40} onClick={()=>onChange([...blocks,{type:'heading',text:''}])}>+ Heading</button>
-   <button type="button" onClick={()=>picker.current?.click()}>+ Image</button>
-   <input ref={picker} hidden type="file" multiple accept="image/png,image/jpeg,image/webp" onChange={e=>{addImages(e.target.files);e.target.value='';}}/>
+ return <section className="kd-document-editor">
+  <label id="kd-description-label">PRODUCT DESCRIPTION</label>
+  <div className="kd-document-toolbar">
+   <button type="button" onMouseDown={e=>e.preventDefault()} onClick={()=>{remember();picker.current.click();}}>Insert image</button>
+   <button type="button" onMouseDown={e=>e.preventDefault()} onClick={()=>undo(-1)}>Undo</button>
+   <button type="button" onMouseDown={e=>e.preventDefault()} onClick={()=>undo(1)}>Redo</button>
+   <input ref={picker} type="file" hidden multiple accept="image/png,image/jpeg,image/webp" onChange={e=>{addImages(e.target.files);e.target.value='';}}/>
   </div>
-  <div className="kd-details-blocks" tabIndex={0} onFocus={e=>{if(e.target===e.currentTarget)focused.current=-1;}} aria-label="Paste detail images here">
-   {!blocks.length&&<p>Add a paragraph or paste your first image here.</p>}
-   {blocks.map((block,i)=><div className="kd-details-block" key={i} onFocus={()=>{focused.current=i;}}>
-    <div className="kd-details-block-actions"><span>{i+1} · {block.type}</span>
-     <button type="button" disabled={i===0} aria-label={'Move detail block '+(i+1)+' up'} onClick={()=>move(i,-1)}>↑</button>
-     <button type="button" disabled={i===blocks.length-1} aria-label={'Move detail block '+(i+1)+' down'} onClick={()=>move(i,1)}>↓</button>
-     <button type="button" aria-label={'Remove detail block '+(i+1)} onClick={()=>onChange(blocks.filter((_,j)=>j!==i))}>Remove</button>
-    </div>
-    {block.type==='image'?<><Preview block={block}/><input aria-label={'Caption for detail image '+(i+1)} placeholder="Image caption (optional)" maxLength={300} value={block.caption||''} onChange={e=>update(i,{caption:e.target.value})}/></>:
-     <textarea className={block.type==='heading'?'is-heading':''} rows={block.type==='heading'?2:4} aria-label={'Detail '+block.type+' '+(i+1)} placeholder={block.type==='heading'?'e.g. Materials & care':'Write product details…'} value={block.text} onChange={e=>update(i,{text:e.target.value})}/>}
-   </div>)}
-  </div>
-  <small>{blocks.filter(b=>b.type==='image').length}/10 images · {blocks.reduce((n,b)=>n+(b.text?.length||0),0)}/12000 characters</small>
+  <div ref={editor} className="kd-document-page" contentEditable={!disabled} suppressContentEditableWarning role="textbox" aria-multiline="true" aria-labelledby="kd-description-label"
+   data-placeholder="Write product details here. Paste an image with Ctrl+V…"
+   onInput={()=>{remember();checkpoint();}} onMouseUp={remember} onKeyUp={remember} onBlur={remember}
+   onPaste={paste} onDrop={e=>{e.preventDefault();e.stopPropagation();}}
+   onKeyDown={e=>{
+    if((e.ctrlKey||e.metaKey)&&['z','y'].includes(e.key.toLowerCase())){e.preventDefault();undo(e.key.toLowerCase()==='y'||e.shiftKey?1:-1);}
+   }}/>
+  <small>Type and paste images in this box. Use Enter for a new line and Backspace/Delete to remove content. Changes are applied with Save.</small>
  </section>;
 }
