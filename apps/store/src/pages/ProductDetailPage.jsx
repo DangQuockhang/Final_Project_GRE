@@ -51,8 +51,6 @@ export default function ProductDetailPage({products=[],online=false,loading=fals
     <div className="kd-retail-pdp-info">
       <h1>{item.name}</h1><h2 className="kd-retail-brand-title">{item.brand_name}</h2>
       <div className="kd-retail-prices">{hasSale&&<del>{money(item.price)}</del>}<strong>{money(hasSale?item.sale_price:item.price)}</strong>{hasSale&&<span className="kd-retail-promo">Sale</span>}</div>
-      {item.description&&<p className="kd-detail-intro">{item.description}</p>}
-      <a className="kd-detail-anchor" href="#kd-details-title">View full product details ↓</a>
       <div className="kd-retail-separator"/>
       {showColorChoices&&<>
        <div className="kd-retail-label">COLOR <span style={{fontWeight:400,color:'#748077'}}>· {activeColor||'Not available'}</span></div>
@@ -84,11 +82,11 @@ export default function ProductDetailPage({products=[],online=false,loading=fals
        </div>}
        <button type="button" className="button button-dark" disabled={!canBuy} onClick={()=>{addToCart(item,variant,quantity);setAdded(true)}}>{!inStock?'SOLD OUT':added?'ADDED TO BAG ✓':'ADD TO BAG'} <ShoppingBag size={18}/></button>
       </div>
+      <ProductDetails product={item}/>
       <div className="pdp-benefits"><div><ShieldCheck size={18}/>Supplier documentation required before real sales</div><div><Truck size={18}/>Select your delivery and available payment method at checkout</div></div>
     </div>
    </div>
   </section>
-  <ProductDetails product={item}/>
   {sizeGuideOpen&&guideUrl&&<SizeGuideModal src={guideUrl} name={item.brand_name+' · '+(item.product_type||item.category)} onClose={()=>setSizeGuideOpen(false)}/>}
   {related.length>0&&<section className="section kd-related"><div className="section-head"><div><span className="eyebrow">KEEP EXPLORING</span><h2>You may also <em>like.</em></h2></div><Link to="/shop" className="inline-link">VIEW ALL <ArrowUpRight size={18}/></Link></div><div className="products-grid">{related.map(p=><ProductCard key={p.id} product={p}/>)}</div></section>}
  </>;

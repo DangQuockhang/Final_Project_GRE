@@ -27,8 +27,11 @@ const initialColors=p=>{
 export default function ProductEditor({product,duplicateSource=null,duplicateToken='',brands,collections=[],api,perform,busy,report,onCancel}){
  const duplicated=useMemo(()=>duplicateSource?duplicateProduct(duplicateSource,duplicateToken):null,[duplicateSource,duplicateToken]);
  const reference=duplicateSource||product;
- const [detailBlocks,setDetailBlocks]=useState(()=>product?.detail_blocks?.length?product.detail_blocks:
-  duplicateSource?.detail_blocks?.length?duplicateSource.detail_blocks.filter(b=>b.type!=='image'):[]);
+ const [detailBlocks,setDetailBlocks]=useState(()=>{
+  const source=product||duplicateSource;
+  return [...(source?.description?[{type:'paragraph',text:source.description}]:[]),
+   ...(source?.detail_blocks||[]).filter(b=>product||b.type!=='image')];
+ });
  const [draft,setDraft]=useState(()=>duplicated?.draft||start(product));
  const optionalSize=hasOptionalSize(draft.category);
  const [colors,setColors]=useState(()=>initialColors(reference));
@@ -166,7 +169,7 @@ export default function ProductEditor({product,duplicateSource=null,duplicateTok
  async function save(e){
   e.preventDefault();
   if(saving.current||busy||working)return;
-  const data={...draft,product_type:normalizeCollectionName(draft.product_type),color:multipleColors?(colors[0]?.hex||FALLBACK_HEX):(product?.color||FALLBACK_HEX),tryon_enabled:false,
+  const data={...draft,description:'',product_type:normalizeCollectionName(draft.product_type),color:multipleColors?(colors[0]?.hex||FALLBACK_HEX):(product?.color||FALLBACK_HEX),tryon_enabled:false,
    ...(duplicated?{slug:duplicated.getSlug(draft.name)}:{})};
   const issue=validateProduct(data);
   if(issue){report(issue);return;}
@@ -193,6 +196,7 @@ export default function ProductEditor({product,duplicateSource=null,duplicateTok
   }
   if(savingRows.length>80){report('Maximum 80 variants.');return;}
   if(files.length>limit){report('Too many photos for this product.');return;}
+  if(detailBlocks.length>40){report('Description is too long. Please use fewer paragraphs (maximum 40).');return;}
   if(detailBlocks.reduce((n,b)=>n+(b.text?.length||0),0)>12000){report('Product details must be under 12000 characters.');return;}
   const form=new FormData();
   let detailIndex=0;
@@ -238,9 +242,8 @@ export default function ProductEditor({product,duplicateSource=null,duplicateTok
    <label>PRICE (VND)<input type="number" min="0" required value={draft.price} onChange={e=>set('price',e.target.value)}/></label>
    <label>SALE PRICE (OPTIONAL)<input type="number" min="0" value={draft.sale_price} onChange={e=>set('sale_price',e.target.value)}/></label>
    <label>STATUS<select value={draft.status} onChange={e=>set('status',e.target.value)}>{PRODUCT_STATUSES.map(s=><option key={s} value={s}>{s.toUpperCase()}</option>)}</select></label>
-   <label className="kd-quick-full">SHORT DESCRIPTION<textarea rows={3} maxLength={2000} value={draft.description} onChange={e=>set('description',e.target.value)} placeholder="Brief introduction to the product…"/></label>
   </div>
-  <ProductDetailsEditor blocks={detailBlocks} onChange={setDetailBlocks} report={report}/>
+  <ProductDetailsEditor blocks={detailBlocks} onChange={setDetailBlocks} report={report} disabled={busy||working}/>
   <section className="kd-quick-step">
    <div className="kd-quick-step-heading">
     <div><h4>1. Sizes & Inventory</h4>
