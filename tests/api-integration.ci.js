@@ -171,6 +171,7 @@ test('Admin permissions and COD stock transactions against disposable PostgreSQL
   assert.equal((await detailEdit(detailBlocks,true)).status,200);
   const detailed=await fetch(base+'/api/products/'+bundleBody.slug).then(r=>r.json());
   assert.equal(detailed.images.length,2);
+  assert.equal(detailed.image_url,bundleItem.image_url,'Detail uploads must not change the existing cover');
   assert.equal(detailed.detail_blocks[0].text,'Materials & care');
   assert.match(detailed.detail_blocks[2].url,/^\/media\/products\//);
   assert.equal((await fetch(base+detailed.detail_blocks[2].url)).status,200);
@@ -184,10 +185,12 @@ test('Admin permissions and COD stock transactions against disposable PostgreSQL
 
   // A full 20-photo gallery and separate size chart fit in one Save.
   const largePayload={...createBundle,name:'Large gallery '+id,cover_new_index:19,
+   detail_blocks:[{type:'image',upload_index:0,caption:'Not a cover'}],
    variants:createBundle.variants.map((v,i)=>({...v,sku:'LARGE-'+id+'-'+i})),
    new_image_colors:Array.from({length:20},(_,i)=>i%2?'Red':'Black')};
   const largeForm=new FormData();largeForm.append('payload',JSON.stringify(largePayload));
   for(let i=0;i<20;i++)largeForm.append('images',new Blob([png],{type:'image/png'}),'photo-'+i+'.png');
+  largeForm.append('detail_images',new Blob([png],{type:'image/png'}),'description.png');
   largeForm.append('size_guide',new Blob([png],{type:'image/png'}),'chart.png');
   const largeResponse=await fetch(base+'/api/admin/products/bundle',{method:'POST',headers:{Authorization:'Bearer '+token},body:largeForm});
   assert.equal(largeResponse.status,201);
@@ -195,10 +198,11 @@ test('Admin permissions and COD stock transactions against disposable PostgreSQL
   const large=await fetch(base+'/api/products/'+largeInfo.slug).then(r=>r.json());
   assert.equal(large.images.length,20);
   assert.equal(large.image_url,large.images[19].image_url);
+  assert.notEqual(large.image_url,large.detail_blocks[0].url);
   assert.ok(large.size_guide_image_url);
   const largeEdit=new FormData();
   largeEdit.append('payload',JSON.stringify({...largePayload,cover_new_index:undefined,new_image_colors:undefined,
-   variants:large.variants,image_ids:large.images.map(x=>x.id).reverse(),
+   detail_blocks:large.detail_blocks,variants:large.variants,image_ids:large.images.map(x=>x.id).reverse(),
    image_colors:large.images.map(x=>({id:x.id,color:x.color}))}));
   assert.equal((await fetch(base+'/api/admin/products/'+largeInfo.id+'/bundle',{method:'PATCH',headers:{Authorization:'Bearer '+token},body:largeEdit})).status,200);
   const extra=new FormData();extra.append('images',new Blob([png],{type:'image/png'}),'extra.png');
