@@ -28,7 +28,7 @@ function Viewer({images,index,setIndex,onClose,name}){
  },[onClose,images.length]);
  const zoom=delta=>{
   setScale(previous=>{
-   const next=clamp(Math.round((previous+delta)*10)/10,1,4);
+   const next=clamp(Math.round((previous+delta)*100)/100,1,4);
    if(next===1)setOffset({x:0,y:0});
    return next;
   });
