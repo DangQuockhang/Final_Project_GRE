@@ -237,7 +237,7 @@ const saveProductBundle=wrap(async(req,res)=>{
  if((imageIds!==undefined&&(!Array.isArray(imageIds)||imageIds.length>MAX_PRODUCT_IMAGES||imageIds.some(id=>!isId(id))||new Set(imageIds.map(String)).size!==imageIds.length))||
   !Array.isArray(deletedImageIds)||deletedImageIds.length>MAX_PRODUCT_IMAGES||deletedImageIds.some(id=>!isId(id))||new Set(deletedImageIds.map(String)).size!==deletedImageIds.length||
   (coverImageId!=null&&!isId(coverImageId)))return fail(res,'Invalid gallery selection.');
- const client=await pool.connect(),saved=[],obsolete=[];let committed=false,oldSizeGuideUrl=null;
+ const client=await pool.connect(),saved=[],gallerySaved=[],obsolete=[];let committed=false,oldSizeGuideUrl=null;
  try{
   await client.query('BEGIN');
   let product;
@@ -326,10 +326,10 @@ const saveProductBundle=wrap(async(req,res)=>{
   const galleryStats=(await client.query('SELECT COUNT(*)::int AS n,COALESCE(MAX(position),-1)::int+1 AS next_position FROM product_images WHERE product_id=$1',[product.id])).rows[0];
   if(galleryStats.n+photos.length>MAX_PRODUCT_IMAGES)error('Maximum 20 gallery photos per product.',409);
   for(const [i,file] of photos.entries()){
-   const url=await saveImage(file.buffer,file.ext);saved.push(url);
+   const url=await saveImage(file.buffer,file.ext);saved.push(url);gallerySaved.push(url);
    await client.query('INSERT INTO product_images(product_id,image_url,position,color) VALUES($1,$2,$3,$4)',[product.id,url,galleryStats.next_position+i,photoColor(newImageColors?.[i])]);
   }
-  if(saved.length&&(coverNewIndex!==undefined||!product.image_url))await client.query('UPDATE products SET image_url=$1 WHERE id=$2',[saved[coverNewIndex??0],product.id]);
+  if(gallerySaved.length&&(coverNewIndex!==undefined||!product.image_url))await client.query('UPDATE products SET image_url=$1 WHERE id=$2',[gallerySaved[coverNewIndex??0],product.id]);
   if(!sizeGuideImage&&body.remove_size_guide===true){
    oldSizeGuideUrl=product.size_guide_image_url;
    await client.query('UPDATE products SET size_guide_image_url=NULL WHERE id=$1',[product.id]);
