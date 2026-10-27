@@ -93,6 +93,7 @@ export default function ProductGallery({product,images=[],colorImage=null,colorC
  useEffect(()=>{setIndex(0);setOpen(false)},[product?.slug]);
  useEffect(()=>{setIndex(i=>Math.min(i,Math.max(0,images.length-1)))},[images.length]);
  const colorIndex=colorImage?images.indexOf(colorImage):-1;
+ // A color target is supplied only after an explicit shopper selection.
  useEffect(()=>{if(colorIndex>=0)setIndex(colorIndex)},[colorIndex,colorImage,colorClick]);
  const change=delta=>setIndex(i=>nextImage(i,delta,images.length));
  const touchStart=e=>{firstTouch.current={x:e.touches[0]?.clientX,y:e.touches[0]?.clientY}};

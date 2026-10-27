@@ -14,6 +14,7 @@ export default function ProductDetailPage({products=[],online=false,loading=fals
  const [remote,setRemote]=useState(null),[selected,setSelected]=useState(''),[quantity,setQuantity]=useState(1);
  const [fetching,setFetching]=useState(false),[fetchError,setFetchError]=useState(''),[added,setAdded]=useState(false);
  const [sizeGuideOpen,setSizeGuideOpen]=useState(false);
+ const [colorChoiceSlug,setColorChoiceSlug]=useState(null);
  const [colorClick,setColorClick]=useState(0);
  const [selectedColor,setSelectedColor]=useState('');
  const item=(remote?.slug===slug?remote:null)||products.find(p=>p.slug===slug);
@@ -47,7 +48,7 @@ export default function ProductDetailPage({products=[],online=false,loading=fals
   <section className="kd-retail-pdp">
    <div className="kd-retail-breadcrumb"><Link to="/shop">ALL PRODUCTS</Link><ChevronRight size={14}/><Link to={'/shop?brand='+encodeURIComponent(item.brand_slug||'')}>{item.brand_name}</Link><ChevronRight size={14}/><span>{item.name}</span></div>
    <div className="kd-retail-pdp-layout">
-    <ProductGallery key={item.slug} product={item} images={gallery} colorImage={colorImageUrl(item,activeColor,url=>productImageUrl(url,API))} colorClick={colorClick}/>
+    <ProductGallery key={item.slug} product={item} images={gallery} colorImage={colorChoiceSlug===slug?colorImageUrl(item,selectedColor,url=>productImageUrl(url,API)):null} colorClick={colorClick}/>
     <div className="kd-retail-pdp-info">
       <h1>{item.name}</h1><h2 className="kd-retail-brand-title">{item.brand_name}</h2>
       <div className="kd-retail-prices">{hasSale&&<del>{money(item.price)}</del>}<strong>{money(hasSale?item.sale_price:item.price)}</strong>{hasSale&&<span className="kd-retail-promo">Sale</span>}</div>
@@ -56,7 +57,7 @@ export default function ProductDetailPage({products=[],online=false,loading=fals
        <div className="kd-retail-label">COLOR <span style={{fontWeight:400,color:'#748077'}}>· {activeColor||'Not available'}</span></div>
        <div className="kd-retail-color-choices" role="group" aria-label="Choose product color">
         {palette.map(color=><button key={color.name} type="button" className={activeColor===color.name?'is-selected':''}
-          onClick={()=>{setSelectedColor(color.name);setColorClick(n=>n+1);setSelected('');setQuantity(1);setAdded(false)}} aria-pressed={activeColor===color.name}
+          onClick={()=>{setSelectedColor(color.name);setColorChoiceSlug(slug);setColorClick(n=>n+1);setSelected('');setQuantity(1);setAdded(false)}} aria-pressed={activeColor===color.name}
           title={color.name} aria-label={'Choose '+color.name+' color'}>
           <i style={{backgroundColor:color.hex}}/><span>{color.name}</span>
         </button>)}
