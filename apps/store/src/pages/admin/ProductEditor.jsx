@@ -25,7 +25,7 @@ const initialColors=p=>{
  if(!p?.variants?.length)return [{...shades[0]}];
  return [...new Map(p.variants.map(v=>[normal(v.color),{name:v.color,hex:v.color_hex||shades.find(s=>normal(s.name)===normal(v.color))?.hex||'#758073'}])).values()];
 };
-export default function ProductEditor({product,duplicateSource=null,duplicateToken='',brands,collections=[],api,perform,busy,report,onCancel}){
+export default function ProductEditor({product,duplicateSource=null,duplicateToken='',brands,collections=[],api,perform,busy,report,onCancel,resolvePhotoUrl=null}){
  const duplicated=useMemo(()=>duplicateSource?duplicateProduct(duplicateSource,duplicateToken):null,[duplicateSource,duplicateToken]);
  const reference=duplicateSource||product;
  const [detailBlocks,setDetailBlocks]=useState(()=>{
@@ -226,7 +226,7 @@ export default function ProductEditor({product,duplicateSource=null,duplicateTok
    if(ok)onCancel();
   }finally{saving.current=false;setWorking(false);}
  }
- const photoUrl=url=>productImageUrl(url,import.meta.env.VITE_API_URL||apiBase);
+ const photoUrl=url=>resolvePhotoUrl?resolvePhotoUrl(url):productImageUrl(url,import.meta.env.VITE_API_URL||apiBase);
  const pendingUrl=urls[files.indexOf(pendingCover)]?.url;
  const chosenExisting=orderedGallery.find(image=>String(image.id)===String(coverGalleryId));
  const oldCover=(!removeCover&&!deletedImages.some(id=>product?.images?.find(image=>image.id===id)?.image_url===product?.image_url))?product?.image_url:null;
@@ -315,7 +315,7 @@ export default function ProductEditor({product,duplicateSource=null,duplicateTok
      {orderedGallery.map((image,i)=>{
       const isCover=photoUrl(image.image_url)===draftCover;
       return <div className={'kd-editor-image-tile'+(isCover?' is-cover':'')} key={image.id}>
-       <div className="kd-editor-image-stage"><img src={productImageUrl(image.image_url,import.meta.env.VITE_API_URL||apiBase)} alt={'Gallery photo '+(i+1)}/>
+       <div className="kd-editor-image-stage"><img src={photoUrl(image.image_url)} alt={'Gallery photo '+(i+1)}/>
         <span className="kd-editor-image-index">{i+1}</span>{isCover&&<span className="kd-editor-cover-tag"><Star size={13}/> COVER</span>}
        </div>
        {colorPicker(imageColors[image.id],color=>setImageColors(old=>({...old,[image.id]:color})),'Color for existing photo '+(i+1))}
