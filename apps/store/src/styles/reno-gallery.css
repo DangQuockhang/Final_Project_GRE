@@ -1,17 +1,27 @@
 
 /* Reno-inspired photography workspace. Scoped to the new gallery. */
 .kd-reno-gallery.kd-v2-product-gallery[class]{display:grid;grid-template-columns:78px minmax(0,1fr);grid-template-rows:auto auto;gap:12px 18px;min-width:0;width:100%;align-items:start}
-.kd-reno-gallery .kd-v2-gallery-stage{grid-column:2;grid-row:1;aspect-ratio:4/5;border:0;border-radius:14px;background:#f6f6f4}
-.kd-reno-gallery .kd-v2-gallery-main{background:#f6f6f4}
-.kd-reno-gallery .kd-v2-gallery-main img{padding:24px;animation:kd-reno-enter .32s ease both}
+.kd-reno-gallery .kd-v2-gallery-stage{grid-column:2;grid-row:1;aspect-ratio:4/5;border:0;border-radius:16px;background:#fff}
+.kd-reno-gallery .kd-v2-gallery-main{background:#fff}
+.kd-reno-gallery .kd-v2-gallery-main{overflow:hidden;border-radius:16px}
+.kd-reno-gallery .kd-gallery-image-frame{
+ position:absolute;inset:0;display:block;overflow:hidden;
+ border:1px solid #eceeeb;border-radius:16px;background:#fff;isolation:isolate;
+}
+.kd-reno-gallery .kd-gallery-image-frame img{
+ display:block;width:100%;height:100%;max-width:100%;max-height:100%;
+ box-sizing:border-box;padding:clamp(12px,2vw,24px);margin:0;
+ object-fit:contain;object-position:50% 50%;border-radius:16px;background:#fff;
+ animation:kd-reno-enter .28s ease both;
+}
 .kd-reno-gallery .kd-v2-gallery-thumbs{grid-row:1;grid-column:1;flex-direction:column;max-height:580px;overflow:auto;gap:10px;padding:2px;scrollbar-width:thin}
-.kd-reno-gallery .kd-v2-gallery-thumbs button{flex:0 0 92px;width:72px;height:92px;border-radius:8px;border-color:#ddd;background:#fafaf8;opacity:.65}
-.kd-reno-gallery .kd-v2-gallery-thumbs button.is-active{border:2px solid #1c3428;opacity:1}
+.kd-reno-gallery .kd-v2-gallery-thumbs button{flex:0 0 92px;width:72px;height:92px;border-radius:8px;border:2px solid #edf0ec;background:#fff;opacity:1;transition:border-color .18s ease,box-shadow .18s ease}
+.kd-reno-gallery .kd-v2-gallery-thumbs button.is-active{border:2px solid #294a36;opacity:1;box-shadow:0 0 0 2px #edf3ef}
 .kd-reno-gallery .kd-v2-gallery-meta{grid-column:2;padding:4px 0;font-size:10px;color:#666}
 .kd-reno-gallery .kd-v2-gallery-expand{top:16px;right:16px;background:#fff;color:#202923;border:0;font-weight:500;font-size:12px}
 .kd-reno-gallery button:focus-visible,.kd-reno-lightbox-thumbs button:focus-visible{outline:3px solid #6e957d;outline-offset:3px}
-.kd-reno-gallery .kd-v2-gallery-arrow{width:38px;height:38px;border:0;background:#fff;color:#232b26}
-.kd-reno-bottom.kd-v2-product-gallery{grid-template-columns:minmax(0,1fr)}
+.kd-reno-gallery .kd-v2-gallery-arrow{width:44px;height:44px;border:1px solid #e7ebe7;background:rgba(255,255,255,.96);color:#232b26;box-shadow:0 3px 12px #17241b0a}
+.kd-reno-gallery.kd-reno-bottom.kd-v2-product-gallery[class]{grid-template-columns:minmax(0,1fr)}
 .kd-reno-bottom .kd-v2-gallery-stage{grid-column:1}
 .kd-reno-bottom .kd-v2-gallery-meta{grid-column:1;grid-row:2}
 .kd-reno-bottom .kd-v2-gallery-thumbs{grid-column:1;grid-row:3;flex-direction:row;max-height:none}
@@ -28,7 +38,7 @@
 .kd-editor-media .kd-editor-gallery-reorder{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:16px}
 .kd-editor-media .kd-editor-image-tile{width:auto;border-radius:12px;overflow:hidden;border:1px solid #dfe4df;background:#fff}
 .kd-editor-media .kd-editor-image-tile.is-cover{border:2px solid #416c51}
-.kd-editor-media .kd-editor-image-stage{background:#f6f6f4}
+.kd-editor-media .kd-editor-image-stage{background:#fff}
 .kd-editor-media .kd-editor-tile-controls button{min-height:38px}
 @keyframes kd-reno-enter{from{opacity:.35;transform:translateX(12px)}to{opacity:1;transform:translateX(0)}}
 @media(max-width:700px){
@@ -40,3 +50,53 @@
  .kd-reno-admin-preview{grid-template-columns:1fr;padding:16px;gap:16px}
 }
 @media(prefers-reduced-motion:reduce){.kd-reno-gallery .kd-v2-gallery-main img{animation:none}}
+
+/* Product detail: quiet white canvas, consistent media frame and readable purchase panel. */
+.kd-retail-pdp.kd-pdp-refined{
+ max-width:1380px;padding:24px clamp(18px,4vw,60px) 72px;background:#fff;
+ color:#232b26;font-family:Inter,system-ui,sans-serif;
+}
+.kd-pdp-refined .kd-retail-breadcrumb{font-size:12px;line-height:1.6;gap:9px;padding:0 0 28px;color:#798078}
+.kd-pdp-refined .kd-retail-breadcrumb span{overflow-wrap:anywhere}
+.kd-pdp-refined .kd-retail-pdp-layout{grid-template-columns:minmax(0,1.16fr) minmax(0,.84fr);gap:clamp(28px,4vw,64px)}
+.kd-pdp-refined .kd-retail-pdp-info{position:static;min-width:0;padding:8px 0}
+.kd-pdp-refined .kd-retail-pdp-info h1{font:600 clamp(25px,2.4vw,36px)/1.25 Inter,system-ui,sans-serif;letter-spacing:-.035em;margin:0 0 12px;overflow-wrap:anywhere}
+.kd-pdp-refined .kd-retail-brand-title{font:500 12px/1.6 Inter,system-ui,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#707a71;margin:0 0 24px}
+.kd-pdp-refined .kd-retail-prices{gap:12px;margin-bottom:24px}
+.kd-pdp-refined .kd-retail-prices strong{font-size:27px;font-weight:600;letter-spacing:-.025em}
+.kd-pdp-refined .kd-retail-prices del{font-size:15px;color:#8a928b}
+.kd-pdp-refined .kd-retail-label{font-size:12px;font-weight:600;letter-spacing:.055em}
+.kd-pdp-refined .kd-retail-separator{height:1px;background:#ecefeb;margin:0 0 24px}
+.kd-pdp-refined .kd-retail-sizes{gap:10px;margin:12px 0 22px}
+.kd-pdp-refined .kd-retail-sizes button{min-width:48px;min-height:46px;border:1px solid #dfe5de;border-radius:8px;font-size:14px;transition:background .15s ease,border-color .15s ease}
+.kd-pdp-refined .kd-retail-sizes button.active{border-color:#263e2e;background:#263e2e;color:#fff}
+.kd-pdp-refined .kd-retail-sizes button:disabled{background:#f7f8f6;color:#9da49c}
+.kd-pdp-refined .kd-retail-color-choices{gap:10px;margin:12px 0 24px}
+.kd-pdp-refined .kd-retail-color-choices button{min-height:44px;border-radius:8px}
+.kd-pdp-refined .kd-retail-buy-row{gap:12px;margin:20px 0 28px}
+.kd-pdp-refined .kd-retail-buy-row .button{min-height:54px;border-radius:9px;font-size:13px;letter-spacing:.06em;box-shadow:0 4px 12px #2037270d}
+.kd-pdp-refined .kd-qty-widget{border-radius:9px;overflow:hidden}
+.kd-pdp-refined button:focus-visible{outline:3px solid #7c9b83;outline-offset:3px}
+.kd-pdp-refined .pdp-benefits{border-top:1px solid #ecefeb;padding-top:20px;line-height:1.7;font-size:12px;color:#788178}
+.kd-reno-gallery .kd-v2-gallery-thumbs button:hover{border-color:#8da391}
+.kd-reno-gallery .kd-v2-gallery-thumbs img{border-radius:5px}
+.kd-reno-gallery .kd-v2-gallery-expand{box-shadow:0 2px 8px #17241b08;border:1px solid #ecefeb;min-height:38px}
+@media(max-width:900px){
+ .kd-pdp-refined .kd-retail-pdp-layout{grid-template-columns:minmax(0,1fr);gap:30px}
+ .kd-retail-pdp.kd-pdp-refined{max-width:760px}
+ .kd-pdp-refined .kd-retail-pdp-info{padding:0}
+}
+@media(max-width:700px){
+ .kd-retail-pdp.kd-pdp-refined{padding:18px 16px 48px}
+ .kd-pdp-refined .kd-retail-breadcrumb{padding-bottom:18px;font-size:11px}
+ .kd-reno-gallery .kd-v2-gallery-stage{aspect-ratio:4/5}
+ .kd-reno-gallery .kd-gallery-image-frame,.kd-reno-gallery .kd-v2-gallery-main{border-radius:12px}
+ .kd-reno-gallery .kd-gallery-image-frame img{padding:12px;border-radius:12px}
+ .kd-reno-gallery .kd-v2-gallery-expand{top:10px;right:10px;font-size:11px;padding:8px 10px}
+ .kd-reno-gallery .kd-v2-gallery-meta{padding:4px 2px}
+ .kd-pdp-refined .kd-retail-prices strong{font-size:25px}
+}
+@media(prefers-reduced-motion:reduce){
+ .kd-reno-gallery .kd-gallery-image-frame img{animation:none}
+ .kd-reno-gallery .kd-v2-gallery-thumbs button,.kd-pdp-refined .kd-retail-sizes button{transition:none}
+}
