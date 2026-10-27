@@ -319,7 +319,8 @@ const saveProductBundle=wrap(async(req,res)=>{
   }
   if(coverImageId!=null||body.remove_cover===true||obsolete.includes(product.image_url)){
    const nextCover=coverImageId!=null?available.get(String(coverImageId)).image_url:(available.get(String(order[0]))?.image_url||null);
-   if(product.image_url&&!remaining.some(image=>image.image_url===product.image_url))obsolete.push(product.image_url);
+   if(product.image_url&&!remaining.some(image=>image.image_url===product.image_url)&&
+    !(product.detail_blocks||[]).some(block=>block.type==='image'&&block.url===product.image_url))obsolete.push(product.image_url);
    product.image_url=nextCover;
    await client.query('UPDATE products SET image_url=$1 WHERE id=$2',[nextCover,product.id]);
   }
