@@ -45,7 +45,7 @@ export default function ProductDetailPage({products=[],online=false,loading=fals
  if(!item)return <section className="kd-missing"><h1>{loading||fetching?'Loading product…':'Product not found'}</h1><Link to="/shop"><ArrowLeft size={17}/> Back to shop</Link></section>;
  const canBuy=max>0&&!fetching&&!fetchError;
  return <>
-  <section className="kd-retail-pdp">
+  <section className="kd-retail-pdp kd-pdp-refined">
    <div className="kd-retail-breadcrumb"><Link to="/shop">ALL PRODUCTS</Link><ChevronRight size={14}/><Link to={'/shop?brand='+encodeURIComponent(item.brand_slug||'')}>{item.brand_name}</Link><ChevronRight size={14}/><span>{item.name}</span></div>
    <div className="kd-retail-pdp-layout">
     <ProductGallery key={item.slug} product={item} images={gallery} colorImage={colorChoiceSlug===slug?colorImageUrl(item,selectedColor,url=>productImageUrl(url,API)):null} colorClick={colorClick}/>
