@@ -1,3 +1,4 @@
+import ProductGallery from '../../components/product/ProductGallery.jsx';
 import ProductDetailsEditor from '../../components/admin/ProductDetailsEditor.jsx';
 import React,{useEffect,useMemo,useRef,useState} from 'react';
 import {ImagePlus,Plus,Trash2,Layers,Save,ArrowLeft,ArrowRight,Star} from 'lucide-react';
@@ -24,7 +25,7 @@ const initialColors=p=>{
  if(!p?.variants?.length)return [{...shades[0]}];
  return [...new Map(p.variants.map(v=>[normal(v.color),{name:v.color,hex:v.color_hex||shades.find(s=>normal(s.name)===normal(v.color))?.hex||'#758073'}])).values()];
 };
-export default function ProductEditor({product,duplicateSource=null,duplicateToken='',brands,collections=[],api,perform,busy,report,onCancel}){
+export default function ProductEditor({product,duplicateSource=null,duplicateToken='',brands,collections=[],api,perform,busy,report,onCancel,resolvePhotoUrl=null}){
  const duplicated=useMemo(()=>duplicateSource?duplicateProduct(duplicateSource,duplicateToken):null,[duplicateSource,duplicateToken]);
  const reference=duplicateSource||product;
  const [detailBlocks,setDetailBlocks]=useState(()=>{
@@ -225,7 +226,12 @@ export default function ProductEditor({product,duplicateSource=null,duplicateTok
    if(ok)onCancel();
   }finally{saving.current=false;setWorking(false);}
  }
- const gallery=[...new Set([product?.image_url,...(product?.images||[]).map(i=>i.image_url)].filter(Boolean))];
+ const photoUrl=url=>resolvePhotoUrl?resolvePhotoUrl(url):productImageUrl(url,import.meta.env.VITE_API_URL||apiBase);
+ const pendingUrl=urls[files.indexOf(pendingCover)]?.url;
+ const chosenExisting=orderedGallery.find(image=>String(image.id)===String(coverGalleryId));
+ const oldCover=(!removeCover&&!deletedImages.some(id=>product?.images?.find(image=>image.id===id)?.image_url===product?.image_url))?product?.image_url:null;
+ const draftCover=pendingUrl||(chosenExisting?photoUrl(chosenExisting.image_url):oldCover?photoUrl(oldCover):null)|| (orderedGallery[0]?photoUrl(orderedGallery[0].image_url):urls[0]?.url);
+ const previewImages=[...new Set([draftCover,...orderedGallery.map(image=>photoUrl(image.image_url)),...urls.map(x=>x.url)].filter(Boolean))];
  return <form onSubmit={save} onPaste={paste} className="kd-quick-editor">
   <fieldset disabled={busy||working} style={{border:0,padding:0,margin:0,minWidth:0}}>
   <div className="kd-quick-title"><div><span>PRODUCT WORKSPACE</span><h3>{product?'Edit '+product.name:duplicated?'Duplicate '+duplicateSource.name:'New product — one step'}</h3>
@@ -295,27 +301,28 @@ export default function ProductEditor({product,duplicateSource=null,duplicateTok
     </div>
     <ImagePlus size={27}/>
    </div>
-   {product&&<div className="kd-editor-cover-preview">
-    {product.image_url?<img src={productImageUrl(product.image_url,import.meta.env.VITE_API_URL||apiBase)} alt={'Current cover for '+product.name}/>:<div><ImagePlus size={26}/> No cover photo</div>}
-    <div><strong>CURRENT STOREFRONT COVER</strong><span>This is the image customers see on product cards.</span>
-     {product.image_url&&<button type="button" className="border-button" disabled={busy||working} onClick={removeCurrentCover}>REMOVE COVER</button>}
+   <div className="kd-reno-admin-preview">
+    <div><span className="kd-reno-eyebrow">LIVE PREVIEW</span><h4>Your storefront gallery</h4><p>Choose a star below to change the cover. Preview updates immediately; Save applies all photos, colors and inventory together.</p>
+     <strong>{previewImages.length} / 20 photos</strong>
+     {product?.image_url&&<button type="button" className="border-button" onClick={removeCurrentCover}>REMOVE CURRENT COVER</button>}
     </div>
-   </div>}
+    <ProductGallery key={draftCover||'empty'} product={{...draft,name:draft.name||'Product preview'}} images={previewImages}/>
+   </div>
    {(deletedImages.length>0||removeCover)&&<p role="status">Photo removal queued. Click Save to apply or Cancel to discard.</p>}
    {product&&orderedGallery.length>0&&<>
     <div className="kd-editor-gallery-head"><strong>EXISTING GALLERY — {orderedGallery.length} PHOTOS</strong><span>Arrange from left to right, then save the order.</span></div>
     <div className="kd-editor-gallery-reorder">
      {orderedGallery.map((image,i)=>{
-      const isCover=String(coverGalleryId||'')===String(image.id)||(coverGalleryId==null&&product.image_url===image.image_url);
+      const isCover=photoUrl(image.image_url)===draftCover;
       return <div className={'kd-editor-image-tile'+(isCover?' is-cover':'')} key={image.id}>
-       <div className="kd-editor-image-stage"><img src={productImageUrl(image.image_url,import.meta.env.VITE_API_URL||apiBase)} alt={'Gallery photo '+(i+1)}/>
+       <div className="kd-editor-image-stage"><img src={photoUrl(image.image_url)} alt={'Gallery photo '+(i+1)}/>
         <span className="kd-editor-image-index">{i+1}</span>{isCover&&<span className="kd-editor-cover-tag"><Star size={13}/> COVER</span>}
        </div>
        {colorPicker(imageColors[image.id],color=>setImageColors(old=>({...old,[image.id]:color})),'Color for existing photo '+(i+1))}
        <div className="kd-editor-tile-controls">
         <button type="button" title="Move photo left" aria-label={'Move existing photo '+(i+1)+' left'} disabled={busy||working||i===0} onClick={()=>setGalleryIds(prev=>moveItem(prev,i,-1))}><ArrowLeft size={17}/></button>
         <button type="button" title="Move photo right" aria-label={'Move existing photo '+(i+1)+' right'} disabled={busy||working||i===orderedGallery.length-1} onClick={()=>setGalleryIds(prev=>moveItem(prev,i,1))}><ArrowRight size={17}/></button>
-        <button type="button" title="Set as main cover" aria-label={'Use existing photo '+(i+1)+' as cover'} disabled={busy||working} onClick={()=>{setCoverGalleryId(image.id);setPendingCover(null);}}><Star size={17}/></button>
+        <button type="button" title="Set as main cover" aria-label={'Use existing photo '+(i+1)+' as cover'} disabled={busy||working} onClick={()=>{setCoverGalleryId(image.id);setPendingCover(null);setRemoveCover(false);}}><Star size={17}/></button>
         <button type="button" title="Remove gallery photo" aria-label={'Remove existing photo '+(i+1)} disabled={busy||working} onClick={()=>removeExistingImage(image)}><Trash2 size={17}/></button>
        </div>
       </div>;
@@ -329,7 +336,7 @@ export default function ProductEditor({product,duplicateSource=null,duplicateTok
    <p>{files.length} new photo(s) selected · Click Choose Files repeatedly to preserve your chosen sequence, or reorder with the arrows.</p>
    {urls.length>0&&<div className="kd-editor-gallery-reorder">
     {urls.map((x,i)=>{
-     const isCover=pendingCover===files[i]||(!product&&!pendingCover&&i===0);
+     const isCover=x.url===draftCover;
      return <div className={'kd-editor-image-tile'+(isCover?' is-cover':'')} key={x.url}>
       <div className="kd-editor-image-stage"><img src={x.url} alt={x.name||'Selected product photo'}/>
        <span className="kd-editor-image-index">{i+1}</span>{isCover&&<span className="kd-editor-cover-tag"><Star size={13}/> COVER</span>}

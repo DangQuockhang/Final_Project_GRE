@@ -1,0 +1,42 @@
+
+/* Reno-inspired photography workspace. Scoped to the new gallery. */
+.kd-reno-gallery.kd-v2-product-gallery[class]{display:grid;grid-template-columns:78px minmax(0,1fr);grid-template-rows:auto auto;gap:12px 18px;min-width:0;width:100%;align-items:start}
+.kd-reno-gallery .kd-v2-gallery-stage{grid-column:2;grid-row:1;aspect-ratio:4/5;border:0;border-radius:14px;background:#f6f6f4}
+.kd-reno-gallery .kd-v2-gallery-main{background:#f6f6f4}
+.kd-reno-gallery .kd-v2-gallery-main img{padding:24px;animation:kd-reno-enter .32s ease both}
+.kd-reno-gallery .kd-v2-gallery-thumbs{grid-row:1;grid-column:1;flex-direction:column;max-height:580px;overflow:auto;gap:10px;padding:2px;scrollbar-width:thin}
+.kd-reno-gallery .kd-v2-gallery-thumbs button{flex:0 0 92px;width:72px;height:92px;border-radius:8px;border-color:#ddd;background:#fafaf8;opacity:.65}
+.kd-reno-gallery .kd-v2-gallery-thumbs button.is-active{border:2px solid #1c3428;opacity:1}
+.kd-reno-gallery .kd-v2-gallery-meta{grid-column:2;padding:4px 0;font-size:10px;color:#666}
+.kd-reno-gallery .kd-v2-gallery-expand{top:16px;right:16px;background:#fff;color:#202923;border:0;font-weight:500;font-size:12px}
+.kd-reno-gallery button:focus-visible,.kd-reno-lightbox-thumbs button:focus-visible{outline:3px solid #6e957d;outline-offset:3px}
+.kd-reno-gallery .kd-v2-gallery-arrow{width:38px;height:38px;border:0;background:#fff;color:#232b26}
+.kd-reno-bottom.kd-v2-product-gallery{grid-template-columns:minmax(0,1fr)}
+.kd-reno-bottom .kd-v2-gallery-stage{grid-column:1}
+.kd-reno-bottom .kd-v2-gallery-meta{grid-column:1;grid-row:2}
+.kd-reno-bottom .kd-v2-gallery-thumbs{grid-column:1;grid-row:3;flex-direction:row;max-height:none}
+.kd-reno-lightbox-thumbs{display:flex;justify-content:flex-start;gap:8px;overflow-x:auto;max-width:100%;margin:12px auto 0;flex-shrink:0;padding:4px}
+.kd-reno-lightbox-thumbs button{flex:0 0 48px;width:48px;height:56px;padding:2px;border:2px solid transparent;background:#fff;border-radius:4px;opacity:.6;cursor:pointer}
+.kd-reno-lightbox-thumbs button[aria-pressed=true]{border-color:#b4d1be;opacity:1}
+.kd-reno-lightbox-thumbs img{width:100%;height:100%;object-fit:contain}
+.kd-reno-admin-preview{display:grid;grid-template-columns:minmax(170px,.7fr) minmax(0,1fr);gap:30px;padding:24px;border:1px solid #e0e5e0;border-radius:14px;margin:18px 0 26px;background:#fff}
+.kd-reno-admin-preview h4{font:600 22px/1.3 system-ui;margin:10px 0}
+.kd-reno-admin-preview p{font:400 14px/1.7 system-ui;color:#68716a}
+.kd-reno-admin-preview strong{display:block;margin:22px 0}
+.kd-reno-admin-preview .kd-v2-gallery-thumbs{max-height:360px}
+.kd-reno-eyebrow{font:600 10px/1.5 system-ui;letter-spacing:.18em;color:#4c6c57}
+.kd-editor-media .kd-editor-gallery-reorder{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:16px}
+.kd-editor-media .kd-editor-image-tile{width:auto;border-radius:12px;overflow:hidden;border:1px solid #dfe4df;background:#fff}
+.kd-editor-media .kd-editor-image-tile.is-cover{border:2px solid #416c51}
+.kd-editor-media .kd-editor-image-stage{background:#f6f6f4}
+.kd-editor-media .kd-editor-tile-controls button{min-height:38px}
+@keyframes kd-reno-enter{from{opacity:.35;transform:translateX(12px)}to{opacity:1;transform:translateX(0)}}
+@media(max-width:700px){
+ .kd-reno-gallery.kd-v2-product-gallery[class]{grid-template-columns:minmax(0,1fr);gap:10px}
+ .kd-reno-gallery .kd-v2-gallery-stage{grid-column:1}
+ .kd-reno-gallery .kd-v2-gallery-meta{grid-column:1;grid-row:2}
+ .kd-reno-gallery .kd-v2-gallery-thumbs{grid-column:1;grid-row:3;flex-direction:row;max-height:none}
+ .kd-reno-gallery .kd-v2-gallery-thumbs button{flex:0 0 64px;width:64px;height:78px}
+ .kd-reno-admin-preview{grid-template-columns:1fr;padding:16px;gap:16px}
+}
+@media(prefers-reduced-motion:reduce){.kd-reno-gallery .kd-v2-gallery-main img{animation:none}}

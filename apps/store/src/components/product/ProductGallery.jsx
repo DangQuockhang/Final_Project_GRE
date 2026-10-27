@@ -1,7 +1,8 @@
-import React,{useEffect,useRef,useState} from 'react';
+import React,{useCallback,useEffect,useRef,useState} from 'react';
 import {createPortal} from 'react-dom';
 import {ChevronLeft,ChevronRight,Maximize2,Minus,Plus,X,RotateCcw} from 'lucide-react';
 import {ProductMedia} from './ProductCard.jsx';
+import '../../styles/reno-gallery.css';
 import {nextImage} from '../../utils/productGallery.js';
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 function Viewer({images,index,setIndex,onClose,name}){
@@ -12,6 +13,12 @@ function Viewer({images,index,setIndex,onClose,name}){
   const old=document.body.style.overflow;document.body.style.overflow='hidden';
   const before=document.activeElement;close.current?.focus();
   const handle=e=>{
+   if(e.key==='Tab'){
+    const buttons=[...modal.current.querySelectorAll('button:not(:disabled)')];
+    const first=buttons[0],last=buttons[buttons.length-1];
+    if(e.shiftKey&&document.activeElement===first){e.preventDefault();last?.focus();}
+    else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus();}
+   }
    if(e.key==='Escape'){e.preventDefault();onClose();}
    if(e.key==='ArrowLeft'){e.preventDefault();move(-1);}
    if(e.key==='ArrowRight'){e.preventDefault();move(1);}
@@ -21,7 +28,7 @@ function Viewer({images,index,setIndex,onClose,name}){
  },[onClose,images.length]);
  const zoom=delta=>{
   setScale(previous=>{
-   const next=clamp(Math.round((previous+delta)*10)/10,1,4);
+   const next=clamp(Math.round((previous+delta)*100)/100,1,4);
    if(next===1)setOffset({x:0,y:0});
    return next;
   });
@@ -76,8 +83,11 @@ function Viewer({images,index,setIndex,onClose,name}){
      <button ref={close} type="button" className="kd-v2-lightbox-close" aria-label="Close image viewer" onClick={onClose}><X size={24}/></button>
     </div>
    </header>
-   <div className={'kd-v2-lightbox-stage'+(scale>1?' is-zoomed':'')} onPointerDown={start} onPointerMove={drag} onPointerUp={stop} onPointerCancel={stop} onDoubleClick={()=>{zoom(scale===1?1:-3);setOffset({x:0,y:0})}} onWheel={wheel}>
+   <div className={'kd-v2-lightbox-stage'+(scale>1?' is-zoomed':'')} onPointerDown={start} onPointerMove={drag} onPointerUp={stop} onPointerCancel={()=>{pointer.current=null;touchPoints.current.clear();pinch.current=null;}} onDoubleClick={()=>{zoom(scale===1?1:-3);setOffset({x:0,y:0})}} onWheel={wheel}>
     <img draggable={false} src={images[index]} alt={name+' photo '+(index+1)} style={{transform:'translate(-50%, -50%) translate('+offset.x+'px,'+offset.y+'px) scale('+scale+')'}}/>
+   </div>
+   <div className="kd-reno-lightbox-thumbs" aria-label="Viewer thumbnails">
+    {images.map((url,i)=><button key={url} type="button" aria-label={'View photo '+(i+1)} aria-pressed={i===index} onClick={()=>{setIndex(i);setScale(1);setOffset({x:0,y:0});}}><img src={url} alt="" loading="lazy"/></button>)}
    </div>
    <footer className="kd-v2-lightbox-footer">
     <button type="button" aria-label="Previous photo" onClick={()=>move(-1)} disabled={images.length<2}><ChevronLeft size={24}/></button>
@@ -87,8 +97,11 @@ function Viewer({images,index,setIndex,onClose,name}){
   </section>
  </div>,document.body);
 }
-export default function ProductGallery({product,images=[],colorImage=null,colorClick=0}){
+export default function ProductGallery({product,images=[],colorImage=null,colorClick=0,layout='left'}){
  const [index,setIndex]=useState(0),[open,setOpen]=useState(false);
+ const closeViewer=useCallback(()=>setOpen(false),[]);
+ const thumbs=useRef(null);
+ useEffect(()=>{thumbs.current?.querySelector('[aria-pressed="true"]')?.scrollIntoView({block:'nearest',inline:'nearest'});},[index]);
  const firstTouch=useRef(null),lastSwipe=useRef(0);
  useEffect(()=>{setIndex(0);setOpen(false)},[product?.slug]);
  useEffect(()=>{setIndex(i=>Math.min(i,Math.max(0,images.length-1)))},[images.length]);
@@ -106,7 +119,7 @@ export default function ProductGallery({product,images=[],colorImage=null,colorC
    change(dx>0?-1:1);
   }
  };
- return <div className="kd-v2-product-gallery" aria-label="Product photography">
+ return <div className={'kd-v2-product-gallery kd-reno-gallery kd-reno-'+layout} aria-label="Product photography" onKeyDown={e=>{if(e.target.closest('.kd-v2-lightbox'))return;if(e.key==='ArrowLeft'){e.preventDefault();change(-1);}if(e.key==='ArrowRight'){e.preventDefault();change(1);}}}>
   <div className="kd-v2-gallery-stage" onTouchStart={touchStart} onTouchEnd={touchEnd}>
    {images.length?
     <button className="kd-v2-gallery-main" type="button" aria-label={'Expand photo '+(index+1)+' of '+images.length} onClick={()=>{if(Date.now()>lastSwipe.current)setOpen(true)}}>
@@ -124,12 +137,12 @@ export default function ProductGallery({product,images=[],colorImage=null,colorC
     <span>PRODUCT GALLERY</span>
     <span aria-live="polite" aria-atomic="true">{index+1} / {images.length}</span>
    </div>
-   {images.length>1&&<div className="kd-v2-gallery-thumbs" aria-label="Choose an image">
+   {images.length>1&&<div ref={thumbs} className="kd-v2-gallery-thumbs" aria-label="Choose an image">
     {images.map((url,i)=><button type="button" key={url} className={index===i?'is-active':''} aria-label={'Show product photo '+(i+1)} aria-pressed={index===i} onClick={()=>setIndex(i)}>
      <img src={url} alt="" loading="lazy"/>
     </button>)}
    </div>}
   </>}
-  {open&&images.length>0&&<Viewer images={images} index={index} setIndex={setIndex} onClose={()=>setOpen(false)} name={product.name}/>}
+  {open&&images.length>0&&<Viewer images={images} index={index} setIndex={setIndex} onClose={closeViewer} name={product.name}/>}
  </div>;
 }
