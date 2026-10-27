@@ -123,7 +123,7 @@ export default function ProductGallery({product,images=[],colorImage=null,colorC
   <div className="kd-v2-gallery-stage" onTouchStart={touchStart} onTouchEnd={touchEnd}>
    {images.length?
     <button className="kd-v2-gallery-main" type="button" aria-label={'Expand photo '+(index+1)+' of '+images.length} onClick={()=>{if(Date.now()>lastSwipe.current)setOpen(true)}}>
-     <img key={images[index]} src={images[index]} loading={index===0?'eager':'lazy'} alt={product.name+' view '+(index+1)} draggable={false}/>
+     <span className="kd-gallery-image-frame"><img key={images[index]} src={images[index]} loading={index===0?'eager':'lazy'} alt={product.name+' view '+(index+1)} draggable={false}/></span>
      <span className="kd-v2-gallery-expand"><Maximize2 size={19}/> View details</span>
     </button>:
     <div className="kd-v2-gallery-main kd-v2-gallery-placeholder"><ProductMedia product={product} large/></div>}
