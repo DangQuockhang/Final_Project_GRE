@@ -654,39 +654,7 @@ route.get('/admin/orders',authorize,admin,wrap(async(req,res)=>{
  for(const [key,column,allowed] of [['id','o.id',null],['status','o.status',['PENDING','CONFIRMED','SHIPPED','DELIVERED','CANCELLED']],['payment_status','o.payment_status',['UNPAID','AWAITING_TRANSFER','PAID','REFUND_PENDING']]]){
   const value=req.query[key];if(value===undefined)continue;
   if(allowed?!allowed.includes(value):!isId(value))return fail(res,'Invalid order filter.');
-  values.push(value);conditions.push(column+'=
-}));
-route.patch('/admin/orders/:id/payment',authorize,admin,wrap(async(req,res)=>{
- if(!isId(req.params.id)||req.body.status!=='PAID')return fail(res,'Invalid payment update.');
- const result=await query(`UPDATE orders SET payment_status='PAID' WHERE id=$1
- AND payment_method='BANK_TRANSFER' AND payment_status='AWAITING_TRANSFER'
- RETURNING *`,[req.params.id]);
- if(!result.rowCount)return fail(res,'Only awaiting bank transfers can be marked paid.',409);
- res.json(result.rows[0]);
-}));
-route.patch('/admin/orders/:id/status',authorize,admin,wrap(async(req,res)=>{
- const next=req.body.status;if(!['CONFIRMED','SHIPPED','DELIVERED','CANCELLED'].includes(next)||!isId(req.params.id))return fail(res,'Trạng thái không hợp lệ.');
- const allowed={PENDING:['CONFIRMED','CANCELLED'],CONFIRMED:['SHIPPED','CANCELLED'],SHIPPED:['DELIVERED'],DELIVERED:[],CANCELLED:[]};
- const c=await pool.connect();try{
- await c.query('BEGIN');const result=await c.query('SELECT * FROM orders WHERE id=$1 FOR UPDATE',[req.params.id]);const o=result.rows[0];
- if(!o){const e=new Error('Không tìm thấy đơn.');e.status=404;throw e;}
- if(!allowed[o.status].includes(next)){const e=new Error('Chuyển trạng thái không hợp lệ.');e.status=409;throw e;}
- if(next==='CONFIRMED'&&o.payment_method==='BANK_TRANSFER'&&o.payment_status!=='PAID'){
-  const e=new Error('Confirm incoming bank transfer before confirming this order.');e.status=409;throw e;
- }
- if(next==='CANCELLED'){
-  const lines=await c.query('SELECT variant_id,quantity FROM order_items WHERE order_id=$1',[o.id]);
-  for(const line of lines.rows) await c.query('UPDATE product_variants SET stock=stock+$1 WHERE id=$2',[line.quantity,line.variant_id]);
- }
- const payment=next==='CANCELLED'&&o.payment_status==='PAID'?'REFUND_PENDING':o.payment_status;
- const r=await c.query('UPDATE orders SET status=$1,payment_status=$2 WHERE id=$3 RETURNING *',[next,payment,o.id]);await c.query('COMMIT');res.json(r.rows[0]);
- }catch(e){await c.query('ROLLBACK');throw e;}finally{c.release();}
-}));
-
-app.use((req,res)=>fail(res,'API endpoint không tồn tại.',404));
-app.use((err,req,res,next)=>{console.error(err);return res.status(err.status||500).json({error:err.status?err.message:'Lỗi máy chủ. Vui lòng thử lại.'});});
-app.listen(PORT,()=>console.log(`KD API http://localhost:${PORT}/api/health`));
-+values.length);
+  values.push(value);conditions.push(column+'=$'+values.length);
  }
  const r=await query(`SELECT o.*,u.email,${orderItemsJson} AS items FROM orders o
  JOIN users u ON u.id=o.user_id ${conditions.length?'WHERE '+conditions.join(' AND '):''}
