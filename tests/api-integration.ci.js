@@ -581,5 +581,35 @@ test('Admin permissions and COD stock transactions against disposable PostgreSQL
   assert.equal(all.data.some(p=>p.id===draft.data.id),false);
   assert.equal((await request('/api/admin/products/'+draft.data.id+'/permanent',undefined,token,'DELETE')).status,404);
 
+
+  // Dashboard totals must use the entire database, not the 100-row order list.
+  assert.equal((await request('/api/admin/dashboard',undefined,undefined,'GET')).status,401);
+  assert.equal((await request('/api/admin/dashboard',undefined,user.data.token,'GET')).status,403);
+  assert.equal((await request('/api/admin/dashboard?days=999',undefined,token,'GET')).status,400);
+  const {default:pg}=await import('pg');
+  const dashboardDb=new pg.Pool({connectionString:process.env.DATABASE_URL});
+  try{
+   await dashboardDb.query(`INSERT INTO orders(user_id,recipient,phone,address,total,status,payment_method,payment_status,created_at)
+    SELECT $1,'Dashboard fixture','0900000000','Test fixture address',100000,'DELIVERED','COD','PAID',now()-interval '1 hour'
+    FROM generate_series(1,105)`,[user.data.user.id]);
+   await dashboardDb.query(`INSERT INTO orders(user_id,recipient,phone,address,total,status,payment_method,payment_status,created_at)
+    VALUES($1,'Cancelled fixture','0900000000','Test fixture address',900000,'CANCELLED','COD','PAID',now()-interval '1 hour'),
+    ($1,'Unpaid fixture','0900000000','Test fixture address',800000,'PENDING','COD','UNPAID',now()-interval '1 hour')`,[user.data.user.id]);
+   const dash=await request('/api/admin/dashboard?days=30',undefined,token,'GET');
+   assert.equal(dash.status,200);
+   assert.equal(dash.data.trend.length,30);
+   assert.ok(dash.data.current.orders>100);
+   const expected=await dashboardDb.query(`SELECT count(*)::int AS orders,
+    sum(total) FILTER(WHERE status!='CANCELLED' AND payment_status='PAID')::float8 AS paid
+    FROM orders WHERE created_at >= $1 AND created_at < $2`,[dash.data.range.start,dash.data.range.end]);
+   assert.equal(dash.data.current.orders,expected.rows[0].orders);
+   assert.equal(dash.data.current.paid_value,expected.rows[0].paid);
+   assert.equal(dash.data.trend.reduce((n,row)=>n+row.orders,0),dash.data.current.orders);
+   assert.equal(dash.data.trend.reduce((n,row)=>n+row.paid_value,0),dash.data.current.paid_value);
+   const one=await request('/api/admin/orders?id='+dash.data.recent_orders[0].id,undefined,token,'GET');
+   assert.equal(one.data.length,1);
+   assert.equal((await request('/api/admin/orders?status=INVALID',undefined,token,'GET')).status,400);
+   assert.equal((await request('/api/admin/products?id=invalid',undefined,token,'GET')).status,400);
+  }finally{await dashboardDb.end();}
  }finally{server.kill();}
 });
