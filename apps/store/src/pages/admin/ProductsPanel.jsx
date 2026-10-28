@@ -35,9 +35,9 @@ function EditProductDialog({product=null,duplicateSource=null,duplicateToken='',
   </section>
  </div>,document.body);
 }
-export default function ProductsPanel({products,brands,collections,api,perform,busy,report}){
- const [showCreator,setShowCreator]=useState(false);
- const [editing,setEditing]=useState(null);
+export default function ProductsPanel({products,brands,collections,api,perform,busy,report,initialEditingId=null,initialCreate=false}){
+ const [showCreator,setShowCreator]=useState(Boolean(initialCreate));
+ const [editing,setEditing]=useState(()=>products.find(p=>String(p.id)===String(initialEditingId))?.id||null);
  const [duplicating,setDuplicating]=useState(null);
  const [search,setSearch]=useState(''),[statusFilter,setStatusFilter]=useState('all'),[brandFilter,setBrandFilter]=useState('all');
  const [deleting,setDeleting]=useState(null),[deletionCheck,setDeletionCheck]=useState(null),[checkingDelete,setCheckingDelete]=useState(false);
@@ -74,7 +74,7 @@ export default function ProductsPanel({products,brands,collections,api,perform,b
  return <section className="kd-admin-panel kd-compact-products" aria-labelledby="product-title">
   <div className="kd-admin-panel-header">
    <div><h2 id="product-title">Product & Inventory</h2><p>Browse products here. Open Edit to manage photos, sizes, inventory, status and all product details.</p></div>
-   <span>{products.length} products</span>
+   <span>{products.length} loaded products</span>
   </div>
   <div className="kd-compact-create-toggle">
    <button type="button" className="button button-dark" aria-expanded={showCreator} aria-controls="kd-admin-new-product"

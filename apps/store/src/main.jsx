@@ -270,6 +270,6 @@ function OrderSuccess(){
   <Link className="button button-dark" to="/account">VIEW MY ORDERS <ArrowRight size={18}/></Link>
  </div></Layout>;
 }
-function Admin(){const {token,user}=useAuth(),{refresh}=useCatalog();return <Layout><AdminPage user={user} token={token} request={request} refreshCatalog={refresh}/></Layout>}
+function Admin(){const {token,user,logout}=useAuth(),{refresh}=useCatalog();return <AdminPage user={user} token={token} request={request} refreshCatalog={refresh} onLogout={logout}/>}
 function App(){return <Providers><BrowserRouter><Routes><Route path="/" element={<Home/>}/><Route path="/shop" element={<Shop/>}/><Route path="/brands" element={<Brands/>}/><Route path="/product/:slug" element={<Product/>}/><Route path="/cart" element={<Cart/>}/><Route path="/login" element={<Login/>}/><Route path="/account" element={<RequireAuth><Account/></RequireAuth>}/><Route path="/checkout" element={<RequireAuth><Checkout/></RequireAuth>}/><Route path="/order-success" element={<RequireAuth><OrderSuccess/></RequireAuth>}/><Route path="/admin" element={<RequireAuth admin><Admin/></RequireAuth>}/><Route path="*" element={<Navigate to="/"/>}/></Routes></BrowserRouter></Providers>}
 createRoot(document.getElementById('root')).render(<React.StrictMode><App/></React.StrictMode>);

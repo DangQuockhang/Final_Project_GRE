@@ -1,3 +1,4 @@
+import {loadDashboard} from './dashboard.js';
 import {validateDetails} from './productDetails.js';
 import express from 'express';
 import cors from 'cors';
@@ -183,7 +184,8 @@ route.get('/products',wrap(async(req,res)=>{
  const r=await query(`${baseSelect} WHERE ${where.join(' AND ')} ORDER BY p.created_at DESC,p.id DESC`,params);res.json(r.rows);
 }));
 route.get('/admin/products',authorize,admin,wrap(async(req,res)=>{
- const r=await query(`${baseSelect} ORDER BY p.id DESC LIMIT 200`);res.json(r.rows);
+ if(req.query.id!==undefined&&!isId(req.query.id))return fail(res,'Invalid product ID.');
+ const r=await query(`${baseSelect} ${req.query.id?'WHERE p.id=$1':''} ORDER BY p.id DESC LIMIT 200`,req.query.id?[req.query.id]:[]);res.json(r.rows);
 }));
 route.get('/products/:slug',wrap(async(req,res)=>{
  const r=await query(`${baseSelect} WHERE p.slug=$1 AND p.status='active'`,[req.params.slug]);if(!r.rows[0])return fail(res,'Không tìm thấy sản phẩm.',404);res.json(r.rows[0]);
@@ -644,9 +646,19 @@ route.get('/orders/mine',authorize,wrap(async(req,res)=>{
  const r=await query(`SELECT o.*,${orderItemsJson} AS items FROM orders o
  WHERE o.user_id=$1 ORDER BY o.created_at DESC`,[req.user.id]);res.json(r.rows);
 }));
+route.get('/admin/dashboard',authorize,admin,wrap(async(req,res)=>{
+ res.set('Cache-Control','no-store');res.json(await loadDashboard(pool,req.query.days));
+}));
 route.get('/admin/orders',authorize,admin,wrap(async(req,res)=>{
+ const values=[],conditions=[];
+ for(const [key,column,allowed] of [['id','o.id',null],['status','o.status',['PENDING','CONFIRMED','SHIPPED','DELIVERED','CANCELLED']],['payment_status','o.payment_status',['UNPAID','AWAITING_TRANSFER','PAID','REFUND_PENDING']]]){
+  const value=req.query[key];if(value===undefined)continue;
+  if(allowed?!allowed.includes(value):!isId(value))return fail(res,'Invalid order filter.');
+  values.push(value);conditions.push(column+'=$'+values.length);
+ }
  const r=await query(`SELECT o.*,u.email,${orderItemsJson} AS items FROM orders o
- JOIN users u ON u.id=o.user_id ORDER BY o.created_at DESC LIMIT 100`);res.json(r.rows);
+ JOIN users u ON u.id=o.user_id ${conditions.length?'WHERE '+conditions.join(' AND '):''}
+ ORDER BY o.created_at DESC,o.id DESC LIMIT 100`,values);res.json(r.rows);
 }));
 route.patch('/admin/orders/:id/payment',authorize,admin,wrap(async(req,res)=>{
  if(!isId(req.params.id)||req.body.status!=='PAID')return fail(res,'Invalid payment update.');
