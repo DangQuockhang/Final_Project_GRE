@@ -42,3 +42,10 @@
 
 .kd-account-toast{position:fixed;right:24px;bottom:24px;z-index:1200;display:flex;align-items:center;gap:18px;max-width:calc(100vw - 36px);padding:12px 12px 12px 20px;background:#eff5e9;border:1px solid #c2d6b6;border-radius:10px;color:#31532e;box-shadow:0 6px 24px #243b2c18}
 .kd-account-toast button{display:grid;place-items:center;width:44px;height:44px;flex:none;border:0;background:transparent;font-size:25px;color:inherit;border-radius:6px;cursor:pointer}
+
+.kd-account-input-wrap{position:relative;min-width:0}
+.kd-account-input-wrap.has-password input{padding-right:54px}
+.kd-account-password-toggle{position:absolute;right:2px;top:50%;transform:translateY(-50%);display:grid;place-items:center;width:44px;height:44px;padding:0;border:0;border-radius:6px;background:transparent;color:#466147;cursor:pointer}
+.kd-account-password-toggle:hover:not(:disabled){background:#edf2e9}
+.kd-account-password-toggle:disabled{opacity:.5;cursor:default}
+.kd-account-input-wrap input::-ms-reveal{display:none}
