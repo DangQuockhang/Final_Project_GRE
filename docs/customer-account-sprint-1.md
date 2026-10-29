@@ -94,7 +94,7 @@ API admin hiện có tiếp tục kiểm tra quyền phía server; customer gọ
 | 401 | SESSION_EXPIRED | Thiếu/sai/hết hạn JWT, phiên bản bị thu hồi hoặc token cũ trước nâng cấp |
 | 403 | ACCOUNT_BLOCKED | Tài khoản bị khóa |
 | 409 | EMAIL_EXISTS | Email đã đăng ký, không phân biệt hoa/thường |
-| 413 | AVATAR_UPLOAD_INVALID | File lớn hơn 2 MiB |
+| 413 | AVATAR_UPLOAD_INVALID | File lớn hơn 10 MiB |
 | 429 | RATE_LIMITED | Quá số lượt; có Retry-After |
 | 503 | EMAIL_UNAVAILABLE | Cấu hình gửi email chưa sẵn sàng |
 | 500 | INTERNAL_ERROR | Lỗi máy chủ; không trả stack/query/credentials |
@@ -103,7 +103,7 @@ Quy tắc:
 - Tên 2–100 ký tự, bỏ khoảng trắng hai đầu.
 - SĐT bỏ khoảng trắng, dấu chấm, ngoặc, dấu gạch; cho phép 8–15 chữ số, dấu + ở đầu.
 - Mật khẩu tối thiểu 8 ký tự, tối đa 72 byte UTF-8 để tránh bcrypt cắt ngầm; bcrypt cost 12.
-- Avatar JPG/PNG/WebP tối đa 2 MiB; kiểm tra MIME/dung lượng/khả năng đọc ảnh ở client và chữ ký byte ở server. Không hỗ trợ SVG/GIF. Tên file do server tạo; không cho nhập URL avatar. Không re-encode ảnh phía server.
+- Avatar JPG/PNG/WebP tối đa 10 MiB; kiểm tra MIME/dung lượng/khả năng đọc ảnh ở client và chữ ký byte ở server. Không hỗ trợ SVG/GIF. Tên file do server tạo; không cho nhập URL avatar. Không re-encode ảnh phía server.
 - Rate limit trong 15 phút: đăng ký 10/IP, đăng nhập 30/IP, hồ sơ 30/user, đổi mật khẩu 5/user, quên mật khẩu 20/IP và 3/email, reset 20/IP.
 - Link reset dạng /reset-password#token=..., không đặt token trong query; frontend lấy vào state rồi xóa fragment khỏi thanh địa chỉ. Tải lại trang reset sau khi fragment đã xóa cần mở lại link từ email.
 - Chỉ link mới nhất còn hiệu lực; đổi/reset mật khẩu vô hiệu hóa toàn bộ link reset và JWT trước đó. Khóa hàng database bảo đảm hai request đồng thời không dùng thành công cùng một token.
@@ -143,7 +143,7 @@ Các liên kết dưới đây mở **toàn bộ mã nguồn**, không phải đ
 - [ ] Chưa có avatar hiển thị chữ cái đầu; cập nhật tên/SĐT và tải lại trang thấy dữ liệu đã lưu.
 - [ ] Email chỉ đọc; thử PATCH email/role/user_id bị từ chối, không thay đổi tài khoản khác.
 - [ ] Chọn JPG/PNG/WebP hợp lệ có preview trước Save; cùng một Save lưu thông tin và ảnh.
-- [ ] SVG/GIF/file giả ảnh/ảnh vượt 2 MiB bị từ chối, avatar đã lưu không bị mất.
+- [ ] SVG/GIF/file giả ảnh/ảnh vượt 10 MiB bị từ chối, avatar đã lưu không bị mất.
 - [ ] Xóa avatar rồi Save trở lại chữ cái đầu; không Save thì ảnh trên server vẫn giữ nguyên.
 - [ ] Lưu thành công có toast; dùng Tab/Shift+Tab/Enter thao tác được, focus nhìn thấy rõ.
 - [ ] Đổi mật khẩu: sai mật khẩu cũ, xác nhận không khớp, mật khẩu mới giống cũ đều bị từ chối.
