@@ -25,7 +25,9 @@ const initialColors=p=>{
  if(!p?.variants?.length)return [{...shades[0]}];
  return [...new Map(p.variants.map(v=>[normal(v.color),{name:v.color,hex:v.color_hex||shades.find(s=>normal(s.name)===normal(v.color))?.hex||'#758073'}])).values()];
 };
-export default function ProductEditor({product,duplicateSource=null,duplicateToken='',brands,collections=[],api,perform,busy,report,onCancel,resolvePhotoUrl=null}){
+export default function ProductEditor({product,duplicateSource=null,duplicateToken='',brands,collections=[],api,perform,busy,report:reportToAdmin,onCancel,resolvePhotoUrl=null}){
+ const [saveError,setSaveError]=useState('');
+ const report=message=>{setSaveError(message);reportToAdmin?.(message);};
  const duplicated=useMemo(()=>duplicateSource?duplicateProduct(duplicateSource,duplicateToken):null,[duplicateSource,duplicateToken]);
  const reference=duplicateSource||product;
  const [detailBlocks,setDetailBlocks]=useState(()=>{
@@ -131,7 +133,7 @@ export default function ProductEditor({product,duplicateSource=null,duplicateTok
  }
  function buildMatrix(){
   try{
-   const generated=buildVariantMatrix({name:draft.name,sizes,colors,rows,defaultStock,multipleColors,category:draft.category});
+   const generated=buildVariantMatrix({name:draft.name,sizes,colors,rows,defaultStock,multipleColors,category:draft.category,skuPrefix:duplicated?.skuPrefix});
    setRows(generated);
   }catch(error){report(error.message);}
  }
@@ -170,6 +172,7 @@ export default function ProductEditor({product,duplicateSource=null,duplicateTok
  async function save(e){
   e.preventDefault();
   if(saving.current||busy||working)return;
+  setSaveError('');
   const data={...draft,description:'',product_type:normalizeCollectionName(draft.product_type),color:multipleColors?(colors[0]?.hex||FALLBACK_HEX):(product?.color||FALLBACK_HEX),tryon_enabled:false,
    ...(duplicated?{slug:duplicated.getSlug(draft.name)}:{})};
   const issue=validateProduct(data);
@@ -182,7 +185,7 @@ export default function ProductEditor({product,duplicateSource=null,duplicateTok
   // The admin does not have to add a color or press Generate before saving.
   let savingRows=rows.map(row=>({...row,size:optionalSize&&!String(row.size??'').trim()?'ONE SIZE':row.size}));
   if(rows.length===0&&removedVariants.length===0&&((!product&&!multipleColors)||optionalSize)){
-   try{savingRows=buildVariantMatrix({name:draft.name,sizes,colors,rows:[],defaultStock,multipleColors,category:draft.category});}
+   try{savingRows=buildVariantMatrix({name:draft.name,sizes,colors,rows:[],defaultStock,multipleColors,category:draft.category,skuPrefix:duplicated?.skuPrefix});}
    catch(error){report(error.message);return;}
   }
   if(multipleColors&&(colors.length===0||colors.some(c=>!c.name.trim()||!/^#[a-f0-9]{6}$/i.test(c.hex)))){
@@ -218,7 +221,10 @@ export default function ProductEditor({product,duplicateSource=null,duplicateTok
   saving.current=true;
   setWorking(true);
   try{
-   const ok=await perform(()=>api(product?'/admin/products/'+product.id+'/bundle':'/admin/products/bundle',{method:product?'PATCH':'POST',body:form}),
+   const ok=await perform(async()=>{
+    try{return await api(product?'/admin/products/'+product.id+'/bundle':'/admin/products/bundle',{method:product?'PATCH':'POST',body:form});}
+    catch(error){setSaveError(error.message||'Không thể lưu sản phẩm. Vui lòng thử lại.');throw error;}
+   },
     'Product, sizes, photos, cover and size guide saved.'+
      (data.product_type?' Product Type: '+data.product_type+'.':'')+
      (data.status!=='active'?' This product is '+data.status.toUpperCase()+' and is not visible to customers. A collection needs at least one ACTIVE product to appear in the storefront menu.':
@@ -364,6 +370,7 @@ export default function ProductEditor({product,duplicateSource=null,duplicateTok
     disabled={busy||working}
     report={report}
   />
+  {saveError&&<p className="message-error" role="alert">{saveError}</p>}
   <div className="kd-quick-save"><button className="button button-dark" type="submit" disabled={busy||working||!brands.length}><Save size={18}/>{working?'SAVING…':'SAVE'}</button><span>{duplicated?'This copy is a separate product. All copied sizes start with zero stock; photos are not shared with the original.': 'New products default to Draft. Order-linked SKU history is protected; confirmed unreferenced SKU removals are applied on Save.'}</span></div>
   </fieldset>
   {quickBrandOpen&&<QuickAddBrand brands={brands} api={api} perform={perform} busy={busy||working} report={report}
