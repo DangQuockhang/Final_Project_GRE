@@ -9,7 +9,7 @@ const slug=value=>norm(value).normalize('NFD').replace(/[\u0300-\u036f]/g,'').re
 export const hasMultipleColors=variants=>
  new Set((variants||[]).map(v=>norm(v.color)).filter(Boolean)).size>1;
 
-export function buildVariantMatrix({name,sizes,colors=[],rows=[],defaultStock=0,multipleColors=false,category}){
+export function buildVariantMatrix({name,sizes,colors=[],rows=[],defaultStock=0,multipleColors=false,category,skuPrefix=''}){
  const parsed=[...new Map(String(sizes||'').split(',').map(x=>x.trim()).filter(Boolean).map(x=>[norm(x),x])).values()];
  if(!parsed.length&&hasOptionalSize(category))parsed.push('ONE SIZE');
  if(!parsed.length||parsed.some(size=>size.length>20))
@@ -34,10 +34,21 @@ export function buildVariantMatrix({name,sizes,colors=[],rows=[],defaultStock=0,
  }
  if(parsed.length*variants.length>80)
   throw new Error('Maximum 80 SKU combinations per product.');
+ // A duplicate keeps its own SKU namespace when adding sizes/colors or rebuilding.
+ // Reserve all existing rows first, including any SKU the admin has edited.
+ const reservedSkus=new Set(rows.map(row=>norm(row.sku)));
+ let nextSku=1;
+ const makeSku=(color,size)=>{
+  if(!skuPrefix)return slug(name||'product')+'-'+slug(color)+'-'+slug(size);
+  let candidate;
+  do{candidate=skuPrefix+'-'+String(nextSku++).padStart(2,'0');}while(reservedSkus.has(norm(candidate)));
+  reservedSkus.add(norm(candidate));
+  return candidate;
+ };
  const generated=variants.flatMap(c=>parsed.map(size=>{
   const old=rows.find(r=>norm(r.color)===norm(c.name)&&norm(r.size)===norm(size));
   if(old)return {...old,color:c.name,color_hex:multipleColors?c.hex:(old.color_hex||null)};
-  return {sku:slug(name||'product')+'-'+slug(c.name)+'-'+slug(size),size,color:c.name,color_hex:multipleColors?c.hex:null,stock:String(stock)};
+  return {sku:makeSku(c.name,size),size,color:c.name,color_hex:multipleColors?c.hex:null,stock:String(stock)};
  }));
  // Keep order-linked or historical SKUs rather than silently discarding them.
  const untouched=rows.filter(r=>r.id!=null&&!generated.some(g=>String(g.id)===String(r.id)));

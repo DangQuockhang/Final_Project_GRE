@@ -16,6 +16,7 @@ export function duplicateProduct(source,token){
  }));
  return {
   token:String(token).toLowerCase(),
+  skuPrefix:'KD-'+uniqueSuffix,
   draft:{
    name,brand_id:String(source.brand_id),category:source.category,
    product_type:source.product_type||'',price:String(source.price),
@@ -25,6 +26,6 @@ export function duplicateProduct(source,token){
   rows:variants,
   sizes:[...new Set(variants.map(v=>v.size))].join(', ')||'ONE SIZE',
   // The server validates slugs and ensures unique identifiers.
-  getSlug:(draftName)=>slug(draftName)+'-'+uniqueSuffix
+  getSlug:(draftName)=>slug(draftName).slice(0,180-uniqueSuffix.length-1).replace(/-+$/,'')+'-'+uniqueSuffix
  };
 }

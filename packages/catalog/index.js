@@ -21,3 +21,5 @@ export const apiBase='http://localhost:4000/api';
 export {filterProducts,paginateProducts} from './filters.js';
 
 export {productImageUrl} from './media.js';
+
+export {AVATAR_MAX_MB,AVATAR_MAX_BYTES} from './uploadLimits.js';

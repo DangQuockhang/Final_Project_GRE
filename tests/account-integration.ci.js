@@ -53,12 +53,12 @@ export async function accountChecks(base,mail){
   assert.equal(updated.data.user.email,email);
   const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRz0AAAAASUVORK5CYII=','base64');
   const avatarBody=(bytes,type='image/png')=>{const f=new FormData();f.append('name','Khách mới');f.append('phone','0912345678');f.append('avatar',new Blob([bytes],{type}),'avatar.png');return f;};
-  updated=await call('/auth/me',{method:'PATCH',token,body:avatarBody(png)});
+  updated=await call('/auth/me',{method:'PATCH',token,body:avatarBody(Buffer.concat([png,Buffer.alloc(3*1024*1024-png.length)]))});
   assert.equal(updated.status,200);assert.match(updated.data.user.avatar_url,/^\/media\/avatars\//);
   const avatar=updated.data.user.avatar_url;
-  const media=await fetch(base+avatar);assert.equal(media.status,200);assert.equal(media.headers.get('x-content-type-options'),'nosniff');
+  const media=await fetch(base+avatar);assert.equal(media.status,200);assert.equal((await media.arrayBuffer()).byteLength,3*1024*1024,'Avatars larger than 2 MiB are saved');assert.equal(media.headers.get('x-content-type-options'),'nosniff');
   assert.equal((await call('/auth/me',{method:'PATCH',token,body:avatarBody(Buffer.from('<svg onload="alert(1)"></svg>'))})).status,400);
-  assert.equal((await call('/auth/me',{method:'PATCH',token,body:avatarBody(Buffer.alloc(2*1024*1024+1))})).status,413);
+  assert.equal((await call('/auth/me',{method:'PATCH',token,body:avatarBody(Buffer.alloc(10*1024*1024+1))})).status,413);
   assert.equal((await call('/auth/me',{method:'GET',token})).data.avatar_url,avatar,'Rejected uploads keep the current avatar');
   updated=await call('/auth/me',{method:'PATCH',token,body:{name:'Khách mới',phone:'',remove_avatar:true}});
   assert.equal(updated.data.user.avatar_url,null);assert.equal((await fetch(base+avatar)).status,404);

@@ -5,9 +5,10 @@ import {ArrowUpRight,Footprints} from 'lucide-react';
 import {money,apiBase,productImageUrl} from '@kd/catalog';
 
 function Visual({product,large=false}){
- const kind=product.category;return <div className={`visual visual-${kind} ${large?'visual-large':''}`} style={{'--product-color':product.color||'#797b73'}} aria-label={`Illustration of ${product.name}`} role="img">
+ // Unsaved new/duplicate drafts do not have a persisted slug yet.
+ const kind=product.category,identifier=String(product.slug||product.name||'').toLowerCase();return <div className={`visual visual-${kind} ${large?'visual-large':''}`} style={{'--product-color':product.color||'#797b73'}} aria-label={`Illustration of ${product.name}`} role="img">
   <div className="visual-glow"/>
-  {kind==='shoes'||kind==='footwear'?<div className="visual-footwear"><Footprints size={86} strokeWidth={1.2}/></div>:kind==='accessories'||kind==='bags'?(product.slug.includes('cap')?<div className="visual-cap"><span/></div>:<div className="visual-bag"><span/></div>):kind==='bottoms'||(kind==='clothing'&&/pants|jeans|shorts|skirt/i.test(product.product_type||''))?<div className="visual-pants"><span/><i/></div>:<div className={`visual-shirt ${kind==='outerwear'||(kind==='clothing'&&/jacket|coat|cardigan/i.test(product.product_type||''))?'visual-outer':''}`}><span className="visual-shirt-neck"/><span className="visual-shirt-seam"/></div>}
+  {kind==='shoes'||kind==='footwear'?<div className="visual-footwear"><Footprints size={86} strokeWidth={1.2}/></div>:kind==='accessories'||kind==='bags'?(identifier.includes('cap')?<div className="visual-cap"><span/></div>:<div className="visual-bag"><span/></div>):kind==='bottoms'||(kind==='clothing'&&/pants|jeans|shorts|skirt/i.test(product.product_type||''))?<div className="visual-pants"><span/><i/></div>:<div className={`visual-shirt ${kind==='outerwear'||(kind==='clothing'&&/jacket|coat|cardigan/i.test(product.product_type||''))?'visual-outer':''}`}><span className="visual-shirt-neck"/><span className="visual-shirt-seam"/></div>}
   <span className="visual-label">KD / SAMPLE VISUAL</span>
  </div>
 }
