@@ -29,12 +29,23 @@ export async function accountChecks(base,mail){
   const registered=await call('/auth/register',{body:{name:'Customer One',email:email.toUpperCase(),password,role:'admin'}});
   assert.equal(registered.status,201);assert.equal(registered.data.user.email,email);assert.equal(registered.data.user.role,'user');
   const user=registered.data.user,token=registered.data.token;
+  assert.equal(user.phone,null);
   assert.equal((await call('/auth/register',{body:{name:'Duplicate',email,password}})).status,409);
+  const duplicateRace=await Promise.all([
+   call('/auth/register',{body:{name:'Concurrent Customer',email:'race-'+email,password}}),
+   call('/auth/register',{body:{name:'Concurrent Customer',email:('race-'+email).toUpperCase(),password}})
+  ]);
+  assert.deepEqual(duplicateRace.map(r=>r.status).sort(),[201,409],'Unique email holds under concurrent registration');
   assert.equal((await call('/auth/register',{body:{name:'Long password',email:'long-'+email,password:'ệ'.repeat(25)}})).status,400);
   assert.equal((await call('/auth/me',{method:'GET'})).status,401);
   assert.equal((await call('/admin/products',{method:'GET',token})).status,403);
   const oldFormat=jwt.sign({id:user.id,role:'admin'},process.env.JWT_SECRET,{expiresIn:'1h'});
   assert.equal((await call('/auth/me',{method:'GET',token:oldFormat})).status,401);
+  const staleRole=jwt.sign({id:user.id,version:0,role:'admin'},process.env.JWT_SECRET,{expiresIn:'1h'});
+  assert.equal((await call('/admin/products',{method:'GET',token:staleRole})).status,403,'Database role overrides stale token claims');
+  assert.equal((await call('/auth/me',{method:'PATCH',token,body:{name:'Valid Name',phone:'abc'}})).status,400);
+  const malformed=await fetch(base+'/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:'{"password":"do-not-echo'});
+  assert.equal(malformed.status,400);assert.equal((await malformed.text()).includes('do-not-echo'),false,'Malformed JSON never echoes credential fragments');
   assert.equal((await call('/auth/me',{method:'PATCH',token,body:{name:'Customer One',email:'hijack@example.test'}})).status,400);
   assert.equal((await call('/auth/me',{method:'PATCH',token,body:{name:'Customer One',user_id:1}})).status,400);
   let updated=await call('/auth/me',{method:'PATCH',token,body:{name:'Khách mới',phone:'+84 912 345 678'}});
@@ -65,6 +76,8 @@ export async function accountChecks(base,mail){
   assert.equal((await call('/auth/me',{method:'GET',token:login.data.token})).status,403);
   assert.equal((await call('/auth/login',{body:{email,password:'ChangedPassword2026'}})).data.code,'ACCOUNT_BLOCKED');
   await db.query("UPDATE users SET status='active',token_version=token_version+1 WHERE id=$1",[user.id]);
+  login=await call('/auth/login',{body:{email,password:'ChangedPassword2026'}});
+  assert.equal(login.status,200);
   const before=mail.messages.length;
   const unknown=await call('/auth/forgot-password',{body:{email:'unknown-'+email}});
   assert.equal(unknown.status,202);assert.equal(mail.messages.length,before);
