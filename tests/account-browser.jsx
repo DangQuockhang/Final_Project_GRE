@@ -46,6 +46,7 @@ const request=async(path,{method,body}={})=>{
  if(path==='/auth/me'){
   counts.profile++;assert(body instanceof FormData,'Profile uses multipart for one Save');
   assert(!body.has('email'),'Read-only email is never submitted');
+  if(body.has('avatar'))assert(body.get('avatar').size>2*1024*1024,'The UI accepts an avatar larger than the old limit');
   profile={...profile,name:body.get('name'),phone:body.get('phone'),avatar_url:body.has('avatar')?'/media/avatars/11111111-1111-1111-1111-111111111111.png':body.get('remove_avatar')==='true'?null:profile.avatar_url};
   return {user:profile,message:'Đã cập nhật hồ sơ.'};
  }
@@ -65,8 +66,20 @@ if(import.meta.env.DEV){
   try{
    render('auth',<AuthPage request={request} onLogin={data=>{loggedIn=data;}}/>);
    await until(()=>document.getElementById('login-email'));
+   await fill('login-password','VisiblePassword2026');
+   const eye=()=>document.querySelector('[aria-controls="login-password"]');
+   assert(document.getElementById('login-password').type==='password','Password starts masked');
+   eye().click();await wait();assert(document.getElementById('login-password').type==='text','Login eye reveals password');
+   assert(document.getElementById('login-password').value==='VisiblePassword2026','Toggling preserves input');
+   assert(counts.register===0&&!loggedIn,'Eye never submits the form');
+   eye().click();await wait();assert(document.getElementById('login-password').type==='password','Login eye hides password');
    await submit();assert(document.getElementById('login-email-error'),'Inline email error');
+   eye().click();await wait();
    await click('Chưa có tài khoản? Đăng ký');
+   assert(document.getElementById('login-password').type==='password','Switching to registration hides the password');
+   eye().focus();assert(document.activeElement===eye(),'Eye is keyboard focusable');
+   eye().click();await wait();assert(document.getElementById('login-password').type==='text','Registration eye reveals password');
+   eye().click();await wait();assert(document.getElementById('login-password').type==='password','Registration eye hides password');
    await fill('register-name','Khách thử nghiệm');await fill('login-email',user.email);await fill('login-password','Password2026');
    await submit();assert(counts.register===1&&loggedIn?.token==='test','Registration signs in');
    render('profile',<CustomerAccountPage user={user} token="test" request={request} onUser={()=>{}} onLogout={()=>{loggedOut=true;}} orders={<p>Existing orders</p>}/>);
@@ -85,7 +98,9 @@ if(import.meta.env.DEV){
    const canvas=document.createElement('canvas');canvas.width=canvas.height=4;
    canvas.getContext('2d').fillRect(0,0,4,4);
    const bytes=Uint8Array.from(atob(canvas.toDataURL('image/png').split(',')[1]),c=>c.charCodeAt(0));
-   await selectFile(new File([bytes],'avatar.png',{type:'image/png'}));
+   await selectFile(new File([bytes,new Uint8Array(10*1024*1024+1)],'too-large.png',{type:'image/png'}));
+   assert(document.querySelector('[role=alert]')?.textContent.includes('10 MB'),'Reject files above the updated limit');
+   await selectFile(new File([bytes,new Uint8Array(3*1024*1024-bytes.length)],'avatar.png',{type:'image/png'}));
    await until(()=>document.querySelector('.kd-account-avatar-row img')?.src.startsWith('blob:'),'avatar preview');
    await submit();await until(()=>document.querySelector('.kd-account-toast'),'save toast');
    assert(counts.profile===1&&profile.name==='Tên đã sửa'&&profile.avatar_url,'One request saves name, phone and avatar');
