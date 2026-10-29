@@ -1,4 +1,7 @@
-import React,{createContext,useContext,useEffect,useMemo,useState} from 'react';
+import CustomerAccountPage from './pages/account/CustomerAccountPage.jsx';
+import AuthPage from './pages/account/AuthPage.jsx';
+import PasswordRecoveryPage from './pages/account/PasswordRecoveryPage.jsx';
+import React,{createContext,useContext,useEffect,useMemo,useState,useCallback} from 'react';
 import {createRoot} from 'react-dom/client';
 import {BrowserRouter,Link,NavLink,Navigate,Route,Routes,useLocation,useNavigate,useParams,useSearchParams} from 'react-router-dom';
 import {ArrowRight,ArrowUpRight,Check,Wallet,ChevronRight,CircleUserRound,Heart,Instagram,Menu,Minus,Plus,Search,ShieldCheck,ShoppingBag,SlidersHorizontal,Sparkles,Trash2,Truck,X} from 'lucide-react';
@@ -38,7 +41,13 @@ const API=import.meta.env.VITE_API_URL||apiBase;
 const request=async(path,{method='GET',body,token}={})=>{
  const multipart=typeof FormData!=='undefined'&&body instanceof FormData;
  const res=await fetch(`${API}${path}`,{method,headers:{...(body&&!multipart?{'Content-Type':'application/json'}:{}),...(token?{Authorization:`Bearer ${token}`}:{})},body:multipart?body:body?JSON.stringify(body):undefined});
- const data=await res.json().catch(()=>({}));if(!res.ok)throw new Error(data.error||`HTTP ${res.status}`);return data;
+ const data=await res.json().catch(()=>({}));
+ if(!res.ok){
+  const error=Object.assign(new Error(data.error||'Không thể thực hiện yêu cầu. Vui lòng thử lại.'),{status:res.status,code:data.code});
+  if(token&&(res.status===401||data.code==='ACCOUNT_BLOCKED'))window.dispatchEvent(new CustomEvent('kd-session-expired',{detail:{token,message:error.message}}));
+  throw error;
+ }
+ return data;
 };
 const authContext=createContext(null),cartContext=createContext(null),catalogContext=createContext(null);
 const useAuth=()=>useContext(authContext),useCart=()=>useContext(cartContext),useCatalog=()=>useContext(catalogContext);
@@ -52,7 +61,22 @@ function Providers({children}){
  useEffect(()=>{refresh();},[]);
  useEffect(()=>{localStorage.setItem('kd_cart',JSON.stringify(cart))},[cart]);
  useEffect(()=>{if(session)localStorage.setItem('kd_session',JSON.stringify(session));else localStorage.removeItem('kd_session')},[session]);
- const auth={session,login:setSession,logout:()=>setSession(null),token:session?.token,user:session?.user};
+ const [authLoading,setAuthLoading]=useState(Boolean(session?.token)),[sessionExpired,setSessionExpired]=useState(false);
+ const updateUser=useCallback(user=>setSession(old=>old?{...old,user}:old),[]);
+ const logout=useCallback(()=>{setSession(null);setSessionExpired(false);},[]);
+ const login=useCallback(value=>{setSession(value);setSessionExpired(false);},[]);
+ useEffect(()=>{
+  const expired=event=>{if(event.detail.token===session?.token){setSession(null);setSessionExpired(true);}};
+  window.addEventListener('kd-session-expired',expired);
+  return()=>window.removeEventListener('kd-session-expired',expired);
+ },[session?.token]);
+ useEffect(()=>{
+  if(!session?.token){setAuthLoading(false);return;}
+  let live=true;setAuthLoading(true);
+  request('/auth/me',{token:session.token}).then(user=>{if(live)updateUser(user);}).catch(()=>{}).finally(()=>{if(live)setAuthLoading(false);});
+  return()=>{live=false;};
+ },[session?.token,updateUser]);
+ const auth={session,login,logout,updateUser,authLoading,sessionExpired,token:session?.token,user:session?.user};
  const add=(product,variant,qty=1)=>{const key=String(variant.id);setCart(old=>{const i=old.findIndex(x=>x.key===key);if(i===-1)return [...old,{key,product,variant,quantity:qty}];return old.map((x,j)=>j===i?{...x,quantity:Math.min(20,x.quantity+qty)}:x)});};
  const update=(key,qty)=>setCart(old=>qty<=0?old.filter(x=>x.key!==key):old.map(x=>x.key===key?{...x,quantity:Math.max(1,Math.min(20,qty))}:x));
  const cartValue={cart,add,update,clear:()=>setCart([]),count:cart.reduce((s,x)=>s+x.quantity,0),total:cartDisplayTotal(cart,products)};
@@ -115,9 +139,12 @@ function Cart(){
   </section>
  </Layout>;
 }
-function Login(){const {login}=useAuth();const nav=useNavigate();const [register,setRegister]=useState(false),[form,setForm]=useState({name:'',email:'',password:''}),[error,setError]=useState(''),[busy,setBusy]=useState(false);async function submit(e){e.preventDefault();setBusy(true);setError('');try{const r=await request(register?'/auth/register':'/auth/login',{method:'POST',body:form});login(r);nav(r.user.role==='admin'?'/admin':'/account')}catch(e){setError(e.message)}finally{setBusy(false)}}return <Layout><section className="login-layout"><div className="login-art"><Eyebrow>WELCOME TO KD DESGIN</Eyebrow><h2>Wear it.<br/><em>Own it.</em></h2><span>YOUR STYLE IS YOUR SIGNATURE.</span></div><form className="auth-form" onSubmit={submit}><Eyebrow>YOUR ACCOUNT</Eyebrow><h1>{register?'Create account.':'Welcome back.'}</h1><p>{register?'Join the KD community.':'Sign in to manage your account and orders.'}</p>{register&&<label>FULL NAME<input required minLength={2} value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></label>}<label>EMAIL<input type="email" required value={form.email} onChange={e=>setForm({...form,email:e.target.value})}/></label><label>PASSWORD<input type="password" required minLength={register?8:1} value={form.password} onChange={e=>setForm({...form,password:e.target.value})}/></label>{error&&<div className="message-error">{error}</div>}<button disabled={busy} className="button button-dark full-width">{busy?'PLEASE WAIT...':register?'CREATE ACCOUNT':'SIGN IN'} <ArrowRight size={18}/></button><button type="button" className="text-button" onClick={()=>{setRegister(!register);setError('')}}>{register?'Already have an account? Sign in':'New here? Create an account'}</button></form></section></Layout>}
-function RequireAuth({children,admin=false}){const {user}=useAuth();if(!user)return <Navigate to="/login" replace/>;if(admin&&user.role!=='admin')return <Navigate to="/account" replace/>;return children}
-function Account(){
+function Login(){const {login}=useAuth();return <Layout><AuthPage request={request} onLogin={login}/></Layout>}
+function ForgotPassword(){return <Layout><PasswordRecoveryPage key="forgot" request={request}/></Layout>}
+function ResetPassword(){const {logout}=useAuth();return <Layout><PasswordRecoveryPage key="reset" request={request} reset onReset={logout}/></Layout>}
+function RequireAuth({children,admin=false}){const {user,authLoading,sessionExpired}=useAuth();if(authLoading)return <div className="kd-account-skeleton" role="status">Đang kiểm tra tài khoản…</div>;if(!user)return <Navigate to={sessionExpired?'/login?sessionExpired=1':'/login'} replace/>;if(admin&&user.role!=='admin')return <Navigate to="/account" replace/>;return children}
+function Account(){const {user,token,updateUser,logout}=useAuth();return <Layout><CustomerAccountPage user={user} token={token} request={request} onUser={updateUser} onLogout={logout} orders={<OrderHistory/>}/></Layout>}
+function OrderHistory(){
  const {user,token,logout}=useAuth();
  const [orders,setOrders]=useState([]),[payments,setPayments]=useState(null),[error,setError]=useState(''),[loading,setLoading]=useState(true);
  useEffect(()=>{
@@ -127,10 +154,7 @@ function Account(){
   }).catch(e=>{if(live)setError(e.message)}).finally(()=>{if(live)setLoading(false)});
   return ()=>{live=false};
  },[token]);
- return <Layout>
-  <section className="page-intro kd-account-intro"><h1>My <em>account.</em></h1>
-   <p>{user.name} · {user.email}</p><button className="text-button" type="button" onClick={logout}>Sign out →</button>
-  </section>
+ return <>
   <section className="section account-orders kd-account-orders">
    <div className="kd-order-history-heading"><div><h2>My orders</h2><p>Review your purchases, payment and delivery progress.</p></div>
     <Link to="/shop">Continue shopping <ArrowRight size={17}/></Link></div>
@@ -140,7 +164,7 @@ function Account(){
    </div>}
    {user.role==='admin'&&<Link className="button button-dark kd-account-admin" to="/admin">ADMIN DASHBOARD <ArrowRight size={18}/></Link>}
   </section>
- </Layout>;
+ </>;
 }
 function Checkout(){
  const {user,token}=useAuth(),{cart,total,clear}=useCart(),{products}=useCatalog();
@@ -267,9 +291,9 @@ function OrderSuccess(){
     </div>:
     <p>Cash on delivery selected. Your order is awaiting confirmation.</p>}
   </>:<p>Your order details are available in My Account.</p>}
-  <Link className="button button-dark" to="/account">VIEW MY ORDERS <ArrowRight size={18}/></Link>
+  <Link className="button button-dark" to="/account?tab=orders">VIEW MY ORDERS <ArrowRight size={18}/></Link>
  </div></Layout>;
 }
 function Admin(){const {token,user,logout}=useAuth(),{refresh}=useCatalog();return <AdminPage user={user} token={token} request={request} refreshCatalog={refresh} onLogout={logout}/>}
-function App(){return <Providers><BrowserRouter><Routes><Route path="/" element={<Home/>}/><Route path="/shop" element={<Shop/>}/><Route path="/brands" element={<Brands/>}/><Route path="/product/:slug" element={<Product/>}/><Route path="/cart" element={<Cart/>}/><Route path="/login" element={<Login/>}/><Route path="/account" element={<RequireAuth><Account/></RequireAuth>}/><Route path="/checkout" element={<RequireAuth><Checkout/></RequireAuth>}/><Route path="/order-success" element={<RequireAuth><OrderSuccess/></RequireAuth>}/><Route path="/admin" element={<RequireAuth admin><Admin/></RequireAuth>}/><Route path="*" element={<Navigate to="/"/>}/></Routes></BrowserRouter></Providers>}
+function App(){return <Providers><BrowserRouter><Routes><Route path="/" element={<Home/>}/><Route path="/shop" element={<Shop/>}/><Route path="/brands" element={<Brands/>}/><Route path="/product/:slug" element={<Product/>}/><Route path="/cart" element={<Cart/>}/><Route path="/login" element={<Login/>}/><Route path="/forgot-password" element={<ForgotPassword/>}/><Route path="/reset-password" element={<ResetPassword/>}/><Route path="/account" element={<RequireAuth><Account/></RequireAuth>}/><Route path="/checkout" element={<RequireAuth><Checkout/></RequireAuth>}/><Route path="/order-success" element={<RequireAuth><OrderSuccess/></RequireAuth>}/><Route path="/admin" element={<RequireAuth admin><Admin/></RequireAuth>}/><Route path="*" element={<Navigate to="/"/>}/></Routes></BrowserRouter></Providers>}
 createRoot(document.getElementById('root')).render(<React.StrictMode><App/></React.StrictMode>);
