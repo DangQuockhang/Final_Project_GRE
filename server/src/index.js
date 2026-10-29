@@ -1,9 +1,9 @@
+import {createAccountService} from './accountRoutes.js';
+import {avatarDir} from './accountMedia.js';
 import {loadDashboard} from './dashboard.js';
 import {validateDetails} from './productDetails.js';
 import express from 'express';
 import cors from 'cors';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
 import {pool,query} from './db.js';
 import 'dotenv/config';
 import {MAX_PRODUCT_IMAGES,imageDir,detectImage,imageUpload,galleryUpload,bundleUpload,saveImage,removeImage} from './productImages.js';
@@ -17,6 +17,10 @@ if (JWT_SECRET.length<32) console.warn('Cảnh báo: JWT_SECRET phải từ 32 k
 app.use(cors({origin:(process.env.ALLOWED_ORIGINS||'http://localhost:5173,http://localhost:5174').split(',').map(x=>x.trim())}));
 app.use(express.json({limit:'100kb'}));
 app.use('/media/products',express.static(imageDir,{fallthrough:false,setHeaders(res){res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Cache-Control','public,max-age=86400');}}));
+app.use('/media/avatars',express.static(avatarDir,{fallthrough:false,setHeaders(res){
+ res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Content-Security-Policy',"default-src 'none'");
+ res.setHeader('Cache-Control','public,max-age=86400');
+}}));
 const route=express.Router();app.use('/api',route);
 const wrap=fn=>(req,res,next)=>Promise.resolve(fn(req,res,next)).catch(next);
 const fail=(res,msg,status=400)=>res.status(status).json({error:msg});
@@ -26,31 +30,10 @@ const slugify=v=>clean(v).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f
 const validPrice=n=>Number.isSafeInteger(Number(n))&&Number(n)>=0;
 const validSale=(value,price)=>value===null||(Number.isSafeInteger(Number(value))&&Number(value)>=0&&Number(value)<Number(price));
 
-function authorize(req,res,next){
-  const token=(req.headers.authorization||'').replace(/^Bearer\s+/i,'');
-  try {if(!JWT_SECRET) throw Error();req.user=jwt.verify(token,JWT_SECRET,{algorithms:['HS256']});next();}
-  catch{return fail(res,'Vui lòng đăng nhập.',401);}
-}
+const {authorize,registerRoutes:registerAccountRoutes}=createAccountService({pool,secret:JWT_SECRET});
 function admin(req,res,next){if(req.user?.role!=='admin')return fail(res,'Chỉ Admin được truy cập.',403);next();}
-const safeUser=u=>({id:u.id,name:u.name,email:u.email,role:u.role});
-const issueToken=u=>jwt.sign(safeUser(u),JWT_SECRET,{algorithm:'HS256',expiresIn:'8h'});
 route.get('/health',wrap(async(req,res)=>{await query('SELECT 1');res.json({ok:true,service:'kd-api'});}));
-
-route.post('/auth/register',wrap(async(req,res)=>{
- const name=clean(req.body.name),email=clean(req.body.email).toLowerCase(),password=req.body.password||'';
- if(name.length<2||name.length>100||!/^\S+@\S+\.\S+$/.test(email)||password.length<8||password.length>128)return fail(res,'Tên, email hoặc mật khẩu không hợp lệ (mật khẩu >= 8 ký tự).');
- const hash=await bcrypt.hash(password,12);
- try{const r=await query('INSERT INTO users(name,email,password_hash) VALUES($1,$2,$3) RETURNING *',[name,email,hash]);res.status(201).json({user:safeUser(r.rows[0]),token:issueToken(r.rows[0])});}
- catch(e){if(e.code==='23505')return fail(res,'Email đã được đăng ký.',409);throw e;}
-}));
-route.post('/auth/login',wrap(async(req,res)=>{
- const r=await query('SELECT * FROM users WHERE email=$1',[clean(req.body.email).toLowerCase()]);
- const u=r.rows[0];if(!u||!await bcrypt.compare(req.body.password||'',u.password_hash))return fail(res,'Email hoặc mật khẩu không đúng.',401);
- res.json({user:safeUser(u),token:issueToken(u)});
-}));
-route.get('/auth/me',authorize,wrap(async(req,res)=>{
- const r=await query('SELECT id,name,email,role FROM users WHERE id=$1',[req.user.id]);if(!r.rows[0])return fail(res,'Tài khoản không tồn tại.',401);res.json(r.rows[0]);
-}));
+registerAccountRoutes(route);
 
 route.get('/brands',wrap(async(req,res)=>{const r=await query(`SELECT b.*,COALESCE((SELECT json_object_agg(g.category,g.image_url) FROM brand_size_guides g WHERE g.brand_id=b.id),'{}'::json) AS size_guides FROM brands b ORDER BY b.name`);res.json(r.rows);}));
 route.post('/brands',authorize,admin,wrap(async(req,res)=>{
@@ -688,5 +671,5 @@ route.patch('/admin/orders/:id/status',authorize,admin,wrap(async(req,res)=>{
 }));
 
 app.use((req,res)=>fail(res,'API endpoint không tồn tại.',404));
-app.use((err,req,res,next)=>{console.error(err);return res.status(err.status||500).json({error:err.status?err.message:'Lỗi máy chủ. Vui lòng thử lại.'});});
+app.use((err,req,res,next)=>{console.error('API_ERROR',{code:err.code||'INTERNAL_ERROR',status:err.status||500});return res.status(err.status||500).json({code:err.code||'INTERNAL_ERROR',error:err.type==='entity.parse.failed'?'Dữ liệu JSON không hợp lệ.':err.status?err.message:'Lỗi máy chủ. Vui lòng thử lại.'});});
 app.listen(PORT,()=>console.log(`KD API http://localhost:${PORT}/api/health`));

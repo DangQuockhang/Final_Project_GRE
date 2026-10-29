@@ -1,3 +1,4 @@
+import {startMailCapture,accountChecks} from './account-integration.ci.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
@@ -16,7 +17,8 @@ async function request(url,body,token,method='POST'){
 }
 test('Admin permissions and COD stock transactions against disposable PostgreSQL',async()=>{
  assert.match(new URL(process.env.DATABASE_URL).pathname,/\/kd_test$/);
- const server=spawn(process.execPath,['src/index.js'],{cwd:resolve('server'),env:process.env,stdio:'ignore'});
+ const mail=await startMailCapture();
+ const server=spawn(process.execPath,['src/index.js'],{cwd:resolve('server'),env:{...process.env,NODE_ENV:'test',RESEND_API_KEY:'local-test-only',MAIL_FROM:'test@example.test',APP_URL:'http://localhost:5173',TEST_MAIL_URL:mail.url},stdio:'ignore'});
  try{
   let ready=false;
   for(let i=0;i<60;i++){
@@ -611,5 +613,6 @@ test('Admin permissions and COD stock transactions against disposable PostgreSQL
    assert.equal((await request('/api/admin/orders?status=INVALID',undefined,token,'GET')).status,400);
    assert.equal((await request('/api/admin/products?id=invalid',undefined,token,'GET')).status,400);
   }finally{await dashboardDb.end();}
- }finally{server.kill();}
+  await accountChecks(base,mail);
+ }finally{server.kill();mail.server.closeAllConnections();await new Promise(resolve=>mail.server.close(resolve));}
 });

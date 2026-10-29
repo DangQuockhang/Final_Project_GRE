@@ -1,0 +1,44 @@
+/* Account workspace: the storefront's green accent with a quiet white canvas. */
+.kd-customer-account,.kd-account-auth,.kd-account-recovery{--account-ink:#243b2c;--account-muted:#5f6c60;--account-line:#e3e9e1;color:var(--account-ink);font:14px/1.6 Inter,system-ui,sans-serif}
+.kd-customer-account *,.kd-account-auth *,.kd-account-recovery *{box-sizing:border-box}
+.kd-customer-account{max-width:1240px;margin:auto;padding:45px 28px 80px}
+.kd-account-heading{margin-bottom:30px}.kd-account-eyebrow{display:block;color:#5a745d;font-size:10px;font-weight:650;letter-spacing:.14em}
+.kd-account-heading h1{font:600 clamp(28px,3vw,38px)/1.2 Inter,system-ui,sans-serif;margin:10px 0;letter-spacing:-.035em}
+.kd-account-heading p,.kd-account-card header p{color:var(--account-muted);font-size:13px;margin:8px 0}
+.kd-account-layout{display:grid;grid-template-columns:240px minmax(0,1fr);gap:28px;align-items:start}
+.kd-account-sidebar{background:#f7f9f5;border:1px solid var(--account-line);border-radius:14px;padding:26px 16px}
+.kd-account-identity{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;padding-bottom:24px;border-bottom:1px solid var(--account-line)}
+.kd-account-identity strong{font-size:15px;overflow-wrap:anywhere;max-width:100%}.kd-account-identity>span:last-child{font-size:11px;color:var(--account-muted);overflow-wrap:anywhere;max-width:100%}
+.kd-account-avatar{display:grid;place-items:center;width:84px;height:84px;flex:none;overflow:hidden;border-radius:50%;background:#e4edde;border:1px solid #d6e2cf;color:#385c3e}
+.kd-account-avatar>span{font-size:30px;font-weight:550}.kd-account-avatar img{width:100%;height:100%;object-fit:cover}
+.kd-account-sidebar nav{display:grid;gap:5px;padding:19px 0}.kd-account-sidebar nav button,.kd-account-logout{display:flex;align-items:center;gap:12px;border:0;border-radius:8px;background:transparent;padding:12px;color:#526c53;text-align:left;font-size:13px;min-height:46px;cursor:pointer}
+.kd-account-sidebar nav button[aria-current=page]{background:#e5eddf;color:#25482b;font-weight:600}
+.kd-account-logout{width:100%;border-top:1px solid var(--account-line);border-radius:0;padding-top:18px}
+.kd-account-content{min-width:0}.kd-account-card{border:1px solid var(--account-line);border-radius:14px;background:#fff;padding:30px;min-width:0}
+.kd-account-card h1,.kd-account-card h2{font:600 25px/1.3 Inter,system-ui,sans-serif;letter-spacing:-.03em;margin:9px 0 16px}.kd-account-card header{margin-bottom:24px}
+.kd-account-avatar-row{display:flex;align-items:center;gap:22px;padding:0 0 26px;margin-bottom:26px;border-bottom:1px solid var(--account-line)}
+.kd-account-avatar-row>div{display:flex;align-items:start;flex-direction:column;gap:7px}.kd-account-avatar-row small{font-size:11px;color:var(--account-muted)}
+.kd-account-upload{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid #cbd8c7;border-radius:8px;color:#3e623e;background:#fff;font-size:12px;font-weight:600;padding:10px 15px;min-height:44px;overflow:hidden;cursor:pointer}
+.kd-account-upload input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}.kd-account-upload:focus-within{outline:3px solid #87a981;outline-offset:3px}
+.kd-account-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 20px}.kd-account-field{display:grid;gap:7px;margin-bottom:22px;min-width:0}
+.kd-account-field label{font-size:12px;font-weight:600;color:#405642}.kd-account-field input{width:100%;min-height:46px;border:1px solid #d4ded1;border-radius:8px;background:#fff;padding:10px 13px;font:400 14px/1.5 Inter,system-ui,sans-serif;color:#263e2c}
+.kd-account-field input[readonly]{background:#f5f7f3;color:#596957}.kd-account-field input[aria-invalid=true]{border-color:#b85c4e}.kd-account-field small{font-size:11px;color:var(--account-muted);line-height:1.6}.kd-account-field .kd-account-field-error{color:#a53f33}
+.kd-account-primary{display:inline-flex;justify-content:center;align-items:center;gap:9px;min-height:46px;border:1px solid #36583a;border-radius:8px;background:#36583a;color:#fff;font:550 13px/1.5 Inter,system-ui,sans-serif;padding:11px 22px;cursor:pointer}
+.kd-account-primary:hover:not(:disabled){background:#2a492f}.kd-account-primary:disabled,.kd-account-switch:disabled{opacity:.55;cursor:default}
+.kd-account-save{display:flex;align-items:center;gap:20px;flex-wrap:wrap;border-top:1px solid var(--account-line);padding-top:23px;margin-top:5px}.kd-account-save>span{max-width:310px;font-size:11px;color:var(--account-muted)}
+.kd-account-password-fields{max-width:450px}
+.kd-account-switch{display:block;background:none;border:0;padding:8px 0;color:#4b7049;font-size:12px;cursor:pointer;text-align:left;min-height:40px}
+.kd-account-text-link{display:block;color:#416b43;font-size:12px;margin:12px 0 4px;text-decoration:underline;text-underline-offset:4px;padding-block:5px}
+.kd-account-message{padding:13px 16px;border-radius:8px;font-size:13px;line-height:1.6;margin:16px 0;overflow-wrap:anywhere}.kd-account-message.is-error{background:#fcf0ec;color:#9b4035;border:1px solid #f0d7cf}.kd-account-message.is-success{background:#eff5e9;color:#375c33;border:1px solid #dce9d2}
+.kd-account-skeleton{border-radius:14px;border:1px solid #e3e9e1;background:#fff;padding:30px}.kd-account-skeleton div{height:45px;background:#eef2eb;border-radius:8px;margin-bottom:20px;width:80%}.kd-account-skeleton div:first-child{width:75px;height:75px;border-radius:50%}.kd-account-skeleton p{font-size:12px;color:#687a65}
+.kd-customer-account button:focus-visible,.kd-customer-account input:focus-visible,.kd-customer-account a:focus-visible,.kd-account-auth input:focus-visible,.kd-account-auth button:focus-visible,.kd-account-auth a:focus-visible,.kd-account-recovery input:focus-visible,.kd-account-recovery button:focus-visible,.kd-account-recovery a:focus-visible{outline:3px solid #87a981;outline-offset:3px}
+.kd-account-auth{display:grid;grid-template-columns:1fr 1fr;gap:clamp(30px,6vw,90px);align-items:center;max-width:1060px;margin:50px auto 75px;padding:0 26px}
+.kd-account-auth-intro>span{font-size:10px;font-weight:650;letter-spacing:.15em;color:#526e4d}.kd-account-auth-intro h1{font:500 clamp(32px,4vw,48px)/1.2 Inter,system-ui,sans-serif;letter-spacing:-.04em;margin:22px 0}.kd-account-auth-intro p{font-size:14px;line-height:1.9;color:#63755e;max-width:340px}
+.kd-account-auth .kd-account-primary,.kd-account-recovery .kd-account-primary{width:100%;margin-top:15px}.kd-account-auth .kd-account-switch{text-align:center;width:100%;margin-top:10px}
+.kd-account-help{font-size:12px;color:var(--account-muted);line-height:1.8}.kd-account-recovery{max-width:530px;margin:50px auto 80px;padding:0 20px}
+.kd-account-content .kd-account-orders{padding:20px 0;max-width:none}.kd-account-content .kd-order-history-heading{flex-wrap:wrap}.kd-account-content .kd-order-history-heading h2{font:600 24px/1.3 Inter,system-ui,sans-serif}.kd-account-content .kd-order-purchase-grid{grid-template-columns:1fr}.kd-account-content .kd-account-admin{display:none}
+@media(max-width:800px){.kd-customer-account{padding:28px 18px 50px}.kd-account-layout{grid-template-columns:1fr;gap:20px}.kd-account-sidebar{padding:14px}.kd-account-identity{display:none}.kd-account-sidebar nav{display:flex;overflow:auto;padding:0;gap:5px}.kd-account-sidebar nav button{flex:1;justify-content:center;white-space:nowrap;padding:10px;font-size:12px;gap:7px}.kd-account-logout{padding:12px 8px 0;margin-top:10px;font-size:12px;min-height:40px}.kd-account-sidebar>.kd-account-text-link{padding-left:8px}.kd-account-card{padding:23px}.kd-account-auth{gap:28px}.kd-account-auth-intro h1{font-size:32px}}
+@media(max-width:580px){.kd-account-form-grid{grid-template-columns:1fr}.kd-account-card{padding:21px 17px}.kd-account-avatar-row{gap:15px}.kd-account-avatar{width:70px;height:70px}.kd-account-save{display:block}.kd-account-save>span{display:block;margin-top:12px}.kd-account-save .kd-account-primary{width:100%}.kd-account-auth{grid-template-columns:1fr;margin-top:28px;padding:0 18px}.kd-account-auth-intro p{display:none}.kd-account-auth-intro h1{margin:10px 0;font-size:29px}.kd-account-recovery{margin-top:28px}.kd-account-card h1,.kd-account-card h2{font-size:23px}.kd-account-heading h1{font-size:28px}.kd-account-sidebar nav button svg{width:16px}}
+
+.kd-account-toast{position:fixed;right:24px;bottom:24px;z-index:1200;display:flex;align-items:center;gap:18px;max-width:calc(100vw - 36px);padding:12px 12px 12px 20px;background:#eff5e9;border:1px solid #c2d6b6;border-radius:10px;color:#31532e;box-shadow:0 6px 24px #243b2c18}
+.kd-account-toast button{display:grid;place-items:center;width:44px;height:44px;flex:none;border:0;background:transparent;font-size:25px;color:inherit;border-radius:6px;cursor:pointer}
