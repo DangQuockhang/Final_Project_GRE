@@ -1,7 +1,20 @@
 import React from 'react';
+import {Eye,EyeOff} from 'lucide-react';
 import {apiBase} from '@kd/catalog';
-export function Field({label,id,error,hint,...props}){
- return <div className="kd-account-field"><label htmlFor={id}>{label}</label><input id={id} aria-invalid={Boolean(error)} aria-describedby={error?id+'-error':hint?id+'-hint':undefined} {...props}/>{error?<small id={id+'-error'} className="kd-account-field-error">{error}</small>:hint?<small id={id+'-hint'}>{hint}</small>:null}</div>;
+export function Field({label,id,error,hint,type='text',...props}){
+ const [visible,setVisible]=React.useState(false);
+ const password=type==='password';
+ React.useEffect(()=>setVisible(false),[id,type,props.autoComplete,props.disabled]);
+ return <div className="kd-account-field">
+  <label htmlFor={id}>{label}</label>
+  <div className={'kd-account-input-wrap'+(password?' has-password':'')}>
+   <input id={id} type={password&&visible?'text':type} aria-invalid={Boolean(error)} aria-describedby={error?id+'-error':hint?id+'-hint':undefined} {...props}/>
+   {password&&<button type="button" className="kd-account-password-toggle" disabled={props.disabled}
+    aria-label={visible?'Ẩn mật khẩu':'Hiện mật khẩu'} aria-pressed={visible} aria-controls={id}
+    onClick={()=>setVisible(value=>!value)}>{visible?<EyeOff size={19} aria-hidden="true"/>:<Eye size={19} aria-hidden="true"/>}</button>}
+  </div>
+  {error?<small id={id+'-error'} className="kd-account-field-error">{error}</small>:hint?<small id={id+'-hint'}>{hint}</small>:null}
+ </div>;
 }
 export function Message({error,children}){return children?<div className={'kd-account-message '+(error?'is-error':'is-success')} role={error?'alert':'status'}>{children}</div>:null;}
 export function Avatar({user,preview=null}){
