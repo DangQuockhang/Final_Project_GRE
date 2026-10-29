@@ -1,4 +1,5 @@
 import React,{useEffect,useRef,useState} from 'react';
+import {AVATAR_MAX_BYTES,AVATAR_MAX_MB} from '@kd/catalog';
 import {Link,useNavigate,useSearchParams} from 'react-router-dom';
 import {UserRound,LockKeyhole,ShoppingBag,LogOut,Upload,Check} from 'lucide-react';
 import {Avatar,Field,Message,SuccessToast} from '../../components/account/AccountFields.jsx';
@@ -15,7 +16,7 @@ function Profile({user,token,request,onUser}){
   const requestId=++sequence.current;setError('');setMessage('');
   if(!picked)return;
   if(!['image/jpeg','image/png','image/webp'].includes(picked.type)){setError('Chọn ảnh JPG, PNG hoặc WebP.');return;}
-  if(picked.size>2*1024*1024){setError('Ảnh đại diện tối đa 2 MB.');return;}
+  if(picked.size>AVATAR_MAX_BYTES){setError(`Ảnh đại diện tối đa ${AVATAR_MAX_MB} MB.`);return;}
   setChecking(true);const url=URL.createObjectURL(picked);
   try{
    await new Promise((resolve,reject)=>{const image=new Image();image.onload=resolve;image.onerror=reject;image.src=url;});
@@ -37,7 +38,7 @@ function Profile({user,token,request,onUser}){
  }
  return <form noValidate onSubmit={save} className="kd-account-card">
   <header><span className="kd-account-eyebrow">THÔNG TIN CÁ NHÂN</span><h2>Hồ sơ của bạn</h2><p>Cập nhật thông tin để cửa hàng hỗ trợ bạn thuận tiện hơn.</p></header>
-  <div className="kd-account-avatar-row"><Avatar user={remove?{...user,avatar_url:null}:user} preview={preview}/><div><label className="kd-account-upload"><Upload size={16}/>{checking?'Đang đọc ảnh…':'Chọn ảnh mới'}<input type="file" aria-label="Chọn ảnh đại diện" accept="image/jpeg,image/png,image/webp" disabled={busy||checking} onChange={e=>{choose(e.target.files?.[0]);e.target.value='';}}/></label><small>JPG, PNG, WebP · Tối đa 2 MB</small>{(preview||user.avatar_url)&&!remove&&<button className="kd-account-switch" type="button" disabled={busy||checking} onClick={()=>{sequence.current++;setFile(null);setPreview(null);setRemove(true);setMessage('');}}>Xóa ảnh đại diện</button>}</div></div>
+  <div className="kd-account-avatar-row"><Avatar user={remove?{...user,avatar_url:null}:user} preview={preview}/><div><label className="kd-account-upload"><Upload size={16}/>{checking?'Đang đọc ảnh…':'Chọn ảnh mới'}<input type="file" aria-label="Chọn ảnh đại diện" accept="image/jpeg,image/png,image/webp" disabled={busy||checking} onChange={e=>{choose(e.target.files?.[0]);e.target.value='';}}/></label><small>JPG, PNG, WebP · Tối đa {AVATAR_MAX_MB} MB</small>{(preview||user.avatar_url)&&!remove&&<button className="kd-account-switch" type="button" disabled={busy||checking} onClick={()=>{sequence.current++;setFile(null);setPreview(null);setRemove(true);setMessage('');}}>Xóa ảnh đại diện</button>}</div></div>
   <div className="kd-account-form-grid"><Field id="profile-name" label="Họ và tên" autoComplete="name" value={form.name} maxLength={100} onChange={e=>set('name',e.target.value)} error={errors.name} disabled={busy}/>
   <Field id="profile-phone" label="Số điện thoại (không bắt buộc)" type="tel" autoComplete="tel" value={form.phone} maxLength={25} onChange={e=>set('phone',e.target.value)} error={errors.phone} disabled={busy}/>
   <Field id="profile-email" label="Email đăng nhập" type="email" value={user.email} readOnly hint="Email dùng để đăng nhập và nhận hướng dẫn khôi phục tài khoản."/></div>
