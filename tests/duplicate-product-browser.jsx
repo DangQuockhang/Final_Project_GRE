@@ -42,6 +42,7 @@ function Harness(){
 }
 if(import.meta.env.DEV){
  createRoot(document.getElementById('root')).render(<MemoryRouter><Harness/></MemoryRouter>);
+ window.addEventListener('error',event=>{const output=document.createElement('output');output.textContent='DUPLICATE_RUNTIME_ERROR: '+event.message+' '+(event.error?.stack||'');document.body.append(output);});
  const wait=()=>new Promise(resolve=>setTimeout(resolve,80));
  const until=async(fn,label)=>{for(let i=0;i<100;i++){if(fn())return;await wait();}throw Error('Timed out: '+label);};
  const dialog=()=>document.querySelector('[role=dialog]');
