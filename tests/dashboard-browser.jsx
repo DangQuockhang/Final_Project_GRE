@@ -52,13 +52,13 @@ async function request(path){
  if(path==='/brands')return [{id:1,name:'Test Brand'}];
  return [];
 }
-function RouteProbe(){
+function RouteProbe({boot}){
  const location=useLocation(),navigate=useNavigate();
- return <div hidden><output id="test-route">{location.pathname+location.search}</output><button onClick={()=>navigate(-1)}>Browser back</button></div>;
+ return <div hidden><output id="test-route" data-boot={boot}>{location.pathname+location.search}</output><button onClick={()=>navigate(-1)}>Browser back</button></div>;
 }
 if(import.meta.env.DEV){
  const root=createRoot(document.getElementById('root'));
- const mount=(path,key)=>root.render(<MemoryRouter key={key} initialEntries={[path]}><RouteProbe/><AdminPage user={{name:'Test Admin',email:'admin@example.test'}} token="test-only" request={request} refreshCatalog={async()=>{}}/></MemoryRouter>);
+ const mount=(path,key)=>root.render(<MemoryRouter key={key} initialEntries={[path]}><RouteProbe boot={key}/><AdminPage user={{name:'Test Admin',email:'admin@example.test'}} token="test-only" request={request} refreshCatalog={async()=>{}}/></MemoryRouter>);
  mount('/admin','initial');
  const wait=()=>new Promise(resolve=>setTimeout(resolve,80));
  const until=async(fn,message)=>{for(let i=0;i<100;i++){if(fn())return;await wait();}throw Error('Timed out: '+message);};
@@ -129,7 +129,7 @@ if(import.meta.env.DEV){
    await follow('[aria-label="Open catalog health"]');await until(ready,'catalog');
    await choose('Catalog filter','missing_cover');await until(()=>ready()&&route().includes('filter=missing_cover'),'catalog filter');
    const reloadUrl=route();mount(reloadUrl,'reload');
-   await until(()=>ready()&&route()===reloadUrl,'direct report load');
+   await until(()=>document.querySelector('#test-route')?.dataset.boot==='reload'&&ready()&&route()===reloadUrl,'direct report load');
    assert(document.querySelector('.kd-report-toolbar select').value==='missing_cover','Direct URL restores filter');
    await follow('.kd-ops-sidebar nav a[href="/admin"]');await until(()=>document.querySelector('.kd-ops-kpis'),'overview after reload');
    const select=document.querySelector('#kd-dashboard-period');select.value='90';select.dispatchEvent(new Event('change',{bubbles:true}));
