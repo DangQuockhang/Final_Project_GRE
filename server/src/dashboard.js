@@ -47,11 +47,12 @@ export async function loadDashboard(pool,value){
   const lowStock=await c.query(`SELECT p.id AS product_id,p.name,p.image_url,v.sku,v.size,v.color,v.stock
    FROM product_variants v JOIN products p ON p.id=v.product_id
    WHERE p.status='active' AND v.stock<=3 ORDER BY v.stock,p.id,v.id LIMIT 8`);
-  const topProducts=await c.query(`SELECT v.product_id,i.product_name AS name,
+  const topProducts=await c.query(`SELECT p.id AS product_id,p.name,
    sum(i.quantity)::int AS units,sum(i.quantity*i.unit_price::bigint)::float8 AS value
    FROM order_items i JOIN orders o ON o.id=i.order_id JOIN product_variants v ON v.id=i.variant_id
+   JOIN products p ON p.id=v.product_id
    WHERE o.created_at >= $1 AND o.created_at < $2 AND o.status!='CANCELLED'
-   GROUP BY v.product_id,i.product_name ORDER BY units DESC,value DESC,v.product_id LIMIT 5`,[w.start,w.end]);
+   GROUP BY p.id ORDER BY units DESC,value DESC,p.id LIMIT 5`,[w.start,w.end]);
   const recent=await c.query(`SELECT id,order_code,recipient,total,status,payment_status,created_at
    FROM orders ORDER BY created_at DESC,id DESC LIMIT 6`);
   await c.query('COMMIT');
