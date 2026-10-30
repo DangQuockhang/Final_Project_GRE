@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {spawn,spawnSync} from 'node:child_process';
 import {existsSync,writeFileSync,unlinkSync} from 'node:fs';
 const chrome=['/usr/bin/google-chrome','/usr/bin/chromium','/usr/bin/chromium-browser'].find(existsSync);
-test('admin dashboard loads, filters, drills into records and recovers from errors on desktop and mobile',{skip:!chrome,timeout:100000},async()=>{
+test('admin overview and report URLs filter, paginate, open records and recover on desktop and mobile',{skip:!chrome,timeout:100000},async()=>{
  const file='apps/store/__dashboard-check.html';
  writeFileSync(file,'<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><div id="root"></div><script type="module" src="/@fs/'+process.cwd()+'/tests/dashboard-browser.jsx"></script></body></html>',{flag:'wx'});
  const vite=spawn(process.execPath,['node_modules/vite/bin/vite.js','apps/store','--host','127.0.0.1','--port','5188','--strictPort'],{stdio:'ignore'});
