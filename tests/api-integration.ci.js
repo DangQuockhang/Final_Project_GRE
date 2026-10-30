@@ -1,3 +1,4 @@
+import {checkAdminReports} from './admin-reports.ci.js';
 import {checkProductDuplicates} from './duplicate-product.ci.js';
 import {startMailCapture,accountChecks} from './account-integration.ci.js';
 import test from 'node:test';
@@ -615,6 +616,7 @@ test('Admin permissions and COD stock transactions against disposable PostgreSQL
    assert.equal((await request('/api/admin/products?id=invalid',undefined,token,'GET')).status,400);
   }finally{await dashboardDb.end();}
   await checkProductDuplicates(base,token,brands[0].id);
+  await checkAdminReports(base,token,user.data.token,user.data.user.id,brands[0].id);
   await accountChecks(base,mail);
  }finally{server.kill();mail.server.closeAllConnections();await new Promise(resolve=>mail.server.close(resolve));}
 });

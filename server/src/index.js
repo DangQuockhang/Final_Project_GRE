@@ -1,3 +1,4 @@
+import {loadAdminReport} from './adminReports.js';
 import {createAccountService} from './accountRoutes.js';
 import {avatarDir} from './accountMedia.js';
 import {loadDashboard} from './dashboard.js';
@@ -628,6 +629,10 @@ route.post('/orders',authorize,wrap(async(req,res)=>{
 route.get('/orders/mine',authorize,wrap(async(req,res)=>{
  const r=await query(`SELECT o.*,${orderItemsJson} AS items FROM orders o
  WHERE o.user_id=$1 ORDER BY o.created_at DESC`,[req.user.id]);res.json(r.rows);
+}));
+route.get('/admin/reports/:report',authorize,admin,wrap(async(req,res)=>{
+ res.set('Cache-Control','no-store');
+ res.json(await loadAdminReport(pool,req.params.report,req.query));
 }));
 route.get('/admin/dashboard',authorize,admin,wrap(async(req,res)=>{
  res.set('Cache-Control','no-store');res.json(await loadDashboard(pool,req.query.days));

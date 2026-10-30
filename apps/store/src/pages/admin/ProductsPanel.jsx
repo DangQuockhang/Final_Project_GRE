@@ -35,7 +35,7 @@ function EditProductDialog({product=null,duplicateSource=null,duplicateToken='',
   </section>
  </div>,document.body);
 }
-export default function ProductsPanel({products,brands,collections,api,perform,busy,report,initialEditingId=null,initialCreate=false}){
+export default function ProductsPanel({products,brands,collections,api,perform,busy,report,initialEditingId=null,initialCreate=false,onFocusClose}){
  const [showCreator,setShowCreator]=useState(Boolean(initialCreate));
  const [editing,setEditing]=useState(()=>products.find(p=>String(p.id)===String(initialEditingId))?.id||null);
  const [duplicating,setDuplicating]=useState(null);
@@ -52,7 +52,7 @@ export default function ProductsPanel({products,brands,collections,api,perform,b
  });
  const filtersActive=Boolean(search.trim()||statusFilter!=='all'||brandFilter!=='all');
  const resetFilters=()=>{setSearch('');setStatusFilter('all');setBrandFilter('all');};
- function reset(){setEditing(null)}
+ function reset(){setEditing(null);onFocusClose?.()}
  function begin(p){setEditing(p.id)}
  function beginDuplicate(p){setDuplicating({sourceId:p.id,token:Date.now().toString(36)+Math.random().toString(36).slice(2,8)})}
  async function openDelete(product){
@@ -81,7 +81,7 @@ export default function ProductsPanel({products,brands,collections,api,perform,b
     onClick={()=>setShowCreator(old=>!old)}><Plus size={18}/>{showCreator?'CLOSE NEW PRODUCT FORM':'ADD NEW PRODUCT'}</button>
   </div>
   {showCreator&&<div id="kd-admin-new-product" className="kd-compact-create-panel">
-   <ProductEditor key="new-product" product={null} brands={brands} collections={collections} api={api} perform={perform} busy={busy} report={report} onCancel={()=>setShowCreator(false)}/>
+   <ProductEditor key="new-product" product={null} brands={brands} collections={collections} api={api} perform={perform} busy={busy} report={report} onCancel={()=>{setShowCreator(false);onFocusClose?.();}}/>
   </div>}
   <div className="kd-compact-product-toolbar kd-order-management-toolbar">
    <label><Search size={19} aria-hidden="true"/><input type="search" aria-label="Search admin products" placeholder="Search products or brand…" value={search} onChange={e=>setSearch(e.target.value)}/></label>

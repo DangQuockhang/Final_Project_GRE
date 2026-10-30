@@ -25,10 +25,10 @@ export default function OrdersPanel({orders,api,perform,busy,initialStatus='all'
    'Bank transfer verified for '+order.order_code+'.');
  }
  return <section className="kd-admin-panel kd-order-management" aria-labelledby="orders-title">
-  <div className="kd-admin-panel-header"><div><h2 id="orders-title">Order Management</h2>
+  <div className="kd-admin-panel-header"><div><h2 id="orders-title">{initialOrderId?'Order details':'Order Management'}</h2>
    <p>Review purchases, delivery details, payment status and order progress.</p></div>
-   <span>{visible.length} matching loaded orders</span></div>
-  <div className="kd-order-management-toolbar">
+   <span>{visible.length} {initialOrderId?'order':'matching loaded orders'}</span></div>
+  {!initialOrderId&&<><div className="kd-order-management-toolbar">
    <label><Search size={19}/><input type="search" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search order code, customer or phone…" aria-label="Search orders"/></label>
    <label>STATUS <select value={status} onChange={e=>setStatus(e.target.value)}><option value="all">All statuses</option>
     {['PENDING','CONFIRMED','SHIPPED','DELIVERED','CANCELLED'].map(s=><option key={s}>{s}</option>)}</select></label>
@@ -37,6 +37,7 @@ export default function OrdersPanel({orders,api,perform,busy,initialStatus='all'
   </div>
   <label className="kd-ops-payment-filter">Payment status <select value={paymentStatus} onChange={e=>setPaymentStatus(e.target.value)}><option value="all">All payment statuses</option>{['UNPAID','AWAITING_TRANSFER','PAID','REFUND_PENDING'].map(s=><option key={s}>{s}</option>)}</select></label>
   <p className="kd-ops-list-note">Lists load up to 100 recent orders per dashboard request. Dashboard totals cover all orders. {initialOrderId?'Viewing the selected order; choose Orders in the sidebar to return.':''}</p>
+  </>}
   <div className="kd-order-list">
    {visible.length?visible.map(order=><OrderCard key={order.id} order={order} admin loading={busy}
     allowedTransitions={ORDER_TRANSITIONS} onStatusChange={updateStatus} onVerifyPayment={verifyPayment}/>)
