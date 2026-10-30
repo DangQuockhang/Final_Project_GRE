@@ -1,6 +1,6 @@
 import React,{useEffect,useRef,useState} from 'react';
 import {Link} from 'react-router-dom';
-import {Package,Tags,ClipboardList,LayoutDashboard,RefreshCw,ArrowUpRight,LogOut,Layers} from 'lucide-react';
+import {Package,Tags,ClipboardList,LayoutDashboard,RefreshCw,ArrowUpRight,LogOut,Layers,ChevronRight} from 'lucide-react';
 import BrandsPanel from './BrandsPanel.jsx';
 import ProductsPanel from './ProductsPanel.jsx';
 import CollectionsPanel from './CollectionsPanel.jsx';
@@ -70,10 +70,10 @@ export default function AdminPage({user,token,request,refreshCatalog,onLogout}){
    <Link to="/" className="kd-ops-logo">KD<span>COMMERCE ADMIN</span></Link>
    <span className="kd-ops-nav-label">WORKSPACE</span>
    <nav aria-label="Admin sections">{TABS.map(([key,label,Icon])=><button type="button" disabled={busy} key={key} aria-current={tab===key?'page':undefined} onClick={()=>navigate(key)}><Icon size={19}/>{label}{key==='orders'&&dashboard?.operations.pending>0&&<b>{dashboard.operations.pending}</b>}</button>)}</nav>
-   <div className="kd-ops-sidebar-bottom"><Link to="/shop"><ArrowUpRight size={17}/> View storefront</Link><div><i>{(user?.name||user?.email||'A').slice(0,1).toUpperCase()}</i><span><strong>{user?.name||'Administrator'}</strong><small>{user?.email}</small></span></div>{onLogout&&<button type="button" onClick={onLogout}><LogOut size={16}/> Sign out</button>}</div>
+   <div className="kd-ops-sidebar-bottom"><Link to="/shop"><ArrowUpRight size={17}/> View storefront</Link><Link to="/account" className="kd-ops-account-link" aria-label="Mở tài khoản của tôi" title="Tài khoản của tôi"><i aria-hidden="true">{(user?.name||user?.email||'A').slice(0,1).toUpperCase()}</i><span><strong>{user?.name||'Administrator'}</strong><small>{user?.email}</small></span><ChevronRight size={16} className="kd-ops-account-arrow" aria-hidden="true"/></Link>{onLogout&&<button type="button" onClick={onLogout}><LogOut size={16}/> Sign out</button>}</div>
   </aside>
   <main className="kd-ops-main">
-   <header className="kd-ops-topbar"><span>Workspace <span>/</span> <strong>{TABS.find(t=>t[0]===tab)?.[1]}</strong></span><div><i/> Administrator access <Link to="/shop" className="kd-ops-mobile-link">Store</Link>{onLogout&&<button type="button" className="kd-ops-mobile-link" disabled={busy} onClick={onLogout}>Sign out</button>}</div></header>
+   <header className="kd-ops-topbar"><span>Workspace <span>/</span> <strong>{TABS.find(t=>t[0]===tab)?.[1]}</strong></span><div><i/> Administrator access <Link to="/shop" className="kd-ops-mobile-link">Store</Link><Link to="/account" className="kd-ops-mobile-link" aria-label="Mở tài khoản của tôi">Account</Link>{onLogout&&<button type="button" className="kd-ops-mobile-link" disabled={busy} onClick={onLogout}>Sign out</button>}</div></header>
    <div className="kd-ops-body">
     <div className="kd-ops-heading"><div><span className="kd-ops-eyebrow">YOUR STORE, AT A GLANCE</span><h1>{tab==='overview'?'Store overview':TABS.find(t=>t[0]===tab)?.[1]}</h1><p>{tab==='overview'?'A clear view of performance. A focused list of what needs you.':'Manage your catalog and orders in one workspace.'}</p></div>
      <button className="kd-ops-button" type="button" disabled={busy||loading||dashLoading} onClick={()=>perform(async()=>{},'Store data refreshed.')}><RefreshCw size={16} className={busy?'kd-ops-spin':''}/> Refresh data</button>
