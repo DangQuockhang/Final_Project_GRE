@@ -1,3 +1,7 @@
+import {requireJwtSecret} from './authConfig.js';
+import {registerCustomerOrders} from './customerOrderRoutes.js';
+import {orderItemsJson} from './orderQueries.js';
+import {validateDelivery} from '../../packages/catalog/delivery.js';
 import {loadAdminReport} from './adminReports.js';
 import {createAccountService} from './accountRoutes.js';
 import {avatarDir} from './accountMedia.js';
@@ -13,8 +17,7 @@ import {makeOrderCode} from './orderCode.js';
 
 const app=express();
 const PORT=Number(process.env.PORT||4000);
-const JWT_SECRET=process.env.JWT_SECRET||'';
-if (JWT_SECRET.length<32) console.warn('Cảnh báo: JWT_SECRET phải từ 32 ký tự, không nên dùng trong production.');
+const JWT_SECRET=requireJwtSecret(process.env.JWT_SECRET);
 app.use(cors({origin:(process.env.ALLOWED_ORIGINS||'http://localhost:5173,http://localhost:5174').split(',').map(x=>x.trim())}));
 app.use(express.json({limit:'100kb'}));
 app.use('/media/products',express.static(imageDir,{fallthrough:false,setHeaders(res){res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Cache-Control','public,max-age=86400');}}));
@@ -35,6 +38,7 @@ const {authorize,registerRoutes:registerAccountRoutes}=createAccountService({poo
 function admin(req,res,next){if(req.user?.role!=='admin')return fail(res,'Chỉ Admin được truy cập.',403);next();}
 route.get('/health',wrap(async(req,res)=>{await query('SELECT 1');res.json({ok:true,service:'kd-api'});}));
 registerAccountRoutes(route);
+registerCustomerOrders(route,{pool,authorize});
 
 route.get('/brands',wrap(async(req,res)=>{const r=await query(`SELECT b.*,COALESCE((SELECT json_object_agg(g.category,g.image_url) FROM brand_size_guides g WHERE g.brand_id=b.id),'{}'::json) AS size_guides FROM brands b ORDER BY b.name`);res.json(r.rows);}));
 route.post('/brands',authorize,admin,wrap(async(req,res)=>{
@@ -571,30 +575,19 @@ route.get('/payment-methods',(req,res)=>{
  const bank=bankDetails();
  res.json({cod:true,bank_transfer:{enabled:!!bank,...(bank||{})}});
 });
-const orderItemsJson=`COALESCE((SELECT json_agg(json_build_object(
- 'product_name',i.product_name,'sku',i.sku,'quantity',i.quantity,
- 'unit_price',i.unit_price,'size',i.size,
- 'image_url',COALESCE(i.image_url,p.image_url),'slug',COALESCE(i.product_slug,p.slug),
- 'brand_name',COALESCE(i.brand_name,b.name),'color',COALESCE(i.color,v.color)
- ) ORDER BY i.id)
- FROM order_items i
- LEFT JOIN product_variants v ON v.id=i.variant_id
- LEFT JOIN products p ON p.id=v.product_id
- LEFT JOIN brands b ON b.id=p.brand_id
- WHERE i.order_id=o.id),'[]'::json)`;
 
 route.post('/orders',authorize,wrap(async(req,res)=>{
- const {recipient,phone,address,items}=req.body;
+ const checked=validateDelivery(req.body);
+ if(!checked.valid)return res.status(400).json({code:'VALIDATION_ERROR',error:'Vui lòng kiểm tra thông tin giao hàng.',errors:checked.errors});
+ const {recipient,phone,address}=checked.values,{items}=req.body;
  const method=req.body.payment_method||'COD';
- if(!['COD','BANK_TRANSFER'].includes(method))return fail(res,'Unsupported payment method.');
- if(method==='BANK_TRANSFER'&&!bankDetails())return fail(res,'Bank transfer is not configured.',409);
- if(clean(recipient).length<2||clean(phone).length<9||clean(address).length<10||
-    clean(address).length>750||!Array.isArray(items)||items.length===0||items.length>30)
-   return fail(res,'Invalid delivery or cart information.');
+ if(!['COD','BANK_TRANSFER'].includes(method))return fail(res,'Phương thức thanh toán không hợp lệ.');
+ if(method==='BANK_TRANSFER'&&!bankDetails())return fail(res,'Cửa hàng chưa bật thanh toán chuyển khoản.',409);
+ if(!Array.isArray(items)||items.length===0||items.length>30)return fail(res,'Giỏ hàng cần từ 1 đến 30 sản phẩm.');
  const ids=new Set();
  for(const item of items){
   if(!isId(item.variant_id)||!Number.isInteger(item.quantity)||item.quantity<1||item.quantity>20||ids.has(Number(item.variant_id)))
-   return fail(res,'Invalid SKU or quantity.');
+   return fail(res,'Sản phẩm hoặc số lượng trong giỏ hàng không hợp lệ.');
   ids.add(Number(item.variant_id));
  }
  const client=await pool.connect();
@@ -609,10 +602,10 @@ route.post('/orders',authorize,wrap(async(req,res)=>{
     JOIN brands b ON b.id=p.brand_id
     WHERE v.id=$1 FOR UPDATE OF v`,[item.variant_id]);
    const v=r.rows[0];
-   if(!v||v.status!=='active'||v.stock<item.quantity){const e=new Error('Insufficient inventory for selected size.');e.status=409;throw e;}
+   if(!v||v.status!=='active'||v.stock<item.quantity){const e=new Error('Sản phẩm hoặc kích cỡ đã hết hàng hoặc không đủ số lượng.');e.status=409;throw e;}
    total+=v.price*item.quantity;lines.push({variant:v,quantity:item.quantity});
   }
-  if(!Number.isSafeInteger(total)){const e=new Error('Invalid order amount.');e.status=400;throw e;}
+  if(!Number.isSafeInteger(total)){const e=new Error('Tổng tiền đơn hàng không hợp lệ.');e.status=400;throw e;}
   const inserted=await client.query(`INSERT INTO orders(user_id,recipient,phone,address,total,order_code,payment_method,payment_status)
    VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
    [req.user.id,clean(recipient),clean(phone),clean(address),total,makeOrderCode(),method,method==='COD'?'UNPAID':'AWAITING_TRANSFER']);

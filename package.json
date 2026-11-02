@@ -16,6 +16,7 @@
     "db:seed": "npm run db:seed -w @kd/api",
     "test": "node --test tests/*.test.js",
     "build": "npm run build -w @kd/store && npm run build -w @kd/studio",
-    "dev:gallery": "npm run dev -w @kd/store -- --open /gallery-demo.html"
+    "dev:gallery": "npm run dev -w @kd/store -- --open /gallery-demo.html",
+    "db:rollback:accounts": "npm run db:rollback:accounts -w @kd/api"
   }
 }
