@@ -48,7 +48,7 @@ const request=async(path,{method='GET',body,token,signal,keepalive=false}={})=>{
  const res=await fetch(`${API}${path}`,{method,signal,keepalive,headers:{...(body&&!multipart?{'Content-Type':'application/json'}:{}),...(token?{Authorization:`Bearer ${token}`}:{})},body:multipart?body:body?JSON.stringify(body):undefined});
  const data=await res.json().catch(()=>({}));
  if(!res.ok){
-  const error=Object.assign(new Error(data.error||'Không thể thực hiện yêu cầu. Vui lòng thử lại.'),{status:res.status,code:data.code,errors:data.errors||{}});
+  const error=Object.assign(new Error(data.error||'Unable to complete this request. Please try again.'),{status:res.status,code:data.code,errors:data.errors||{}});
   if(token&&(res.status===401||data.code==='ACCOUNT_BLOCKED'))window.dispatchEvent(new CustomEvent('kd-session-expired',{detail:{token,message:error.message}}));
   throw error;
  }
@@ -73,7 +73,7 @@ function Providers({children}){
   const token=session?.token;setSession(null);setSessionExpired(false);setLogoutWarning('');
   if(!token)return;
   try{await request('/auth/logout',{method:'POST',token,keepalive:true});}
-  catch(error){if(error.status!==401&&error.code!=='ACCOUNT_BLOCKED')setLogoutWarning('Đã xóa thông tin đăng nhập trên trình duyệt này. Do kết nối bị gián đoạn, chưa thể xác nhận thu hồi phiên trên máy chủ.');}
+  catch(error){if(error.status!==401&&error.code!=='ACCOUNT_BLOCKED')setLogoutWarning('You have been signed out on this browser. A connection problem prevented confirmation that the server session was revoked.');}
  },[session?.token]);
  const login=useCallback(value=>{setSession(value);setSessionExpired(false);setLogoutWarning('');},[]);
  useEffect(()=>{
@@ -94,7 +94,7 @@ function Providers({children}){
  return <authContext.Provider value={auth}><catalogContext.Provider value={{products,brands,collections,online,loading,refresh}}><cartContext.Provider value={cartValue}>{children}</cartContext.Provider></catalogContext.Provider></authContext.Provider>
 }
 function Header(){const {count}=useCart(),{user}=useAuth(),{brands,collections}=useCatalog();return <Navbar count={count} user={user} brands={brands} collections={collections}/> }
-function Layout({children}){const {online,loading}=useCatalog(),{logoutWarning,dismissLogoutWarning}=useAuth();return <><Header/>{logoutWarning&&<div className="kd-logout-warning" role="status"><span>{logoutWarning}</span><button type="button" onClick={dismissLogoutWarning} aria-label="Đóng thông báo đăng xuất">×</button></div>}{!loading&&!online&&<div className="demo-banner">API unavailable — product previews may be outdated. Ordering requires a connection to our server.</div>}<main>{children}</main><Footer/></>}
+function Layout({children}){const {online,loading}=useCatalog(),{logoutWarning,dismissLogoutWarning}=useAuth();return <><Header/>{logoutWarning&&<div className="kd-logout-warning" role="status"><span>{logoutWarning}</span><button type="button" onClick={dismissLogoutWarning} aria-label="Dismiss sign-out notice">×</button></div>}{!loading&&!online&&<div className="demo-banner">API unavailable — product previews may be outdated. Ordering requires a connection to our server.</div>}<main>{children}</main><Footer/></>}
 function Home(){const {products,brands}=useCatalog();return <Layout><HomePage products={products} brands={brands}/></Layout>}
 function Shop(){const {products,brands,collections}=useCatalog();return <Layout><ShopPage products={products} brands={brands} collections={collections}/></Layout>}
 function Brands(){const {brands,products}=useCatalog();return <Layout><BrandsPage brands={brands} products={products}/></Layout>}
@@ -153,7 +153,7 @@ function Cart(){
 function Login(){const {login}=useAuth();return <Layout><AuthPage request={request} onLogin={login}/></Layout>}
 function ForgotPassword(){return <Layout><PasswordRecoveryPage key="forgot" request={request}/></Layout>}
 function ResetPassword(){const {logout}=useAuth();return <Layout><PasswordRecoveryPage key="reset" request={request} reset onReset={logout}/></Layout>}
-function RequireAuth({children,admin=false}){const {user,authLoading,sessionExpired}=useAuth();if(authLoading)return <div className="kd-account-skeleton" role="status">Đang kiểm tra tài khoản…</div>;if(!user)return <Navigate to={sessionExpired?'/login?sessionExpired=1':'/login'} replace/>;if(admin&&user.role!=='admin')return <Navigate to="/account" replace/>;return children}
+function RequireAuth({children,admin=false}){const {user,authLoading,sessionExpired}=useAuth();if(authLoading)return <div className="kd-account-skeleton" role="status">Checking your account…</div>;if(!user)return <Navigate to={sessionExpired?'/login?sessionExpired=1':'/login'} replace/>;if(admin&&user.role!=='admin')return <Navigate to="/account" replace/>;return children}
 function Account(){const {user,token,updateUser,logout}=useAuth();return <Layout><CustomerAccountPage user={user} token={token} request={request} onUser={updateUser} onLogout={logout} orders={<OrderHistory/>}/></Layout>}
 function OrderHistory(){const {token}=useAuth();return <CustomerOrders token={token} request={request}/>;}
 function Checkout(){
