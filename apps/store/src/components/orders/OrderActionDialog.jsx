@@ -1,3 +1,4 @@
+import {orderActivityReason} from '../../utils/orderActivity.js';
 import React,{useEffect,useRef,useState} from 'react';
 import {createPortal} from 'react-dom';
 import {X} from 'lucide-react';
@@ -54,7 +55,7 @@ export default function OrderActionDialog({order,kind,api,perform,busy,onClose})
    kind==='refund'?'Record this only after refunding the customer outside this system. This action does not transfer money.':
    'Check that you have received '+money(order.total)+(order.payment_method==='COD'?' from the courier or customer.':' in the store bank account.')}</p>
   {kind==='audit'?<div className="kd-order-audit">
-   {audit.loading?<div role="status" className="kd-order-audit-loading">Loading order activity…</div>:audit.error?<div><p role="alert">{audit.error}</p><button type="button" onClick={()=>setRetry(n=>n+1)}>Retry activity</button></div>:audit.items.length?<ol>{audit.items.map(item=><li key={item.id}><strong>{actionNames[item.action]||item.action}</strong><span>{item.actor_name} · {new Date(item.created_at).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh'})}</span><p>{item.reason}</p>{item.reference&&<p>Reference: {item.reference}</p>}{item.action==='RETURN'&&<small>{item.restocked?'Restocked':'Not restocked'}</small>}</li>)}</ol>:<p>No actions have been recorded for this order since this feature was introduced.</p>}
+   {audit.loading?<div role="status" className="kd-order-audit-loading">Loading order activity…</div>:audit.error?<div><p role="alert">{audit.error}</p><button type="button" onClick={()=>setRetry(n=>n+1)}>Retry activity</button></div>:audit.items.length?<ol>{audit.items.map(item=><li key={item.id}><strong>{actionNames[item.action]||item.action}</strong><span>{item.actor_name} · {new Date(item.created_at).toLocaleString('en-GB',{timeZone:'Asia/Ho_Chi_Minh'})}</span><p>{orderActivityReason(item)}</p>{item.reference&&<p>Reference: {item.reference}</p>}{item.action==='RETURN'&&<small>{item.restocked?'Restocked':'Not restocked'}</small>}</li>)}</ol>:<p>No actions have been recorded for this order since this feature was introduced.</p>}
   </div>:<form noValidate onSubmit={submit}>
    <label htmlFor="order-action-reason">Reason / verification notes<textarea id="order-action-reason" value={reason} onChange={e=>setReason(e.target.value)} minLength={10} maxLength={500} rows={3} disabled={busy} required aria-describedby={error?'order-action-error':undefined}/></label>
    {kind==='refund'&&<label htmlFor="order-action-reference">Transaction / receipt reference<input id="order-action-reference" value={reference} onChange={e=>setReference(e.target.value)} maxLength={120} disabled={busy} required/></label>}

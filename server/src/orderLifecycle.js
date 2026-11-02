@@ -13,13 +13,13 @@ export function orderAction(order,kind,body={}){
   if(body.status==='CONFIRMED'&&order.payment_method==='BANK_TRANSFER'&&payment!=='PAID')fail('Hãy xác nhận đã nhận chuyển khoản trước khi xác nhận đơn.',409);
   status=body.status;restocked=status==='CANCELLED';
   if(status==='CANCELLED'&&payment==='PAID')payment='REFUND_PENDING';
-  reason='Cập nhật trạng thái đơn: '+status;
+  reason='Order status updated: '+status;
  }else if(kind==='PAYMENT'){
   if(body.status!=='PAID')fail('Trạng thái thanh toán không hợp lệ.');
   const bank=order.payment_method==='BANK_TRANSFER'&&payment==='AWAITING_TRANSFER'&&!['CANCELLED','RETURNED'].includes(status);
   const cash=order.payment_method==='COD'&&payment==='UNPAID'&&status==='DELIVERED';
   if(!bank&&!cash)fail('Đơn không đủ điều kiện xác nhận thanh toán hoặc đã được xử lý.',409);
-  reason=cash?actionReason(body.reason):(body.reason===undefined?'Admin xác nhận đã kiểm tra tiền chuyển khoản.':actionReason(body.reason));payment='PAID';
+  reason=cash?actionReason(body.reason):(body.reason===undefined?'Admin verified receipt of the bank transfer.':actionReason(body.reason));payment='PAID';
  }else if(kind==='RETURN'){
   if(status!=='DELIVERED')fail('Chỉ ghi nhận hoàn trả toàn bộ đơn đã giao.',409);
   reason=actionReason(body.reason);
