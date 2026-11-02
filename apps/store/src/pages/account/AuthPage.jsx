@@ -8,6 +8,7 @@ export default function AuthPage({request,onLogin}){
  const nav=useNavigate(),[params]=useSearchParams();
  const register=params.get('mode')==='register';
  const [form,setForm]=useState({name:'',email:'',password:''}),[errors,setErrors]=useState({}),[error,setError]=useState(''),[busy,setBusy]=useState(false);
+ React.useEffect(()=>{setErrors({});setError('');setForm({name:'',email:'',password:''});},[register]);
  const set=(key,value)=>{setForm(f=>({...f,[key]:value}));setErrors(e=>({...e,[key]:''}));};
  async function submit(e){
   e.preventDefault();if(busy)return;

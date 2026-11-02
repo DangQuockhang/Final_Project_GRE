@@ -121,7 +121,7 @@ if(import.meta.env.DEV){
    await until(()=>document.getElementById('reset-password'));
    assert(!window.location.hash,'Reset secret removed from address bar');
    await fill('reset-password','NewPassword2026');await fill('reset-confirm','NewPassword2026');await submit();
-   assert(document.querySelector('[role=alert]')?.textContent.includes('hết hạn'),'Show reset API errors');
+   assert(document.querySelector('[role=alert]')?.textContent.includes('expired'),'Show reset API errors');
    await submit();assert(resetDone&&!document.getElementById('reset-password'),'Successful reset clears secret form');
    assert(document.documentElement.scrollWidth<=window.innerWidth+2,'Recovery fits viewport');
    const output=document.createElement('output');output.textContent='ACCOUNT_CHECKS_PASSED';document.body.append(output);
