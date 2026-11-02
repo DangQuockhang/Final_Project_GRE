@@ -10,16 +10,16 @@ export default function DeliveryFields({value,onChange,errors={},disabled=false,
   </div>
  );
  return <div className="kd-delivery-fields">
-  {field('recipient','Tên người nhận','text','shipping name',120)}
-  {field('phone','Số điện thoại nhận hàng','tel','shipping tel',25)}
+  {field('recipient','Recipient name','text','shipping name',120)}
+  {field('phone','Delivery phone number','tel','shipping tel',25)}
   <div className="kd-account-field kd-delivery-address">
-   <label htmlFor={prefix+'-address'}>Địa chỉ giao hàng</label>
+   <label htmlFor={prefix+'-address'}>Delivery address</label>
    <textarea id={prefix+'-address'} autoComplete="shipping street-address" required rows={4} maxLength={750}
-    placeholder="Số nhà, tên đường, phường/xã, quận/huyện, tỉnh/thành phố" disabled={disabled}
+    placeholder="House number, street, district, city or province" disabled={disabled}
     value={value.address||''} onChange={e=>onChange('address',e.target.value)}
     aria-invalid={Boolean(errors.address)} aria-describedby={errors.address?prefix+'-address-error':prefix+'-address-hint'}/>
    {errors.address?<small className="kd-account-field-error" id={prefix+'-address-error'} role="alert">{errors.address}</small>:
-    <small id={prefix+'-address-hint'}>Ghi đầy đủ địa chỉ để cửa hàng giao đúng nơi.</small>}
+    <small id={prefix+'-address-hint'}>Include your full address for accurate delivery.</small>}
   </div>
  </div>;
 }

@@ -18,16 +18,16 @@ function Photo({item}){
 }
 export default function OrderCard({order,admin=false,loading=false,onStatusChange,onVerifyPayment,onReturn,onRefund,onAudit,paymentConfig,allowedTransitions={}}){
  const reference=publicOrderCode(order);
- const labels=admin?titles:{PENDING:'Chờ xác nhận',CONFIRMED:'Đã xác nhận',SHIPPED:'Đang giao',DELIVERED:'Đã giao',CANCELLED:'Đã hủy',RETURNED:'Đã hoàn trả'};
- const methods=admin?payText:{COD:'Thanh toán khi nhận hàng',BANK_TRANSFER:'Chuyển khoản ngân hàng'};
- const payments=admin?payState:{UNPAID:'Chưa thanh toán',AWAITING_TRANSFER:'Chờ chuyển khoản',PAID:'Đã xác nhận thanh toán',REFUND_PENDING:'Đang chờ hoàn tiền',REFUNDED:'Đã hoàn tiền'};
- const t=(english,vietnamese)=>admin?english:vietnamese;
+ const labels=titles;
+ const methods=payText;
+ const payments=payState;
+ const t=(english,vietnamese)=>english;
  const status=order.status||'PENDING',payment=order.payment_status||'UNPAID';
  const items=order.items||[];
  return <article className="kd-order-card">
   <div className="kd-order-card-header">
    <div><span className="kd-order-card-overline">{t('ORDER REFERENCE','MÃ ĐƠN HÀNG')}</span><h3>{reference}</h3>
-    <p>{dateText(order.created_at,admin?'en-GB':'vi-VN')}{admin?' · '+order.recipient:''}</p>
+    <p>{dateText(order.created_at,'en-GB')}{admin?' · '+order.recipient:''}</p>
    </div>
    <span className={'kd-order-status kd-order-status-'+status.toLowerCase()}>{labels[status]||status}</span>
   </div>
@@ -51,19 +51,19 @@ export default function OrderCard({order,admin=false,loading=false,onStatusChang
    </div>
   </div>
   {order.payment_method==='BANK_TRANSFER'&&payment==='AWAITING_TRANSFER'&&!['CANCELLED','RETURNED'].includes(status)&&paymentConfig?.bank_transfer?.enabled&&!admin&&
-   <div className="kd-bank-instructions"><strong>Hướng dẫn chuyển khoản</strong><span>{paymentConfig.bank_transfer.bank} · {paymentConfig.bank_transfer.name}</span>
-    <span>Số tài khoản: {paymentConfig.bank_transfer.account}</span><span>Nội dung: {reference}</span>
-    <small>Vui lòng chuyển khoản đúng nội dung và chờ cửa hàng xác nhận đã nhận tiền.</small>
+   <div className="kd-bank-instructions"><strong>Bank transfer instructions</strong><span>{paymentConfig.bank_transfer.bank} · {paymentConfig.bank_transfer.name}</span>
+    <span>Account number: {paymentConfig.bank_transfer.account}</span><span>Reference: {reference}</span>
+    <small>Use this reference when transferring and wait for the store to verify your payment.</small>
    </div>}
   {payment==='REFUND_PENDING'&&<div className="kd-refund-warning"><AlertTriangle size={18}/> {t('Payment refund requires manual processing. This is not an automatic refund.','Cửa hàng đang xử lý hoàn tiền. Khoản tiền chưa được hoàn tự động.')}</div>}
   <div className="kd-order-card-footer">
    <div><span>{items.reduce((n,x)=>n+Number(x.quantity),0)} {t('item(s)','sản phẩm')}</span><strong>{money(order.total)}</strong></div>
    {admin&&<div className="kd-order-admin-controls">
     {!['CANCELLED','RETURNED'].includes(status)&&((order.payment_method==='BANK_TRANSFER'&&payment==='AWAITING_TRANSFER')||(order.payment_method==='COD'&&payment==='UNPAID'&&status==='DELIVERED'))&&
-     <button type="button" className="border-button" disabled={loading} onClick={()=>onVerifyPayment?.(order)}><CheckCircle2 size={17}/> {order.payment_method==='COD'?'Xác nhận thu tiền COD':'Xác nhận đã nhận chuyển khoản'}</button>}
-    {status==='DELIVERED'&&onReturn&&<button type="button" className="border-button" disabled={loading} onClick={()=>onReturn(order)}>Ghi nhận hoàn trả</button>}
-    {payment==='REFUND_PENDING'&&onRefund&&<button type="button" className="border-button" disabled={loading} onClick={()=>onRefund(order)}>Xác nhận đã hoàn tiền</button>}
-    {onAudit&&<button type="button" className="border-button" disabled={loading} onClick={()=>onAudit(order)}>Lịch sử xử lý</button>}
+     <button type="button" className="border-button" disabled={loading} onClick={()=>onVerifyPayment?.(order)}><CheckCircle2 size={17}/> {order.payment_method==='COD'?'Confirm COD payment':'Verify bank transfer'}</button>}
+    {status==='DELIVERED'&&onReturn&&<button type="button" className="border-button" disabled={loading} onClick={()=>onReturn(order)}>Record return</button>}
+    {payment==='REFUND_PENDING'&&onRefund&&<button type="button" className="border-button" disabled={loading} onClick={()=>onRefund(order)}>Confirm refund</button>}
+    {onAudit&&<button type="button" className="border-button" disabled={loading} onClick={()=>onAudit(order)}>Order activity</button>}
     {allowedTransitions[status]?.length>0&&<select aria-label={'Change order '+reference+' status'} disabled={loading} value=""
      onChange={e=>e.target.value&&onStatusChange(order,e.target.value)}>
      <option value="">Update order status…</option>{allowedTransitions[status].map(s=><option key={s} value={s}>{titles[s]||s}</option>)}

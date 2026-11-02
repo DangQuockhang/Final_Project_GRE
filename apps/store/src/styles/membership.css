@@ -45,3 +45,5 @@
 @media(max-width:1100px){.kd-membership-overview{grid-template-columns:1fr}.kd-member-card{max-width:430px}.kd-member-spend{gap:8px}}
 @media(max-width:600px){.kd-membership-heading{flex-wrap:wrap;gap:10px}.kd-membership-heading h2{font-size:28px}.kd-member-card h3{font-size:30px}.kd-member-card{padding:18px}.kd-member-milestones{gap:5px}.kd-member-milestones strong{font-size:11px}.kd-member-milestones small{font-size:9px}}
 @media(prefers-reduced-motion:reduce){.kd-member-progress-track span{animation:none}.kd-member-card::after{transition:none}}
+
+.kd-membership :is(h2,h3),.kd-member-spend>strong{font-family:Arial,Helvetica,sans-serif;letter-spacing:normal;text-shadow:none}
