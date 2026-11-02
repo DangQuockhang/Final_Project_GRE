@@ -34,7 +34,7 @@ test('customer addresses, checkout prefill and order history work at all five ta
     await cdp.send('Page.navigate',{url:'http://127.0.0.1:5192/__foundation-check.html?viewport='+width});
     let result='';
     for(let attempt=0;attempt<140;attempt++){
-     const evaluation=await cdp.send('Runtime.evaluate',{expression:"document.querySelector('output')?.textContent || ''",returnByValue:true});
+     const evaluation=await cdp.send('Runtime.evaluate',{expression:"document.querySelector('output:not([hidden])')?.textContent || ''",returnByValue:true});
      result=evaluation.result?.value||'';
      if(result.includes('FOUNDATION_CHECKS_'))break;
      await delay(200);
