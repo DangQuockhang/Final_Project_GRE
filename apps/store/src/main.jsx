@@ -1,7 +1,12 @@
+import CustomerOrders from './pages/account/CustomerOrders.jsx';
+import DeliveryFields from './components/account/DeliveryFields.jsx';
+import SavedAddressNotice from './components/checkout/SavedAddressNotice.jsx';
+import useCheckoutAddress from './hooks/useCheckoutAddress.js';
+import {validateDelivery} from '@kd/catalog';
 import CustomerAccountPage from './pages/account/CustomerAccountPage.jsx';
 import AuthPage from './pages/account/AuthPage.jsx';
 import PasswordRecoveryPage from './pages/account/PasswordRecoveryPage.jsx';
-import React,{createContext,useContext,useEffect,useMemo,useState,useCallback} from 'react';
+import React,{createContext,useContext,useEffect,useMemo,useState,useCallback,useRef} from 'react';
 import {createRoot} from 'react-dom/client';
 import {BrowserRouter,Link,NavLink,Navigate,Route,Routes,useLocation,useNavigate,useParams,useSearchParams} from 'react-router-dom';
 import {ArrowRight,ArrowUpRight,Check,Wallet,ChevronRight,CircleUserRound,Heart,Instagram,Menu,Minus,Plus,Search,ShieldCheck,ShoppingBag,SlidersHorizontal,Sparkles,Trash2,Truck,X} from 'lucide-react';
@@ -38,12 +43,12 @@ import './styles/home-products.css';
 import AdminPage from './pages/admin/AdminPage.jsx';
 
 const API=import.meta.env.VITE_API_URL||apiBase;
-const request=async(path,{method='GET',body,token}={})=>{
+const request=async(path,{method='GET',body,token,signal,keepalive=false}={})=>{
  const multipart=typeof FormData!=='undefined'&&body instanceof FormData;
- const res=await fetch(`${API}${path}`,{method,headers:{...(body&&!multipart?{'Content-Type':'application/json'}:{}),...(token?{Authorization:`Bearer ${token}`}:{})},body:multipart?body:body?JSON.stringify(body):undefined});
+ const res=await fetch(`${API}${path}`,{method,signal,keepalive,headers:{...(body&&!multipart?{'Content-Type':'application/json'}:{}),...(token?{Authorization:`Bearer ${token}`}:{})},body:multipart?body:body?JSON.stringify(body):undefined});
  const data=await res.json().catch(()=>({}));
  if(!res.ok){
-  const error=Object.assign(new Error(data.error||'Không thể thực hiện yêu cầu. Vui lòng thử lại.'),{status:res.status,code:data.code});
+  const error=Object.assign(new Error(data.error||'Không thể thực hiện yêu cầu. Vui lòng thử lại.'),{status:res.status,code:data.code,errors:data.errors||{}});
   if(token&&(res.status===401||data.code==='ACCOUNT_BLOCKED'))window.dispatchEvent(new CustomEvent('kd-session-expired',{detail:{token,message:error.message}}));
   throw error;
  }
@@ -63,8 +68,14 @@ function Providers({children}){
  useEffect(()=>{if(session)localStorage.setItem('kd_session',JSON.stringify(session));else localStorage.removeItem('kd_session')},[session]);
  const [authLoading,setAuthLoading]=useState(Boolean(session?.token)),[sessionExpired,setSessionExpired]=useState(false);
  const updateUser=useCallback(user=>setSession(old=>old?{...old,user}:old),[]);
- const logout=useCallback(()=>{setSession(null);setSessionExpired(false);},[]);
- const login=useCallback(value=>{setSession(value);setSessionExpired(false);},[]);
+ const [logoutWarning,setLogoutWarning]=useState('');
+ const logout=useCallback(async()=>{
+  const token=session?.token;setSession(null);setSessionExpired(false);setLogoutWarning('');
+  if(!token)return;
+  try{await request('/auth/logout',{method:'POST',token,keepalive:true});}
+  catch(error){if(error.status!==401&&error.code!=='ACCOUNT_BLOCKED')setLogoutWarning('Đã xóa thông tin đăng nhập trên trình duyệt này. Do kết nối bị gián đoạn, chưa thể xác nhận thu hồi phiên trên máy chủ.');}
+ },[session?.token]);
+ const login=useCallback(value=>{setSession(value);setSessionExpired(false);setLogoutWarning('');},[]);
  useEffect(()=>{
   const expired=event=>{if(event.detail.token===session?.token){setSession(null);setSessionExpired(true);}};
   window.addEventListener('kd-session-expired',expired);
@@ -76,14 +87,14 @@ function Providers({children}){
   request('/auth/me',{token:session.token}).then(user=>{if(live)updateUser(user);}).catch(()=>{}).finally(()=>{if(live)setAuthLoading(false);});
   return()=>{live=false;};
  },[session?.token,updateUser]);
- const auth={session,login,logout,updateUser,authLoading,sessionExpired,token:session?.token,user:session?.user};
+ const auth={session,login,logout,updateUser,authLoading,sessionExpired,logoutWarning,dismissLogoutWarning:()=>setLogoutWarning(''),token:session?.token,user:session?.user};
  const add=(product,variant,qty=1)=>{const key=String(variant.id);setCart(old=>{const i=old.findIndex(x=>x.key===key);if(i===-1)return [...old,{key,product,variant,quantity:qty}];return old.map((x,j)=>j===i?{...x,quantity:Math.min(20,x.quantity+qty)}:x)});};
  const update=(key,qty)=>setCart(old=>qty<=0?old.filter(x=>x.key!==key):old.map(x=>x.key===key?{...x,quantity:Math.max(1,Math.min(20,qty))}:x));
  const cartValue={cart,add,update,clear:()=>setCart([]),count:cart.reduce((s,x)=>s+x.quantity,0),total:cartDisplayTotal(cart,products)};
  return <authContext.Provider value={auth}><catalogContext.Provider value={{products,brands,collections,online,loading,refresh}}><cartContext.Provider value={cartValue}>{children}</cartContext.Provider></catalogContext.Provider></authContext.Provider>
 }
 function Header(){const {count}=useCart(),{user}=useAuth(),{brands,collections}=useCatalog();return <Navbar count={count} user={user} brands={brands} collections={collections}/> }
-function Layout({children}){const {online,loading}=useCatalog();return <><Header/>{!loading&&!online&&<div className="demo-banner">API unavailable — product previews may be outdated. Ordering requires a connection to our server.</div>}<main>{children}</main><Footer/></>}
+function Layout({children}){const {online,loading}=useCatalog(),{logoutWarning,dismissLogoutWarning}=useAuth();return <><Header/>{logoutWarning&&<div className="kd-logout-warning" role="status"><span>{logoutWarning}</span><button type="button" onClick={dismissLogoutWarning} aria-label="Đóng thông báo đăng xuất">×</button></div>}{!loading&&!online&&<div className="demo-banner">API unavailable — product previews may be outdated. Ordering requires a connection to our server.</div>}<main>{children}</main><Footer/></>}
 function Home(){const {products,brands}=useCatalog();return <Layout><HomePage products={products} brands={brands}/></Layout>}
 function Shop(){const {products,brands,collections}=useCatalog();return <Layout><ShopPage products={products} brands={brands} collections={collections}/></Layout>}
 function Brands(){const {brands,products}=useCatalog();return <Layout><BrandsPage brands={brands} products={products}/></Layout>}
@@ -144,32 +155,13 @@ function ForgotPassword(){return <Layout><PasswordRecoveryPage key="forgot" requ
 function ResetPassword(){const {logout}=useAuth();return <Layout><PasswordRecoveryPage key="reset" request={request} reset onReset={logout}/></Layout>}
 function RequireAuth({children,admin=false}){const {user,authLoading,sessionExpired}=useAuth();if(authLoading)return <div className="kd-account-skeleton" role="status">Đang kiểm tra tài khoản…</div>;if(!user)return <Navigate to={sessionExpired?'/login?sessionExpired=1':'/login'} replace/>;if(admin&&user.role!=='admin')return <Navigate to="/account" replace/>;return children}
 function Account(){const {user,token,updateUser,logout}=useAuth();return <Layout><CustomerAccountPage user={user} token={token} request={request} onUser={updateUser} onLogout={logout} orders={<OrderHistory/>}/></Layout>}
-function OrderHistory(){
- const {user,token,logout}=useAuth();
- const [orders,setOrders]=useState([]),[payments,setPayments]=useState(null),[error,setError]=useState(''),[loading,setLoading]=useState(true);
- useEffect(()=>{
-  let live=true;
-  Promise.all([request('/orders/mine',{token}),request('/payment-methods')]).then(([records,config])=>{
-   if(live){setOrders(records);setPayments(config);}
-  }).catch(e=>{if(live)setError(e.message)}).finally(()=>{if(live)setLoading(false)});
-  return ()=>{live=false};
- },[token]);
- return <>
-  <section className="section account-orders kd-account-orders">
-   <div className="kd-order-history-heading"><div><h2>My orders</h2><p>Review your purchases, payment and delivery progress.</p></div>
-    <Link to="/shop">Continue shopping <ArrowRight size={17}/></Link></div>
-   {error&&<p className="message-error" role="alert">{error}</p>}
-   {loading?<p>Loading orders…</p>:!orders.length?<div className="kd-account-empty">No orders yet. <Link to="/shop">Explore products</Link></div>:<div className="kd-order-list">
-    {orders.map(order=><OrderCard key={order.id} order={order} paymentConfig={payments}/>)}
-   </div>}
-   {user.role==='admin'&&<Link className="button button-dark kd-account-admin" to="/admin">ADMIN DASHBOARD <ArrowRight size={18}/></Link>}
-  </section>
- </>;
-}
+function OrderHistory(){const {token}=useAuth();return <CustomerOrders token={token} request={request}/>;}
 function Checkout(){
  const {user,token}=useAuth(),{cart,total,clear}=useCart(),{products}=useCatalog();
  const navigate=useNavigate();
- const [form,setForm]=useState({recipient:user.name||'',phone:'',address:''});
+ const delivery=useCheckoutAddress({user,token,request}),{form}=delivery;
+ const [deliveryErrors,setDeliveryErrors]=useState({}),placingOrder=useRef(false);
+ const changeDelivery=(key,value)=>{delivery.change(key,value);setDeliveryErrors(old=>({...old,[key]:''}));};
  const [paymentMethod,setPaymentMethod]=useState('COD');
  const [paymentConfig,setPaymentConfig]=useState(null);
  useEffect(()=>{let live=true;request('/payment-methods').then(config=>{if(live)setPaymentConfig(config)}).catch(()=>{});
@@ -178,14 +170,15 @@ function Checkout(){
  const rows=cart.map(entry=>({...entry,displayProduct:resolveCartProduct(entry,products)}));
  async function submit(e){
   e.preventDefault();
-  if(!cart.length)return;
-  setBusy(true);setError('');
+  if(!cart.length||placingOrder.current)return;
+  const checked=validateDelivery(form);setDeliveryErrors(checked.errors);setError('');if(!checked.valid)return;
+  placingOrder.current=true;setBusy(true);
   try{
    const order=await request('/orders',{method:'POST',token,body:{
-    ...form,payment_method:paymentMethod,items:cart.map(entry=>({variant_id:Number(entry.variant.id),quantity:entry.quantity}))
+    ...checked.values,payment_method:paymentMethod,items:cart.map(entry=>({variant_id:Number(entry.variant.id),quantity:entry.quantity}))
    }});
    clear();navigate('/order-success',{state:{order,paymentConfig}});
-  }catch(e){setError(e.message)}finally{setBusy(false);}
+  }catch(e){setError(e.message);setDeliveryErrors(e.errors||{});}finally{placingOrder.current=false;setBusy(false);}
  }
  return <Layout>
   <section className="kd-checkout-intro">
@@ -206,24 +199,11 @@ function Checkout(){
    <Link className="button button-dark" to="/shop">EXPLORE PRODUCTS <ArrowRight size={18}/></Link>
   </section>:
   <div className="checkout-wrap kd-checkout-page">
-   <form onSubmit={submit} className="checkout-form kd-checkout-form">
+   <form noValidate onSubmit={submit} className="checkout-form kd-checkout-form">
     <div className="kd-checkout-form-heading"><Truck size={24}/><div><h2>Delivery information</h2><p>Provide a complete delivery address and confirm it before ordering.</p></div></div>
-    <label htmlFor="kd-recipient">RECIPIENT NAME
-     <input id="kd-recipient" required autoComplete="name" value={form.recipient}
-      onChange={e=>setForm({...form,recipient:e.target.value})} placeholder="Your full name"/>
-    </label>
-    <label htmlFor="kd-phone">PHONE NUMBER
-     <input id="kd-phone" type="tel" inputMode="tel" required minLength={9}
-      autoComplete="tel" value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})}
-      placeholder="Contact number"/>
-    </label>
-    <label htmlFor="kd-address">DELIVERY ADDRESS
-     <textarea id="kd-address" required minLength={10} rows={4} maxLength={750}
-      autoComplete="street-address" value={form.address}
-      onChange={e=>setForm({...form,address:e.target.value})}
-      placeholder="House number, street, ward, district, province or city"/>
-    </label>
-    <AddressLocator onSuggest={address=>setForm(previous=>({...previous,address}))}/>
+    <SavedAddressNotice state={delivery}/>
+    <DeliveryFields prefix="kd-delivery" value={form} onChange={changeDelivery} errors={deliveryErrors} disabled={busy}/>
+    <AddressLocator onSuggest={address=>changeDelivery('address',address)}/>
     <fieldset className="kd-payment-choices">
      <legend>PAYMENT METHOD</legend>
      <label className={'kd-payment-choice'+(paymentMethod==='COD'?' is-active':'')}>

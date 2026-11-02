@@ -1,6 +1,7 @@
+import {validateDelivery} from '../../packages/catalog/delivery.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import {createHash,createHmac,randomBytes} from 'node:crypto';
+import {createHash,createHmac,randomBytes,randomUUID} from 'node:crypto';
 import {publicUser,normalizeEmail,validEmail,passwordError,profileValues} from './accountValidation.js';
 import {avatarUpload,saveAvatar,removeAvatar} from './accountMedia.js';
 import {resetMailConfig,sendResetEmail} from './accountEmail.js';
@@ -11,17 +12,18 @@ export function createAccountService({pool,secret}){
  const query=(sql,values)=>pool.query(sql,values);
  const wrap=fn=>(req,res,next)=>Promise.resolve(fn(req,res,next)).catch(next);
  const dummyHash=bcrypt.hash(randomBytes(32).toString('hex'),12);
- const issueToken=user=>jwt.sign({id:user.id,version:user.token_version},secret,{algorithm:'HS256',expiresIn:'8h'});
+ const issueToken=user=>jwt.sign({id:user.id,version:user.token_version,jti:randomUUID()},secret,{algorithm:'HS256',expiresIn:'8h'});
  const authorize=wrap(async(req,res,next)=>{
   let claims;
-  try{claims=jwt.verify((req.headers.authorization||'').replace(/^Bearer\s+/i,''),secret,{algorithms:['HS256']});}
+  const token=(req.headers.authorization||'').match(/^Bearer\s+(\S+)$/i)?.[1]||'';
+  try{claims=jwt.verify(token,secret,{algorithms:['HS256']});}
   catch{throw error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',401,'SESSION_EXPIRED');}
-  if(!Number.isSafeInteger(claims.id)||!Number.isSafeInteger(claims.version))throw error('Vui lòng đăng nhập lại để tiếp tục.',401,'SESSION_EXPIRED');
-  const user=(await query('SELECT id,name,email,phone,avatar_url,role,status,token_version,created_at,last_login_at FROM users WHERE id=$1',[claims.id])).rows[0];
+  if(!Number.isSafeInteger(claims.id)||!Number.isSafeInteger(claims.version)||!Number.isSafeInteger(claims.exp))throw error('Vui lòng đăng nhập lại để tiếp tục.',401,'SESSION_EXPIRED');
+  const user=(await query('SELECT id,name,email,phone,avatar_url,role,status,token_version,created_at,last_login_at FROM users WHERE id=$1 AND NOT EXISTS(SELECT 1 FROM auth_revoked_tokens WHERE token_hash=$2 AND expires_at>now())',[claims.id,hash(token)])).rows[0];
   if(!user)throw error('Phiên đăng nhập không còn hợp lệ.',401,'SESSION_EXPIRED');
   if(user.status==='blocked')throw error('Tài khoản đã bị khóa. Vui lòng liên hệ cửa hàng để được hỗ trợ.',403,'ACCOUNT_BLOCKED');
   if(user.token_version!==claims.version)throw error('Phiên đăng nhập đã được thu hồi. Vui lòng đăng nhập lại.',401,'SESSION_EXPIRED');
-  req.user=user;next();
+  req.user=user;req.auth={tokenHash:hash(token),expiresAt:new Date(claims.exp*1000)};next();
  });
  const limit=(scope,max,identity=req=>req.ip)=>wrap(async(req,res,next)=>{
   const key=createHmac('sha256',secret).update(scope+':'+String(identity(req))).digest('hex');
@@ -64,6 +66,31 @@ export function createAccountService({pool,secret}){
    const updated=(await query('UPDATE users SET last_login_at=now() WHERE id=$1 AND token_version=$2 AND password_hash=$3 AND status=$4 RETURNING *',[u.id,u.token_version,u.password_hash,'active'])).rows[0];
    if(!updated)throw error('Thông tin đăng nhập vừa thay đổi. Vui lòng thử lại.',401,'INVALID_CREDENTIALS');
    res.json({user:publicUser(updated),token:issueToken(updated)});
+  }));
+  route.post('/auth/logout',authorize,wrap(async(req,res)=>{
+   await query('INSERT INTO auth_revoked_tokens(token_hash,user_id,expires_at) VALUES($1,$2,$3) ON CONFLICT(token_hash) DO NOTHING',[req.auth.tokenHash,req.user.id,req.auth.expiresAt]);
+   await query('DELETE FROM auth_revoked_tokens WHERE expires_at<=now()');
+   res.json({message:'Đã đăng xuất và thu hồi phiên đăng nhập này.'});
+  }));
+  const addressFields='recipient,phone,address,updated_at';
+  route.get('/auth/address',authorize,wrap(async(req,res)=>{
+   const row=(await query('SELECT '+addressFields+' FROM account_default_addresses WHERE user_id=$1',[req.user.id])).rows[0];
+   res.json({address:row||null});
+  }));
+  route.put('/auth/address',authorize,limit('address',30,req=>req.user.id),wrap(async(req,res)=>{
+   if(Object.keys(req.body).some(key=>!['recipient','phone','address'].includes(key)))throw error('Thông tin địa chỉ chứa trường không được phép.');
+   const checked=validateDelivery(req.body);
+   if(!checked.valid)return res.status(400).json({code:'VALIDATION_ERROR',error:'Vui lòng kiểm tra thông tin giao hàng.',errors:checked.errors});
+   const {recipient,phone,address}=checked.values;
+   const saved=await transaction(async c=>{
+    await lockCurrent(c,req);
+    return (await c.query('INSERT INTO account_default_addresses(user_id,recipient,phone,address) VALUES($1,$2,$3,$4) ON CONFLICT(user_id) DO UPDATE SET recipient=EXCLUDED.recipient,phone=EXCLUDED.phone,address=EXCLUDED.address,updated_at=now() RETURNING '+addressFields,[req.user.id,recipient,phone,address])).rows[0];
+   });
+   res.json({address:saved,message:'Đã lưu địa chỉ mặc định.'});
+  }));
+  route.delete('/auth/address',authorize,limit('address',30,req=>req.user.id),wrap(async(req,res)=>{
+   await transaction(async c=>{await lockCurrent(c,req);await c.query('DELETE FROM account_default_addresses WHERE user_id=$1',[req.user.id]);});
+   res.json({address:null,message:'Đã xóa địa chỉ mặc định. Địa chỉ trên các đơn đã đặt vẫn được giữ nguyên.'});
   }));
   route.get('/auth/me',authorize,(req,res)=>{res.set('Cache-Control','no-store');res.json(publicUser(req.user));});
   route.patch('/auth/me',authorize,limit('profile',30,req=>req.user.id),avatarUpload,wrap(async(req,res)=>{

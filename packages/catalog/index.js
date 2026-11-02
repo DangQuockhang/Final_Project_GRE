@@ -23,3 +23,5 @@ export {filterProducts,paginateProducts} from './filters.js';
 export {productImageUrl} from './media.js';
 
 export {AVATAR_MAX_MB,AVATAR_MAX_BYTES} from './uploadLimits.js';
+
+export {validateDelivery} from './delivery.js';
