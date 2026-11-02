@@ -43,7 +43,18 @@ test('customer addresses, checkout prefill and order history work at all five ta
    }finally{cdp.close();await fetch('http://127.0.0.1:5193/json/close/'+page.id);}
   }
  }finally{
-  vite.kill();const exited=new Promise(resolve=>browser.once('exit',resolve));browser.kill();await Promise.race([exited,delay(2000)]);
-  unlinkSync(file);rmSync(profile,{recursive:true,force:true,maxRetries:3,retryDelay:200});
+  vite.kill();
+  const exited=browser.exitCode!==null?Promise.resolve():new Promise(resolve=>browser.once('exit',resolve));
+  try{
+   const version=await (await fetch('http://127.0.0.1:5193/json/version')).json();
+   const control=await connect(version.webSocketDebuggerUrl);
+   try{await control.send('Browser.close');}finally{control.close();}
+  }catch{browser.kill();}
+  await Promise.race([exited,delay(2000)]);
+  unlinkSync(file);
+  // Chrome subprocesses may still flush their temporary profile after the parent exits.
+  // Cleanup must not mask a failed assertion (or turn a passing test into a failure).
+  try{rmSync(profile,{recursive:true,force:true,maxRetries:10,retryDelay:200});}
+  catch(error){if(error.code!=='ENOTEMPTY'&&error.code!=='EBUSY')throw error;}
  }
 });
