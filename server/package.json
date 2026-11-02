@@ -8,7 +8,8 @@
     "start": "node src/index.js",
     "db:init": "node src/init.js",
     "db:seed": "node src/seed.js",
-    "db:rollback:accounts": "node src/rollbackAccountFoundation.js"
+    "db:rollback:accounts": "node src/rollbackAccountFoundation.js",
+    "db:rollback:membership": "node src/rollbackMembership.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

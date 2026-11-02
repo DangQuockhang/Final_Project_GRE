@@ -1,7 +1,7 @@
 name: KD Starter CI
 on:
   push:
-    branches: [main, develop, feature/sprint-2, experiment/react-retail]
+    branches: [main, develop, feature/sprint-2, experiment/react-retail, feature/customer-membership-sprint-2]
   pull_request:
     branches: [main, feature/sprint-2]
 jobs:

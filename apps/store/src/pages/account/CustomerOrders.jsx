@@ -3,7 +3,7 @@ import {Link,useSearchParams} from 'react-router-dom';
 import {ArrowRight,ChevronLeft,ChevronRight} from 'lucide-react';
 import OrderCard from '../../components/orders/OrderCard.jsx';
 import {Message} from '../../components/account/AccountFields.jsx';
-const statuses=[['all','Tất cả đơn hàng'],['PENDING','Chờ xác nhận'],['CONFIRMED','Đã xác nhận'],['SHIPPED','Đang giao'],['DELIVERED','Đã giao'],['CANCELLED','Đã hủy']];
+const statuses=[['all','Tất cả đơn hàng'],['PENDING','Chờ xác nhận'],['CONFIRMED','Đã xác nhận'],['SHIPPED','Đang giao'],['DELIVERED','Đã giao'],['CANCELLED','Đã hủy'],['RETURNED','Đã hoàn trả']];
 export default function CustomerOrders({token,request}){
  const [params,setParams]=useSearchParams(),page=params.get('page')||'1',status=params.get('status')||'all';
  const [result,setResult]=useState({key:'',loading:true,data:null,error:''}),[retry,setRetry]=useState(0);
@@ -33,7 +33,7 @@ export default function CustomerOrders({token,request}){
   {loading?<div className="kd-account-skeleton" role="status" aria-label="Đang tải đơn hàng"><div/><div/><p>Đang tải đơn hàng…</p></div>:
    result.error?<div className="kd-account-card"><Message error>{result.error}</Message><button className="kd-account-primary" onClick={()=>setRetry(n=>n+1)}>Thử tải đơn hàng</button></div>:
    data&&<>
-    {paymentError&&data.items.some(order=>order.payment_method==='BANK_TRANSFER'&&order.payment_status==='AWAITING_TRANSFER')&&<div className="kd-account-message" role="status">Chưa tải được hướng dẫn chuyển khoản. Đơn hàng của bạn vẫn được hiển thị.<button className="kd-account-secondary" onClick={()=>setPaymentRetry(n=>n+1)}>Thử tải hướng dẫn</button></div>}
+    {paymentError&&data.items.some(order=>order.payment_method==='BANK_TRANSFER'&&order.payment_status==='AWAITING_TRANSFER'&&!['CANCELLED','RETURNED'].includes(order.status))&&<div className="kd-account-message" role="status">Chưa tải được hướng dẫn chuyển khoản. Đơn hàng của bạn vẫn được hiển thị.<button className="kd-account-secondary" onClick={()=>setPaymentRetry(n=>n+1)}>Thử tải hướng dẫn</button></div>}
     {!data.items.length?<div className="kd-account-card kd-customer-orders-empty"><h3>{status==='all'?'Bạn chưa có đơn hàng nào':'Chưa có đơn ở trạng thái này'}</h3><p>{status==='all'?'Chọn một món đồ bạn thích; đơn hàng sẽ xuất hiện ở đây sau khi đặt.':'Chọn trạng thái khác để xem các đơn đã đặt.'}</p>{status==='all'?<Link className="kd-account-primary" to="/shop">Khám phá sản phẩm</Link>:<button className="kd-account-primary" onClick={()=>update({status:'all'})}>Xem tất cả đơn hàng</button>}</div>:
      <div className="kd-order-list">{data.items.map(order=><OrderCard key={order.id} order={order} paymentConfig={payments}/>)}</div>}
     {data.pagination.total>0&&<nav className="kd-customer-orders-pagination" aria-label="Phân trang đơn hàng"><p role="status">{data.pagination.total} đơn hàng · Trang {data.pagination.page}/{Math.max(1,data.pagination.pages)}</p><div>

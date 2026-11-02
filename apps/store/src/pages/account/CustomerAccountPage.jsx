@@ -1,8 +1,9 @@
+import Membership from './Membership.jsx';
 import DefaultAddress from './DefaultAddress.jsx';
 import React,{useEffect,useRef,useState} from 'react';
 import {AVATAR_MAX_BYTES,AVATAR_MAX_MB} from '@kd/catalog';
 import {Link,useNavigate,useSearchParams} from 'react-router-dom';
-import {UserRound,LockKeyhole,ShoppingBag,LogOut,Upload,Check,MapPin} from 'lucide-react';
+import {UserRound,LockKeyhole,ShoppingBag,LogOut,Upload,Check,MapPin,IdCard} from 'lucide-react';
 import {Avatar,Field,Message,SuccessToast} from '../../components/account/AccountFields.jsx';
 import {validateName,validatePhone,validatePassword} from '../../utils/accountValidation.js';
 import '../../styles/customer-account.css';
@@ -67,7 +68,7 @@ function Password({token,request,onLogout}){
 }
 export default function CustomerAccountPage({user,token,request,onUser,onLogout,orders}){
  const [params,setParams]=useSearchParams(),[profile,setProfile]=useState(null),[loading,setLoading]=useState(true),[error,setError]=useState(''),[retry,setRetry]=useState(0);
- const tab=['profile','password','orders','address'].includes(params.get('tab'))?params.get('tab'):'profile';
+ const tab=['profile','password','orders','address','membership'].includes(params.get('tab'))?params.get('tab'):'profile';
  useEffect(()=>{
   let live=true;setLoading(true);setError('');
   request('/auth/me',{token}).then(data=>{if(live){setProfile(data);onUser(data);}}).catch(e=>{if(live)setError(e.message);}).finally(()=>{if(live)setLoading(false);});
@@ -76,7 +77,7 @@ export default function CustomerAccountPage({user,token,request,onUser,onLogout,
  function updated(data){setProfile(data);onUser(data);}
  const current=profile||user;
  return <section className="kd-customer-account"><div className="kd-account-heading"><span className="kd-account-eyebrow">KD / KHÔNG GIAN CỦA BẠN</span><h1>Tài khoản của tôi</h1><p>Thông tin cá nhân, bảo mật và những đơn hàng của bạn.</p></div><div className="kd-account-layout">
-  <aside className="kd-account-sidebar"><div className="kd-account-identity"><Avatar user={current}/><strong>{current?.name}</strong><span>{current?.email}</span></div><nav aria-label="Quản lý tài khoản">{[['profile','Hồ sơ',UserRound],['password','Mật khẩu',LockKeyhole],['orders','Đơn hàng',ShoppingBag],['address','Địa chỉ',MapPin]].map(([key,label,Icon])=><button key={key} type="button" aria-current={tab===key?'page':undefined} onClick={()=>setParams(key==='profile'?{}:{tab:key})}><Icon size={18}/>{label}</button>)}</nav><button className="kd-account-logout" type="button" onClick={onLogout}><LogOut size={17}/>Đăng xuất</button>{current?.role==='admin'&&<Link className="kd-account-text-link" to="/admin">Quản trị cửa hàng →</Link>}</aside>
-  <div className="kd-account-content">{loading?<div className="kd-account-skeleton" role="status" aria-label="Đang tải hồ sơ"><div/><div/><div/><p>Đang tải thông tin…</p></div>:error?<div className="kd-account-card"><Message error>{error}</Message><button className="kd-account-primary" onClick={()=>setRetry(n=>n+1)}>Thử lại</button></div>:tab==='profile'?<Profile user={current} token={token} request={request} onUser={updated}/>:tab==='password'?<Password token={token} request={request} onLogout={onLogout}/>:tab==='address'?<DefaultAddress user={current} token={token} request={request}/>:orders}</div>
+  <aside className="kd-account-sidebar"><div className="kd-account-identity"><Avatar user={current}/><strong>{current?.name}</strong><span>{current?.email}</span></div><nav aria-label="Quản lý tài khoản">{[['profile','Hồ sơ',UserRound],['password','Mật khẩu',LockKeyhole],['orders','Đơn hàng',ShoppingBag],['address','Địa chỉ',MapPin],['membership','Thành viên',IdCard]].map(([key,label,Icon])=><button key={key} type="button" aria-current={tab===key?'page':undefined} onClick={()=>setParams(key==='profile'?{}:{tab:key})}><Icon size={18}/>{label}</button>)}</nav><button className="kd-account-logout" type="button" onClick={onLogout}><LogOut size={17}/>Đăng xuất</button>{current?.role==='admin'&&<Link className="kd-account-text-link" to="/admin">Quản trị cửa hàng →</Link>}</aside>
+  <div className="kd-account-content">{loading?<div className="kd-account-skeleton" role="status" aria-label="Đang tải hồ sơ"><div/><div/><div/><p>Đang tải thông tin…</p></div>:error?<div className="kd-account-card"><Message error>{error}</Message><button className="kd-account-primary" onClick={()=>setRetry(n=>n+1)}>Thử lại</button></div>:tab==='profile'?<Profile user={current} token={token} request={request} onUser={updated}/>:tab==='password'?<Password token={token} request={request} onLogout={onLogout}/>:tab==='membership'?<Membership token={token} request={request}/>:tab==='address'?<DefaultAddress user={current} token={token} request={request}/>:orders}</div>
  </div></section>;
 }

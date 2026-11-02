@@ -5,7 +5,8 @@ export const ORDER_TRANSITIONS = Object.freeze({
   CONFIRMED:['SHIPPED','CANCELLED'],
   SHIPPED:['DELIVERED'],
   DELIVERED:[],
-  CANCELLED:[]
+  CANCELLED:[],
+  RETURNED:[]
 });
 
 export function validateBrand({name='',description=''}={}){
