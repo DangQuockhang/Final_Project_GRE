@@ -31,6 +31,7 @@ test('membership cards and audited order actions work at five viewport widths',{
    try{
     // Browser window sizes can enforce a desktop minimum. Emulate the actual CSS viewport.
     await cdp.send('Emulation.setDeviceMetricsOverride',{width,height:1000,deviceScaleFactor:1,mobile:width<768});
+    await cdp.send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});
     await cdp.send('Page.navigate',{url:'http://127.0.0.1:5276/__membership-check.html?viewport='+width});
     let result='';
     for(let attempt=0;attempt<140;attempt++){

@@ -44,8 +44,8 @@
 .kd-order-card-footer>div:first-child>span{font-size:14px;color:#728373}
 .kd-order-card-footer>div:first-child>strong{font-size:20px;color:#26392b}
 .kd-order-admin-controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.kd-order-admin-controls select{border:1px solid #c7d2c6;min-height:43px;padding:10px 13px;font-size:14px;background:#fff;color:#2d4431}
-.kd-order-admin-controls .border-button{font-size:13px;min-height:43px}
+.kd-order-admin-controls select{border:1px solid #c7d2c6;min-height:44px;padding:10px 13px;font-size:14px;background:#fff;color:#2d4431}
+.kd-order-admin-controls .border-button{font-size:13px;min-height:44px}
 .kd-bank-instructions{display:grid;gap:7px;padding:18px;border:1px solid #c2d5c1;border-radius:4px;background:#f5f8f3;color:#344b37;margin-top:15px;font-size:15px;line-height:1.6}
 .kd-bank-instructions strong{font-size:17px}
 .kd-bank-instructions small{font-size:13px;color:#647a66;line-height:1.5}
@@ -102,3 +102,5 @@
  .kd-order-admin-controls{width:100%}
  .kd-order-admin-controls select{width:100%}
 }
+
+.kd-order-admin-controls{min-width:0;max-width:100%}.kd-order-admin-controls .border-button{max-width:100%;white-space:normal;overflow-wrap:anywhere}

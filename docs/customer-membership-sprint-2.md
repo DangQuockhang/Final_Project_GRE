@@ -149,3 +149,4 @@ Chưa đo Lighthouse hoặc kiểm tra trên điện thoại vật lý. Không t
 - `tests/membership-browser.test.js`
 - `tests/membership-orders.ci.js`
 - `tests/membership-orders.test.js`
+- `apps/store/src/styles/order-management.css`

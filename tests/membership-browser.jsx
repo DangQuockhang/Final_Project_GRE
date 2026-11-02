@@ -21,6 +21,8 @@ import '../apps/store/src/styles/brand-refresh.css';
 import '../apps/store/src/styles/collections.css';
 import '../apps/store/src/styles/white-background.css';
 import '../apps/store/src/styles/home-products.css';
+import '../apps/store/src/styles/admin-dashboard.css';
+import '../apps/store/src/styles/admin-reports.css';
 const user={id:42,name:'Nguyễn Hoàng Anh',email:'member@example.test',role:'user',created_at:'2020-01-01'};
 const tiers=[['bronze','Đồng',0],['silver','Bạc',2000000],['gold','Vàng',5000000],['diamond','Kim cương',15000000],['platinum','Platinum',30000000]].map(([code,name,min_spend],i)=>({code,name,min_spend,rank:i+1,benefits:[]}));
 let current=0,failMembership=true,failPayment=true,lastBody=null;
@@ -50,7 +52,7 @@ function AdminHarness(){
   throw Error('Unexpected admin request '+path);
  },[]);
  async function perform(operation){setBusy(true);try{setOrder(await operation());return true;}catch{return false;}finally{setBusy(false);}}
- return <div className="kd-ops"><OrdersPanel orders={[order]} api={api} perform={perform} busy={busy} initialOrderId={50}/></div>;
+ return <div className="kd-ops"><aside className="kd-ops-sidebar">KD ADMIN</aside><main className="kd-ops-main"><div className="kd-ops-body"><div className="kd-ops-panel-content"><OrdersPanel orders={[order]} api={api} perform={perform} busy={busy} initialOrderId={50}/></div></div></main></div>;
 }
 if(import.meta.env.DEV){
  const root=createRoot(document.getElementById('root'));
@@ -58,7 +60,7 @@ if(import.meta.env.DEV){
  const assert=(value,message)=>{if(!value)throw Error(message);};
  const until=async(fn,label)=>{for(let i=0;i<100;i++){if(fn())return;await wait();}throw Error('Timed out: '+label);};
  const button=text=>[...document.querySelectorAll('button')].find(x=>x.textContent.trim()===text);
- const click=async text=>{assert(button(text),'Missing button '+text);button(text).click();await wait();};
+ const click=async text=>{assert(button(text),'Missing button '+text);button(text).focus();button(text).click();await wait();};
  const fill=async(id,value)=>{const field=document.getElementById(id);assert(field,'Missing field '+id);Object.getOwnPropertyDescriptor(field.tagName==='TEXTAREA'?HTMLTextAreaElement.prototype:HTMLInputElement.prototype,'value').set.call(field,value);field.dispatchEvent(new Event('input',{bubbles:true}));await wait();};
  const fit=label=>assert(document.documentElement.scrollWidth<=window.innerWidth+2,label+' fits viewport');
  const dialogFit=()=>{const rect=document.querySelector('[role=dialog]').getBoundingClientRect();assert(rect.left>=0&&rect.right<=innerWidth&&rect.height<=innerHeight,'Dialog fits screen');};
@@ -74,6 +76,7 @@ if(import.meta.env.DEV){
    assert(button('Cập nhật').getBoundingClientRect().height>=44,'Refresh tap size');
    assert(document.querySelector('.kd-member-first-order'),'Empty spend guidance');
    fit('Bronze account');
+   assert(getComputedStyle(document.querySelector('.kd-member-progress-track span')).animationName==='none','Reduced motion preference respected');
    for(current=1;current<5;current++){
     await click('Cập nhật');await until(()=>document.querySelector('.kd-member-card-'+tiers[current].code),'tier '+current);fit('Tier '+current);
     const card=document.querySelector('.kd-member-card').getBoundingClientRect();assert(Math.abs(card.width/card.height-1.586)<.03,'Membership card ratio');
@@ -84,6 +87,8 @@ if(import.meta.env.DEV){
    await until(()=>button('Xác nhận thu tiền COD'),'COD action');fit('Admin order');
    await click('Xác nhận thu tiền COD');dialogFit();
    const dialog=document.querySelector('[role=dialog]');assert(dialog.contains(document.activeElement),'Dialog receives keyboard focus');
+   document.activeElement.dispatchEvent(new KeyboardEvent('keydown',{key:'Tab',shiftKey:true,bubbles:true}));assert(document.activeElement===button('Xác nhận và lưu'),'Shift Tab wraps to last dialog button');
+   document.activeElement.dispatchEvent(new KeyboardEvent('keydown',{key:'Tab',bubbles:true}));assert(document.activeElement===document.querySelector('[aria-label="Đóng hộp thoại"]'),'Tab wraps to dialog close button');
    assert(parseFloat(getComputedStyle(document.getElementById('order-action-reason')).fontSize)>=16,'Form input 16px');
    await click('Xác nhận và lưu');assert(calls.length===0,'Invalid reason prevents request');
    await fill('order-action-reason','Đã đối chiếu tiền thu hộ với đơn vị giao hàng.');
