@@ -1,19 +1,49 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {spawn,spawnSync} from 'node:child_process';
-import {existsSync,writeFileSync,unlinkSync} from 'node:fs';
+import {spawn} from 'node:child_process';
+import {existsSync,writeFileSync,unlinkSync,mkdtempSync,rmSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
 const chrome=['/usr/bin/google-chrome','/usr/bin/chromium','/usr/bin/chromium-browser'].find(existsSync);
+const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+async function connect(url){
+ const socket=new WebSocket(url);let next=0;const pending=new Map();
+ await new Promise((resolve,reject)=>{socket.addEventListener('open',resolve,{once:true});socket.addEventListener('error',reject,{once:true});});
+ socket.addEventListener('message',event=>{const message=JSON.parse(event.data);const request=pending.get(message.id);if(!request)return;pending.delete(message.id);clearTimeout(request.timer);message.error?request.reject(new Error(JSON.stringify(message.error))):request.resolve(message.result);});
+ return {close:()=>socket.close(),send:(method,params={})=>new Promise((resolve,reject)=>{
+  const id=++next;const timer=setTimeout(()=>{pending.delete(id);reject(new Error('CDP timeout: '+method));},10000);
+  pending.set(id,{resolve,reject,timer});socket.send(JSON.stringify({id,method,params}));
+ })};
+}
 test('customer addresses, checkout prefill and order history work at all five target widths',{skip:!chrome,timeout:200000},async()=>{
  const file='apps/store/__foundation-check.html';
  writeFileSync(file,'<!doctype html><html lang="vi"><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><div id="root"></div><script type="module" src="/@fs/'+process.cwd()+'/tests/account-foundation-browser.jsx"></script></body></html>',{flag:'wx'});
+ const profile=mkdtempSync(join(tmpdir(),'kd-foundation-chrome-'));
  const vite=spawn(process.execPath,['node_modules/vite/bin/vite.js','apps/store','--host','127.0.0.1','--port','5192','--strictPort'],{stdio:'ignore'});
+ const browser=spawn(chrome,['--headless','--no-sandbox','--disable-dev-shm-usage','--disable-gpu','--remote-debugging-port=5193','--user-data-dir='+profile,'about:blank'],{stdio:'ignore'});
  try{
   let ready=false;
-  for(let i=0;i<80;i++){try{if((await fetch('http://127.0.0.1:5192/__foundation-check.html')).ok){ready=true;break;}}catch{}await new Promise(resolve=>setTimeout(resolve,250));}
-  assert.ok(ready,'Foundation test server started');
+  for(let i=0;i<80;i++){try{if((await fetch('http://127.0.0.1:5192/__foundation-check.html')).ok&&(await fetch('http://127.0.0.1:5193/json/version')).ok){ready=true;break;}}catch{}await delay(250);}
+  assert.ok(ready,'Foundation test server and Chrome started');
   for(const width of [360,390,768,1024,1440]){
-   const result=spawnSync(chrome,['--headless','--no-sandbox','--disable-dev-shm-usage','--disable-gpu','--window-size='+width+',1000','--virtual-time-budget=20000','--dump-dom','http://127.0.0.1:5192/__foundation-check.html?viewport='+width],{encoding:'utf8',timeout:35000,maxBuffer:5*1024*1024});
-   assert.equal(result.status,0,result.stderr);assert.ok(result.stdout.includes('FOUNDATION_CHECKS_PASSED'),width+': '+result.stdout.slice(-7500));
+   const page=await (await fetch('http://127.0.0.1:5193/json/new?about:blank',{method:'PUT'})).json();
+   const cdp=await connect(page.webSocketDebuggerUrl);
+   try{
+    // Browser window sizes can enforce a desktop minimum. Emulate the actual CSS viewport.
+    await cdp.send('Emulation.setDeviceMetricsOverride',{width,height:1000,deviceScaleFactor:1,mobile:width<768});
+    await cdp.send('Page.navigate',{url:'http://127.0.0.1:5192/__foundation-check.html?viewport='+width});
+    let result='';
+    for(let attempt=0;attempt<140;attempt++){
+     const evaluation=await cdp.send('Runtime.evaluate',{expression:"document.querySelector('output')?.textContent || ''",returnByValue:true});
+     result=evaluation.result?.value||'';
+     if(result.includes('FOUNDATION_CHECKS_'))break;
+     await delay(200);
+    }
+    assert.equal(result,'FOUNDATION_CHECKS_PASSED',width+': '+(result||'Timed out waiting for fixture'));
+   }finally{cdp.close();await fetch('http://127.0.0.1:5193/json/close/'+page.id);}
   }
- }finally{vite.kill();unlinkSync(file);}
+ }finally{
+  vite.kill();const exited=new Promise(resolve=>browser.once('exit',resolve));browser.kill();await Promise.race([exited,delay(2000)]);
+  unlinkSync(file);rmSync(profile,{recursive:true,force:true,maxRetries:3,retryDelay:200});
+ }
 });
