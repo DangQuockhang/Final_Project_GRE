@@ -1,3 +1,4 @@
+import LiveTryOn from './components/try-on/LiveTryOn.jsx';
 import CustomerOrders from './pages/account/CustomerOrders.jsx';
 import DeliveryFields from './components/account/DeliveryFields.jsx';
 import SavedAddressNotice from './components/checkout/SavedAddressNotice.jsx';
@@ -98,6 +99,7 @@ function Layout({children}){const {online,loading}=useCatalog(),{logoutWarning,d
 function Home(){const {products,brands}=useCatalog();return <Layout><HomePage products={products} brands={brands}/></Layout>}
 function Shop(){const {products,brands,collections}=useCatalog();return <Layout><ShopPage products={products} brands={brands} collections={collections}/></Layout>}
 function Brands(){const {brands,products}=useCatalog();return <Layout><BrandsPage brands={brands} products={products}/></Layout>}
+function TryOnDemo(){const {token}=useAuth();const {state}=useLocation();return <LiveTryOn token={token} initialGarment={state?.garment}/>;}
 function Product(){const {products,online,loading}=useCatalog(),{add}=useCart();return <Layout><ProductDetailPage products={products} online={online} loading={loading} addToCart={add}/></Layout>}
 function Cart(){
  const {cart,update,total}=useCart(),{products}=useCatalog();
@@ -275,5 +277,5 @@ function OrderSuccess(){
  </div></Layout>;
 }
 function Admin(){const {token,user,logout}=useAuth(),{refresh}=useCatalog();return <AdminPage user={user} token={token} request={request} refreshCatalog={refresh} onLogout={logout}/>}
-function App(){return <Providers><BrowserRouter><Routes><Route path="/" element={<Home/>}/><Route path="/shop" element={<Shop/>}/><Route path="/brands" element={<Brands/>}/><Route path="/product/:slug" element={<Product/>}/><Route path="/cart" element={<Cart/>}/><Route path="/login" element={<Login/>}/><Route path="/forgot-password" element={<ForgotPassword/>}/><Route path="/reset-password" element={<ResetPassword/>}/><Route path="/account" element={<RequireAuth><Account/></RequireAuth>}/><Route path="/checkout" element={<RequireAuth><Checkout/></RequireAuth>}/><Route path="/order-success" element={<RequireAuth><OrderSuccess/></RequireAuth>}/><Route path="/admin/*" element={<RequireAuth admin><Admin/></RequireAuth>}/><Route path="*" element={<Navigate to="/"/>}/></Routes></BrowserRouter></Providers>}
+function App(){return <Providers><BrowserRouter><Routes><Route path="/" element={<Home/>}/><Route path="/shop" element={<Shop/>}/><Route path="/brands" element={<Brands/>}/><Route path="/product/:slug" element={<Product/>}/><Route path="/try-on" element={<RequireAuth><TryOnDemo/></RequireAuth>}/><Route path="/cart" element={<Cart/>}/><Route path="/login" element={<Login/>}/><Route path="/forgot-password" element={<ForgotPassword/>}/><Route path="/reset-password" element={<ResetPassword/>}/><Route path="/account" element={<RequireAuth><Account/></RequireAuth>}/><Route path="/checkout" element={<RequireAuth><Checkout/></RequireAuth>}/><Route path="/order-success" element={<RequireAuth><OrderSuccess/></RequireAuth>}/><Route path="/admin/*" element={<RequireAuth admin><Admin/></RequireAuth>}/><Route path="*" element={<Navigate to="/"/>}/></Routes></BrowserRouter></Providers>}
 createRoot(document.getElementById('root')).render(<React.StrictMode><App/></React.StrictMode>);
