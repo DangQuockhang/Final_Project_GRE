@@ -22,6 +22,11 @@ export function registerTryOnRoutes(route,{authorize,env=process.env,createClien
    const client=createClient({apiKey:env.DECART_API_KEY.trim()});
    const token=await client.tokens.create({expiresIn:60,allowedModels:[model],allowedOrigins:[origin],constraints:{realtime:{maxSessionDuration:seconds}}});
    return res.json({apiKey:token.apiKey,expiresAt:token.expiresAt,sessionSeconds:seconds});
-  }catch{return res.status(502).json({error:'Unable to authorize Decart. Check the API key, credits and model access.'});}
+  }catch(error){
+   // Never forward provider bodies: they can contain credentials or request details.
+   const status=Number(error?.data?.status);
+   const messages={401:'Decart rejected the server API key.',402:'Decart reports insufficient credits.',403:'Decart denied access. Check the API key permissions and model access.',429:'Decart is rate limiting requests. Please try again later.'};
+   return res.status(502).json({error:messages[status]||'Decart could not authorize this session. Please try again later.',code:'DECART_TOKEN_FAILED',providerStatus:Number.isInteger(status)?status:null});
+  }
  });
 }

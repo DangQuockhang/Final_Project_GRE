@@ -1,53 +1,79 @@
-# Chạy thử Live Try-On trên KD Design
+# KD Design: Live Virtual Try-On demo
 
-Nhánh: `demo/decart-live-tryon`, phát triển từ `feature/customer-membership-sprint-2`.
+Branch: `demo/decart-live-tryon`. Based on `feature/customer-membership-sprint-2`; do not merge automatically. No database changes or seed required.
 
-## Kéo code
+## Update and run
 
-```sh
+Preserve any local edits before switching branches (commit them or use `git stash push -u`). Never reset or clean your working tree to install this demo.
+
+```powershell
+cd D:/KD-Design-Starter/KD-Design-Starter
+git status
 git fetch origin
-git switch --track origin/demo/decart-live-tryon
+git switch demo/decart-live-tryon
+git pull --ff-only origin demo/decart-live-tryon
 npm ci
-```
-
-Nếu nhánh đã có trên máy: `git switch demo/decart-live-tryon` rồi `git pull --ff-only`.
-
-## Cấu hình
-
-Giữ nguyên database, JWT_SECRET và cấu hình hiện có của dự án. Thêm vào `server/.env`:
-
-```dotenv
-TRY_ON_ENABLED=true
-DECART_API_KEY=your-private-decart-key
-ALLOWED_ORIGINS=http://localhost:5173,http://localhost:5174
-```
-
-Lấy key tại https://platform.decart.ai mục API Keys; kiểm tra credits và quyền dùng Lucy Virtual Try-On. Không đưa key vào `VITE_*`, frontend, Git hoặc chat. File `.env` đã được Git bỏ qua. Chạy API từ workspace để dotenv đọc `server/.env`:
-
-```sh
 npm run dev:api
 ```
 
-Trong cửa sổ khác:
+If the local branch does not exist, use `git switch --track origin/demo/decart-live-tryon` instead. In another terminal in the same folder:
 
-```sh
+```powershell
 npm run dev:store
 ```
 
-Nếu database chưa được cài, làm theo README/BAT_DAU của dự án trước. Không seed lại database đang có dữ liệu chỉ để thử tính năng này.
+## Private server configuration
 
-## Thử
+Create a key in https://platform.decart.ai under API Keys. Check credits and Lucy Virtual Try-On access there. Never paste the key into chat. Add these settings to your existing **server/.env** locally or your deployment secret manager; preserve your existing database/JWT settings:
 
-1. Mở storefront trên localhost, đăng nhập tài khoản hiện có.
-2. Mở một sản phẩm có ảnh rồi bấm `TRY ON LIVE · AI DEMO`, hoặc truy cập `/try-on` để dùng ảnh mẫu.
-3. Chọn ảnh áo mẫu hoặc tải JPG/PNG/WebP dưới 5 MB. Ảnh được chuyển sang Decart khi bắt đầu hoặc thay áo trong phiên.
-4. Đồng ý gửi camera/ảnh áo cho Decart, bấm Start và cấp quyền camera.
-5. So sánh camera gốc với video AI; đổi áo trong phiên; bấm Stop để tắt camera.
+```dotenv
+TRY_ON_ENABLED=true
+DECART_API_KEY=REPLACE_LOCALLY_WITH_PRIVATE_KEY
+ALLOWED_ORIGINS=http://localhost:5173,http://localhost:5174
+```
 
-Mỗi phiên có giới hạn 30 giây từ nhà cung cấp; app cũng dừng khi ẩn tab/rời trang. API token tồn tại 60 giây, chỉ dùng cho origin được cho phép và model `lucy-vton-3.6`. Backoff 30 giây theo tài khoản trong bộ nhớ tiến trình giúp hạn chế bấm liên tục, không thay thế giới hạn chi tiêu cấp tài khoản.
+Do not commit .env, put this key in VITE_* / frontend / localStorage, or log it. Restart the API after changes. Production origins must be exact HTTPS origins (no trailing slash). Camera access requires HTTPS or localhost; a plain LAN HTTP URL on a phone is insufficient.
 
-Máy chủ yêu cầu đăng nhập, trạng thái tài khoản/session dùng middleware hiện có. Để tắt: đặt `TRY_ON_ENABLED=false` rồi khởi động lại API. Không có thay đổi database.
+To disable: set `TRY_ON_ENABLED=false` and restart the API. New tokens will be refused; existing sessions remain bounded by the provider's 30-second cap.
 
-Chưa có key/credits thì UI báo chưa cấu hình; không tạo kết quả AI giả. Ảnh mẫu chính thức từ Anywear được ghi rõ không phải sản phẩm KD. Có thể dùng ảnh sản phẩm thật từ trang chi tiết. Preview AI không đo size hoặc đảm bảo độ vừa; chưa bảo đảm mọi món khác giữ nguyên từng chi tiết khi đổi áo.
+## Try the integrated experience
 
-Nguồn SDK: https://platform.decart.ai/models/lucy-vton và https://docs.platform.decart.ai/getting-started/client-tokens.
+1. Sign in to KD Design, open a product with photos and choose a color.
+2. Click **TRY ON LIVE**. The selected color's image is passed to `/try-on`; otherwise the first product photo is used. Sign in before opening the link to preserve this selection.
+3. Use the product photo, a clearly labelled Anywear sample, or upload JPG/PNG/WebP up to 5 MB.
+4. Read the consent text and actively press Start. Only then is camera access requested and a token minted. Camera and garment media go directly to Decart, not the KD database. No microphone is requested.
+5. Compare **Original camera** and **AI try-on**. Change garments without starting another session. Stop turns off all local camera tracks. Hidden tabs, page exit and unmount stop the trial too.
+
+The feature never fakes AI success. An absent key/disabled feature, camera denial, expired login, invalid origin, provider refusal or network failure is shown in the fitting room. Only a remote video stream produces the live state.
+
+## API / SDK contract
+
+Official SDK pinned to `@decartai/sdk@0.2.14`, model `lucy-vton-3.6`, standard speed. Rechecked against official documentation on 2026-11-04:
+
+- https://docs.platform.decart.ai/getting-started/client-tokens
+- https://docs.platform.decart.ai/models/realtime/virtual-try-on
+- https://docs.platform.decart.ai/sdks/javascript-realtime
+
+Authenticated `GET /api/try-on` returns configuration readiness only; it does not prove credits/model entitlement. Authenticated `POST /api/try-on` creates a token with `expiresIn:60`, one allowed model, the validated request Origin and `constraints.realtime.maxSessionDuration:30`. Token expiry does not end an existing session; the separate provider constraint does. A local wall-clock countdown begins before connection and is not reset on stream updates.
+
+Responses: 401 expired/missing session; 403 blocked account or invalid/missing origin; 429 account cooldown; 503 disabled or missing key; 502 provider failure, with safe `providerStatus` when available. The permanent key and raw provider error bodies are never returned. Rate limiting is a single-process 30-second per-user cooldown; use a shared store and account-level spending limits before a multi-instance/public rollout.
+
+No automatic connect retries or capacity retries. On reconnect intent, the UI invalidates the attempt and disconnects. One token request is cached per explicit Start; credential callbacks after cancellation are rejected.
+
+SDK 0.2.14 does not expose AbortSignal on realtime.connect. Stop immediately stops camera tracks and aborts the token request; if connect is already pending, its eventual result is disconnected and another Start is blocked until it settles. Provider-side signaling may persist until that settlement or the provider cap. This is not a promise of immediate billing cancellation during a pending handshake.
+
+## Verification
+
+```sh
+npm test
+npm run build
+node --test tests/try-on.test.js tests/try-on-browser.test.js
+```
+
+Provider tests use stubs (no API key/credits). They cover token restrictions, missing config/origin, cooldown, 401/402/403/429/500 provider failures without secret disclosure, and the existing account authorization middleware (missing/expired/blocked/revoked sessions).
+
+Browser fixture uses canvas streams and an injected SDK only in the test harness. It covers consent, denied/late camera permission, Stop during pending connect, late session cleanup, garment change, invalid upload, hidden tab, page exit, unmount, local expiry and layout at 360/390/768/1024/1440px. Linux Chrome runner is used in CI. No actual customer photos or credentials are used in tests.
+
+Manual checks still required with the owner's explicit permission and funded key: real Decart model entitlement/credits errors, output quality, provider-enforced cutoff, mobile Safari/Android camera behavior, and product-image CORS. If a product image cannot be fetched cross-origin, upload a garment file instead. Do not add an arbitrary server-side image proxy.
+
+The AI preview is not a physical fit/size guarantee. Existing Anywear sample assets are reused for this demo; verify licensing before a public commercial rollout.
