@@ -1,3 +1,4 @@
+import {registerTryOnRoutes} from './tryOn.js';
 import {registerMembershipRoutes} from './membership.js';
 import {registerOrderLifecycle} from './orderLifecycle.js';
 import {requireJwtSecret} from './authConfig.js';
@@ -40,6 +41,7 @@ const {authorize,registerRoutes:registerAccountRoutes}=createAccountService({poo
 function admin(req,res,next){if(req.user?.role!=='admin')return fail(res,'Chỉ Admin được truy cập.',403);next();}
 route.get('/health',wrap(async(req,res)=>{await query('SELECT 1');res.json({ok:true,service:'kd-api'});}));
 registerAccountRoutes(route);
+registerTryOnRoutes(route,{authorize});
 registerCustomerOrders(route,{pool,authorize});
 registerMembershipRoutes(route,{pool,authorize});
 registerOrderLifecycle(route,{pool,authorize,admin});
