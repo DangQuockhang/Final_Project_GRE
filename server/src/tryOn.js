@@ -15,7 +15,10 @@ export function registerTryOnRoutes(route,{authorize,env=process.env,createClien
   const origins=(env.ALLOWED_ORIGINS||'http://localhost:5173,http://localhost:5174').split(',').map(s=>s.trim());
   if(!origin||!origins.includes(origin))return res.status(403).json({error:'Start the session from the configured storefront.'});
   const id=String(req.user.id),now=Date.now();
-  if(now-(recent.get(id)||0)<30000)return res.status(429).json({error:'Please wait 30 seconds before starting another trial.'});
+  if(now-(recent.get(id)||0)<30000){
+   const retryAfterSeconds=Math.ceil((30000-(now-recent.get(id)))/1000);
+   return res.set('Retry-After',String(retryAfterSeconds)).status(429).json({error:`Please wait ${retryAfterSeconds} seconds before starting another trial.`,retryAfterSeconds});
+  }
   for(const [key,time] of recent)if(now-time>60000)recent.delete(key);
   recent.set(id,now);
   try{

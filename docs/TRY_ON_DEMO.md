@@ -90,3 +90,9 @@ npm run dev:api
 ```
 
 Run `npm run dev:store` in a second terminal. No database rollback is needed. To remove the feature from the working branch itself, revert the single integration commit, then push normally; do not reset or force-push shared history.
+
+
+## Blank AI output diagnostics
+Token HTTP 200 and LiveKit signaling connected do not prove video delivery. The UI now distinguishes connected, stream received, and playable video (playing event with nonzero dimensions). No playable video within the 30-second total budget is an error, not a successful trial. Camera tracks stop on timeout. Start displays an account cooldown; HTTP 429 provides Retry-After and retryAfterSeconds.
+
+No real provider session was run for this patch. A missing remote stream may still require network/provider investigation. The SDK cannot directly abort pending connect: camera and token fetch stop immediately; late connections disconnect when resolved. No automatic new trial is started.
