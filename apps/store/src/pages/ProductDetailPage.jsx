@@ -83,6 +83,7 @@ export default function ProductDetailPage({products=[],online=false,loading=fals
        </div>}
        <button type="button" className="button button-dark" disabled={!canBuy} onClick={()=>{addToCart(item,variant,quantity);setAdded(true)}}>{!inStock?'SOLD OUT':added?'ADDED TO BAG ✓':'ADD TO BAG'} <ShoppingBag size={18}/></button>
       </div>
+      {gallery.length>0&&<Link className="button button-light" style={{marginTop:12}} to="/try-on" state={{garment:{name:item.name,image:colorImageUrl(item,activeColor,url=>productImageUrl(url,API))||gallery[0]}}}>TRY ON LIVE · AI DEMO</Link>}
       <ProductDetails product={item}/>
       <div className="pdp-benefits"><div><ShieldCheck size={18}/>Supplier documentation required before real sales</div><div><Truck size={18}/>Select your delivery and available payment method at checkout</div></div>
     </div>

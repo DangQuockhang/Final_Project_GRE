@@ -48,13 +48,13 @@ const request=async(path,{method,body}={})=>{
   assert(!body.has('email'),'Read-only email is never submitted');
   if(body.has('avatar'))assert(body.get('avatar').size>2*1024*1024,'The UI accepts an avatar larger than the old limit');
   profile={...profile,name:body.get('name'),phone:body.get('phone'),avatar_url:body.has('avatar')?'/media/avatars/11111111-1111-1111-1111-111111111111.png':body.get('remove_avatar')==='true'?null:profile.avatar_url};
-  return {user:profile,message:'Đã cập nhật hồ sơ.'};
+  return {user:profile,message:'Profile updated.'};
  }
  if(path==='/auth/change-password'){counts.password++;return {message:'Đã đổi mật khẩu.'};}
- if(path==='/auth/forgot-password'){counts.forgot++;return {message:'Nếu email thuộc tài khoản đang hoạt động, bạn sẽ nhận được hướng dẫn đặt lại mật khẩu.'};}
+ if(path==='/auth/forgot-password'){counts.forgot++;return {message:'If this email belongs to an active account, you will receive password reset instructions.'};}
  if(path==='/auth/reset-password'){
   counts.reset++;assert(body.token==='a'.repeat(64),'Submit reset token from in-memory state');
-  if(counts.reset===1)throw Error('Liên kết không hợp lệ hoặc đã hết hạn.');
+  if(counts.reset===1)throw Error('This link is invalid or has expired.');
   return {message:'Đã đặt lại mật khẩu.'};
  }
  throw Error('Unexpected request '+path);
@@ -75,7 +75,7 @@ if(import.meta.env.DEV){
    eye().click();await wait();assert(document.getElementById('login-password').type==='password','Login eye hides password');
    await submit();assert(document.getElementById('login-email-error'),'Inline email error');
    eye().click();await wait();
-   await click('Chưa có tài khoản? Đăng ký');
+   await click('New to KD? Create an account');
    assert(document.getElementById('login-password').type==='password','Switching to registration hides the password');
    eye().focus();assert(document.activeElement===eye(),'Eye is keyboard focusable');
    eye().click();await wait();assert(document.getElementById('login-password').type==='text','Registration eye reveals password');
@@ -83,10 +83,10 @@ if(import.meta.env.DEV){
    await fill('register-name','Khách thử nghiệm');await fill('login-email',user.email);await fill('login-password','Password2026');
    await submit();assert(counts.register===1&&loggedIn?.token==='test','Registration signs in');
    render('profile',<CustomerAccountPage user={user} token="test" request={request} onUser={()=>{}} onLogout={()=>{loggedOut=true;}} orders={<p>Existing orders</p>}/>);
-   await until(()=>button('Thử lại'),'profile retry');await click('Thử lại');
+   await until(()=>button('Try again'),'profile retry');await click('Try again');
    await until(()=>document.getElementById('profile-email'),'profile form');
    assert(document.getElementById('profile-email').readOnly,'Email is read-only');
-   assert(document.querySelector('[aria-label="Ảnh đại diện mặc định"]'),'Initial avatar fallback');
+   assert(document.querySelector('[aria-label="Default profile photo"]'),'Initial avatar fallback');
    assert(document.documentElement.scrollWidth<=window.innerWidth+2,'Account fits viewport');
    await fill('profile-name','');await submit();assert(counts.profile===0&&document.getElementById('profile-name-error'),'Validate profile before request');
    await fill('profile-name','Tên đã sửa');await fill('profile-phone','abc');await submit();assert(document.getElementById('profile-phone-error'),'Validate phone');
@@ -104,9 +104,9 @@ if(import.meta.env.DEV){
    await until(()=>document.querySelector('.kd-account-avatar-row img')?.src.startsWith('blob:'),'avatar preview');
    await submit();await until(()=>document.querySelector('.kd-account-toast'),'save toast');
    assert(counts.profile===1&&profile.name==='Tên đã sửa'&&profile.avatar_url,'One request saves name, phone and avatar');
-   await click('Xóa ảnh đại diện');await submit();
+   await click('Remove photo');await submit();
    assert(counts.profile===2&&profile.avatar_url===null,'Remove avatar uses same save action');
-   await click('Mật khẩu');
+   await click('Password');
    await fill('current-password','Password2026');await fill('new-password','Changed2026');await fill('confirm-password','Mismatch2026');
    await submit();assert(counts.password===0&&document.getElementById('confirm-password-error'),'Validate password confirmation');
    await fill('confirm-password','Changed2026');
@@ -115,13 +115,13 @@ if(import.meta.env.DEV){
    confirmed=true;await submit();assert(counts.password===1&&loggedOut,'Password change signs out');
    render('forgot',<PasswordRecoveryPage request={request}/>);
    await until(()=>document.getElementById('forgot-email'));await fill('forgot-email','invalid');await submit();assert(counts.forgot===0,'Invalid email is not sent');
-   await fill('forgot-email',user.email);await submit();assert(counts.forgot===1&&document.querySelector('[role=status]')?.textContent.includes('Nếu email'),'Generic recovery response');
+   await fill('forgot-email',user.email);await submit();assert(counts.forgot===1&&document.querySelector('[role=status]')?.textContent.includes('If this email'),'Generic recovery response');
    window.history.replaceState(null,'',window.location.pathname+'#token='+'a'.repeat(64));
    render('reset',<PasswordRecoveryPage request={request} reset onReset={()=>{resetDone=true;}}/>);
    await until(()=>document.getElementById('reset-password'));
    assert(!window.location.hash,'Reset secret removed from address bar');
    await fill('reset-password','NewPassword2026');await fill('reset-confirm','NewPassword2026');await submit();
-   assert(document.querySelector('[role=alert]')?.textContent.includes('hết hạn'),'Show reset API errors');
+   assert(document.querySelector('[role=alert]')?.textContent.includes('expired'),'Show reset API errors');
    await submit();assert(resetDone&&!document.getElementById('reset-password'),'Successful reset clears secret form');
    assert(document.documentElement.scrollWidth<=window.innerWidth+2,'Recovery fits viewport');
    const output=document.createElement('output');output.textContent='ACCOUNT_CHECKS_PASSED';document.body.append(output);

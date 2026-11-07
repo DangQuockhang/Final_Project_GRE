@@ -5,7 +5,7 @@ import {ArrowUpRight,ArrowDownRight,Download,Wallet,ShoppingBag,Users,Receipt,Ch
 import {money} from '@kd/catalog';
 const fmt=n=>new Intl.NumberFormat('en').format(n||0);
 const date=value=>new Date(value).toLocaleDateString('en-GB',{timeZone:'Asia/Ho_Chi_Minh',day:'2-digit',month:'short'});
-const statusName={PENDING:'Pending',CONFIRMED:'Confirmed',SHIPPED:'Shipped',DELIVERED:'Delivered',CANCELLED:'Cancelled'};
+const statusName={PENDING:'Pending',CONFIRMED:'Confirmed',SHIPPED:'Shipped',DELIVERED:'Delivered',CANCELLED:'Cancelled',RETURNED:'Returned'};
 function Change({current,previous}){
  if(!previous)return <span className="kd-ops-change neutral">{current?'No prior baseline':'No change'}</span>;
  const delta=(current-previous)/previous*100,Icon=delta<0?ArrowDownRight:ArrowUpRight;
