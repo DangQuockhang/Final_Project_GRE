@@ -17,7 +17,7 @@ function providerError(error) {
 const reference = (image) => typeof image === 'string' ? new URL(image, location.origin).href : image;
 const loadDecart = () => import('@decartai/sdk');
 export default function LiveTryOn({ token, initialGarment, loadSdk = loadDecart }) {
-    const receivedFrames = useRef(false);
+    const receivedFrames = useRef(false), garmentApplied = useRef(false);
     const [cooldown, setCooldown] = useState(0);
     const cooldownUntil = useRef(0);
     const [hasError, setHasError] = useState(false);
@@ -91,6 +91,7 @@ export default function LiveTryOn({ token, initialGarment, loadSdk = loadDecart 
         const attempt = ++generation.current;
         active.current = true;
         receivedFrames.current = false;
+        garmentApplied.current = false;
         setHasError(false);
         setPhase('starting');
         setStatus('Requesting camera accessâ€¦');
@@ -113,7 +114,7 @@ export default function LiveTryOn({ token, initialGarment, loadSdk = loadDecart 
             setStatus('Connecting to Lucy. Your camera preview is shown separately.');
             // Start the local cap before dialing; receiving another stream must not reset it.
             const end = Date.now() + 30000;
-            timer.current = setInterval(() => { const left = Math.max(0, Math.ceil((end - Date.now()) / 1000)); setRemaining(left); if (!left) { const shown = receivedFrames.current; setHasError(!shown); stop(shown ? '30-second trial complete. Your camera is off.' : 'No playable AI video arrived within 30 seconds. The session and camera have stopped. Check your network or Decart service status before trying again.'); } }, 250);
+            timer.current = setInterval(() => { const left = Math.max(0, Math.ceil((end - Date.now()) / 1000)); setRemaining(left); if (!left) { const shown = receivedFrames.current && garmentApplied.current; setHasError(!shown); stop(shown ? '30-second trial complete. Your camera is off.' : 'No playable AI video arrived within 30 seconds. The session and camera have stopped. Check your network or Decart service status before trying again.'); } }, 250);
             tokenRequest.current = new AbortController();
             const signal = tokenRequest.current.signal;
             let credentialPromise;
@@ -132,7 +133,6 @@ export default function LiveTryOn({ token, initialGarment, loadSdk = loadDecart 
                 } });
             const result = await client.realtime.connect(stream, {
                 model, mirror: 'auto', retries: 0, capacityRetryBudgetMs: 0,
-                initialState: { prompt: { text: prompt, enhance: false }, image: reference(garment.image) },
                 onRemoteStream: (output) => {
                     if (attempt !== generation.current) { output.getTracks().forEach(t => t.stop()); return; }
                     const video = remoteVideo.current;
@@ -162,6 +162,16 @@ export default function LiveTryOn({ token, initialGarment, loadSdk = loadDecart 
                 { setHasError(true); stop(providerError(error)); } });
             result.on('sessionEnded', () => { if (attempt === generation.current)
                 stop('The provider ended this trial. Your camera is off.'); });
+            // Apply the garment after the transport is ready and await the provider's ACK.
+            // Until this resolves, an incoming stream may still show the unedited input.
+            setStatus('Connected. Sending your selected garment to Decart.');
+            await result.set({ prompt, enhance: false, image: reference(garment.image) });
+            if (attempt !== generation.current) return;
+            garmentApplied.current = true;
+            if (receivedFrames.current) {
+                setPhase('live');
+                setStatus('Live AI preview. Change a garment below or stop at any time.');
+            } else setStatus('Garment accepted by Decart. Waiting for AI video.');
         }
         catch (e) {
             if (attempt !== generation.current)
@@ -222,6 +232,7 @@ export default function LiveTryOn({ token, initialGarment, loadSdk = loadDecart 
                         <video ref={remoteVideo} onPlaying={() => {
                             if (!active.current || !remoteVideo.current?.srcObject || !remoteVideo.current.videoWidth) return;
                             receivedFrames.current = true;
+                            if (!garmentApplied.current) return;
                             setPhase('live');
                             setStatus('Live AI preview. Change a garment below or stop at any time.');
                         }} autoPlay playsInline muted aria-label="AI try-on"/>

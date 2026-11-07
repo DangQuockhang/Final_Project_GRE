@@ -3,6 +3,7 @@ import {createRoot} from 'react-dom/client';
 import LiveTryOn from '../apps/store/src/components/try-on/LiveTryOn.jsx';
 const assert=(value,message)=>{if(!value)throw Error(message);};
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
+let setMode='ok';
 let cameraMode='ok',connectMode='ok',cameraResolve,connectResolve,options,lastStream,disconnects=0,changes=0,mints=0;
 const canvas=document.createElement('canvas');canvas.width=640;canvas.height=480;
 const stream=()=>{const value=canvas.captureStream(25); canvas.getContext('2d').fillRect(0,0,640,480);return value;};
@@ -14,9 +15,9 @@ Object.defineProperty(navigator,'mediaDevices',{configurable:true,value:{getUser
  lastStream=stream();return lastStream;
 }}});
 window.fetch=async(url,init={})=>{assert(String(url).endsWith('/try-on'),'No external requests');if(init.method==='POST')mints++;return {ok:true,json:async()=>({configured:true,apiKey:'test-ephemeral'})};};
-const result={disconnect(){disconnects++;},on(){},async set(){changes++;}};
+const result={disconnect(){disconnects++;},on(){},async set(){changes++;if(setMode==='reject')throw Error('Garment rejected by provider');}};
 const loadSdk=async()=>({models:{realtime:()=>({width:640,height:480,fps:25})},createDecartClient:config=>({realtime:{connect:async(input,opts)=>{
- options=opts;await config.apiKeyProvider();assert(opts.retries===0&&opts.capacityRetryBudgetMs===0,'retries disabled');
+ options=opts;assert(!opts.initialState?.image,'garment applied after connecting');await config.apiKeyProvider();assert(opts.retries===0&&opts.capacityRetryBudgetMs===0,'retries disabled');
  if(connectMode==='wait')return new Promise(r=>connectResolve=r);
  if(connectMode!=='no-video')opts.onRemoteStream(stream());return result;
 }}})});
@@ -31,9 +32,10 @@ async function run(){
  cameraMode='deny';await start();assert(document.querySelector('[role=alert]').textContent.includes('permission'),'camera denial inline');assert(mints===0,'no token before camera');
  cameraMode='wait';await start();button('Stop &').click();await wait(30);lastStream=stream();cameraResolve(lastStream);await wait(80);assert(lastStream.getTracks().every(t=>t.readyState==='ended'),'late camera stopped');assert(mints===0,'cancelled camera never mints');
  cameraMode='ok';connectMode='wait';await start();button('Stop &').click();await wait(30);assert(lastStream.getTracks().every(t=>t.readyState==='ended'),'Stop during connect shuts camera');connectResolve(result);await wait(80);assert(disconnects===1,'late session disconnected');
+ connectMode='ok';setMode='reject';await start();assert(document.querySelector('[role=alert]').textContent.includes('Garment rejected'),'initial garment rejection stops the trial');assert(lastStream.getTracks().every(t=>t.readyState==='ended'),'rejected garment stops camera');setMode='ok';
  connectMode='no-video';await start();assert(!document.querySelector('.live-status').textContent.includes('Live AI'),'connected without frames is not live');clockOffset+=31000;await wait(300);assert(document.querySelector('[role=alert]').textContent.includes('No playable AI video'),'missing video is a timeout error');
  connectMode='ok';await start();assert(document.querySelector('.live-status').textContent.includes('Live AI'),'live only after remote stream');
- button('Statement knitwear').click();await wait(60);assert(changes===1,'garment updated in same session');assert(document.querySelector('.live-status').textContent.includes('Garment sent'),'change success');
+ button('Statement knitwear').click();await wait(60);assert(changes>=2,'initial garment and replacement sent through acknowledged set');assert(document.querySelector('.live-status').textContent.includes('Garment sent'),'change success');
  Object.defineProperty(document,'hidden',{configurable:true,value:true});document.dispatchEvent(new Event('visibilitychange'));await wait(60);assert(lastStream.getTracks().every(t=>t.readyState==='ended'),'hidden stops camera');Object.defineProperty(document,'hidden',{configurable:true,value:false});
  await start();window.dispatchEvent(new Event('pagehide'));await wait(50);assert(lastStream.getTracks().every(t=>t.readyState==='ended'),'pagehide stops camera');
  const input=document.querySelector('input[type=file]');const dt=new DataTransfer();dt.items.add(new File(['bad'],'bad.txt',{type:'text/plain'}));input.files=dt.files;input.dispatchEvent(new Event('change',{bubbles:true}));await wait(60);assert(document.querySelector('[role=alert]').textContent.includes('5 MB'),'invalid upload error');

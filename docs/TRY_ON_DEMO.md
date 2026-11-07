@@ -96,3 +96,7 @@ Run `npm run dev:store` in a second terminal. No database rollback is needed. To
 Token HTTP 200 and LiveKit signaling connected do not prove video delivery. The UI now distinguishes connected, stream received, and playable video (playing event with nonzero dimensions). No playable video within the 30-second total budget is an error, not a successful trial. Camera tracks stop on timeout. Start displays an account cooldown; HTTP 429 provides Retry-After and retryAfterSeconds.
 
 No real provider session was run for this patch. A missing remote stream may still require network/provider investigation. The SDK cannot directly abort pending connect: camera and token fetch stop immediately; late connections disconnect when resolved. No automatic new trial is started.
+
+
+## Explicit garment acknowledgement
+The frontend now connects first, attaches terminal/error listeners, then awaits session.set({prompt, image, enhance:false}) as shown in the official VTON JavaScript example. Output is hidden until garment acknowledgement and playable video are both observed; a rejected garment ends the trial and stops the camera. This isolates garment submission from transport initialization. Acknowledgement does not prove visual accuracy or that remote frames will arrive. Real provider testing remains outstanding; this patch does not establish the root cause of the reported blank stream.
