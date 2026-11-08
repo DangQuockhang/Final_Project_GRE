@@ -1,6 +1,7 @@
 import React from 'react';
 import { apiBase } from '@kd/catalog';
 import './live-try-on.css';
+import { emptyDiagnostics, safeStats, timeoutMessage, providerError, sessionEndMessage, prepareGarment } from './diagnostics';
 const API = import.meta.env.VITE_API_URL || apiBase;
 import { useCallback, useEffect, useRef, useState } from 'react';
 const samples = [
@@ -9,21 +10,27 @@ const samples = [
     { name: 'The light layer', image: '/garments/sample-4.png' },
 ];
 const prompt = 'Dress the person in the garment from the reference image. Preserve the person and background.';
-function providerError(error) {
-    const code = typeof error?.code === 'string' ? error.code.replace(/[^A-Z0-9_]/g, '').slice(0, 60) : '';
-    const message = typeof error?.message === 'string' ? error.message.replace(/(?:dct_|ek_)[A-Za-z0-9._-]+/g, '[redacted]').slice(0, 300) : 'Could not start the AI session.';
-    return code ? `${message} (${code})` : message;
-}
-const reference = (image) => typeof image === 'string' ? new URL(image, location.origin).href : image;
 const loadDecart = () => import('@decartai/sdk');
 export default function LiveTryOn({ token, initialGarment, loadSdk = loadDecart }) {
+    const diagnostics = useRef(emptyDiagnostics());
+    const [details, setDetails] = useState(emptyDiagnostics);
+    const imageRequest = useRef(null), disconnectTimer = useRef(null);
+    function record(values) { diagnostics.current = { ...diagnostics.current, ...values }; setDetails(diagnostics.current); }
+    async function loadGarment(image) {
+        const controller = new AbortController();
+        imageRequest.current = controller;
+        const timeout = setTimeout(() => controller.abort(), 10000);
+        try { return await prepareGarment(image, controller.signal); }
+        catch (error) { if (error?.name === 'AbortError') throw Error('Garment loading was cancelled or exceeded 10 seconds.'); throw error; }
+        finally { clearTimeout(timeout); if (imageRequest.current === controller) imageRequest.current = null; }
+    }
     const receivedFrames = useRef(false), garmentApplied = useRef(false);
     const [cooldown, setCooldown] = useState(0);
     const cooldownUntil = useRef(0);
     const [hasError, setHasError] = useState(false);
     const pendingConnect = useRef(false), tokenRequest = useRef(null);
     const [configured, setConfigured] = useState(null);
-    const [status, setStatus] = useState('Checking the AI connectionâ€¦');
+    const [status, setStatus] = useState('Checking the AI connection.');
     const [phase, setPhase] = useState('idle');
     const [consent, setConsent] = useState(false);
     const [swapping, setSwapping] = useState(false);
@@ -40,6 +47,8 @@ export default function LiveTryOn({ token, initialGarment, loadSdk = loadDecart 
     const stop = useCallback((message = 'Session stopped. Your camera is off.') => {
         generation.current++;
         active.current = false;
+        clearTimeout(disconnectTimer.current);
+        imageRequest.current?.abort();
         const old = session.current;
         session.current = null;
         try { old?.disconnect(); } catch {}
@@ -90,17 +99,23 @@ export default function LiveTryOn({ token, initialGarment, loadSdk = loadDecart 
             return;
         const attempt = ++generation.current;
         active.current = true;
+        diagnostics.current = emptyDiagnostics();
+        setDetails(diagnostics.current);
         receivedFrames.current = false;
         garmentApplied.current = false;
         setHasError(false);
         setPhase('starting');
-        setStatus('Requesting camera accessâ€¦');
+        setStatus('Checking the garment photo before starting a paid session.');
         setRemaining(30);
         try {
             const { createDecartClient, models, noopLogger } = await loadSdk();
             if (attempt !== generation.current)
                 return;
             const model = models.realtime('lucy-vton-3.6');
+            const garmentBlob = await loadGarment(garment.image);
+            if (attempt !== generation.current) return;
+            record({ imageReady: true });
+            setStatus('Requesting camera access.');
             if (!navigator.mediaDevices?.getUserMedia)
                 throw Error('Camera access requires HTTPS or localhost in a supported browser.');
             const stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: 'user', width: { ideal: model.width }, height: { ideal: model.height }, frameRate: model.fps } });
@@ -109,12 +124,13 @@ export default function LiveTryOn({ token, initialGarment, loadSdk = loadDecart 
                 return;
             }
             camera.current = stream;
+            record({ cameraReady: true });
             if (localVideo.current)
                 localVideo.current.srcObject = stream;
             setStatus('Connecting to Lucy. Your camera preview is shown separately.');
             // Start the local cap before dialing; receiving another stream must not reset it.
             const end = Date.now() + 30000;
-            timer.current = setInterval(() => { const left = Math.max(0, Math.ceil((end - Date.now()) / 1000)); setRemaining(left); if (!left) { const shown = receivedFrames.current && garmentApplied.current; setHasError(!shown); stop(shown ? '30-second trial complete. Your camera is off.' : 'No playable AI video arrived within 30 seconds. The session and camera have stopped. Check your network or Decart service status before trying again.'); } }, 250);
+            timer.current = setInterval(() => { const left = Math.max(0, Math.ceil((end - Date.now()) / 1000)); setRemaining(left); if (!left) { setHasError(!(receivedFrames.current && garmentApplied.current)); stop(timeoutMessage(diagnostics.current)); } }, 250);
             tokenRequest.current = new AbortController();
             const signal = tokenRequest.current.signal;
             let credentialPromise;
@@ -129,15 +145,22 @@ export default function LiveTryOn({ token, initialGarment, loadSdk = loadDecart 
                         throw Error('Session cancelled.');
                     if (typeof data.apiKey !== 'string' || !data.apiKey)
                         throw Error('The server returned an invalid session token.');
+                    record({ tokenReady: true });
                     return data.apiKey;
                 } });
             const result = await client.realtime.connect(stream, {
                 model, mirror: 'auto', retries: 0, capacityRetryBudgetMs: 0,
+                onQueuePosition: ({ position }) => {
+                    if (attempt !== generation.current || !Number.isFinite(position) || position < 0) return;
+                    record({ queuePosition: Math.floor(position) });
+                    setStatus('Decart queue position: ' + Math.floor(position) + '. Waiting within the 30-second limit; no automatic retry.');
+                },
                 onRemoteStream: (output) => {
                     if (attempt !== generation.current) { output.getTracks().forEach(t => t.stop()); return; }
                     const video = remoteVideo.current;
                     if (!video) return;
                     video.srcObject = output;
+                    record({ streamReceived: true });
                     setStatus('AI stream received. Waiting for playable video.');
                     // A remote track can exist before any frame arrives. Do not report success yet.
                     void video.play().catch(() => {
@@ -150,24 +173,34 @@ export default function LiveTryOn({ token, initialGarment, loadSdk = loadDecart 
                 },
                 onConnectionChange: (state) => {
                     if (attempt === generation.current && state === 'connected' && !receivedFrames.current) setStatus('Connected to Decart. Waiting for AI video; the camera preview is not the AI result.');
-                    if (attempt === generation.current && (state === 'disconnected' || state === 'reconnecting'))
-                    stop('Connection ended. Your camera is off. Start a new trial when ready.'); },
+                    if (attempt !== generation.current) return;
+                    if (state === 'reconnecting') { setHasError(true); stop('Connection interrupted. Automatic reconnect was stopped. Camera is off.'); }
+                    // While connect is pending, let its rejection reach catch without invalidating it.
+                    // Once connected, let a same-turn error/sessionEnded explain a close first.
+                    if (state === 'disconnected' && session.current) {
+                        clearTimeout(disconnectTimer.current);
+                        disconnectTimer.current = setTimeout(() => { if (attempt === generation.current) { setHasError(true); stop('Decart disconnected before the trial finished. Camera is off. No automatic retry.'); } }, 0);
+                    }
+                },
             });
             if (attempt !== generation.current) {
                 result.disconnect();
                 return;
             }
             session.current = result;
+            record({ connected: true, queuePosition: null });
+            result.on('stats', stats => { if (attempt === generation.current) record(safeStats(stats)); });
             result.on('error', (error) => { if (attempt === generation.current)
                 { setHasError(true); stop(providerError(error)); } });
-            result.on('sessionEnded', () => { if (attempt === generation.current)
-                stop('The provider ended this trial. Your camera is off.'); });
+            result.on('sessionEnded', event => { if (attempt === generation.current) {
+                setHasError(true); stop(sessionEndMessage(event?.reason)); } });
             // Apply the garment after the transport is ready and await the provider's ACK.
             // Until this resolves, an incoming stream may still show the unedited input.
             setStatus('Connected. Sending your selected garment to Decart.');
-            await result.set({ prompt, enhance: false, image: reference(garment.image) });
+            await result.set({ prompt, enhance: false, image: garmentBlob });
             if (attempt !== generation.current) return;
             garmentApplied.current = true;
+            record({ garmentAccepted: true });
             if (receivedFrames.current) {
                 setPhase('live');
                 setStatus('Live AI preview. Change a garment below or stop at any time.');
@@ -188,18 +221,20 @@ export default function LiveTryOn({ token, initialGarment, loadSdk = loadDecart 
             const current = session.current, attempt = generation.current;
             setHasError(false);
             setSwapping(true);
-            setStatus('Applying the new garmentâ€¦');
+            setStatus('Applying the new garment.');
             try {
-                await current.set({ prompt, enhance: false, image: reference(next.image) });
+                const image = await loadGarment(next.image);
+                if (attempt !== generation.current) return;
+                await current.set({ prompt, enhance: false, image });
                 if (attempt !== generation.current)
                     return;
                 setGarment(next);
                 setStatus('Garment sent to Decart. The AI video may take a moment to update.');
                 return true;
             }
-            catch {
+            catch (error) {
                 if (attempt === generation.current)
-                    { setHasError(true); setStatus('Could not change the garment. Your previous selection is kept.'); }
+                    { setHasError(true); setStatus('Could not change the garment. ' + providerError(error)); }
             }
             finally {
                 if (attempt === generation.current)
@@ -232,6 +267,7 @@ export default function LiveTryOn({ token, initialGarment, loadSdk = loadDecart 
                         <video ref={remoteVideo} onPlaying={() => {
                             if (!active.current || !remoteVideo.current?.srcObject || !remoteVideo.current.videoWidth) return;
                             receivedFrames.current = true;
+                            record({ playing: true });
                             if (!garmentApplied.current) return;
                             setPhase('live');
                             setStatus('Live AI preview. Change a garment below or stop at any time.');
@@ -244,10 +280,23 @@ export default function LiveTryOn({ token, initialGarment, loadSdk = loadDecart 
                 <aside className="session-panel">
                     <div className="eyebrow">YOUR SELECTED PIECE</div><img className="selected-garment" src={garment.preview} alt={garment.name}/><h2>{garment.name}</h2>
                     <p className={'live-status'+(hasError?' is-error':'')} role={hasError?'alert':'status'} aria-live="polite">{status}</p>
+                    <details className="connection-details" open={hasError || undefined}>
+                        <summary>Connection details</summary>
+                        <dl>{[
+                            ['Garment photo checked', details.imageReady], ['Camera opened', details.cameraReady],
+                            ['Session token received', details.tokenReady], ['Connection and publishing ready', details.connected],
+                            ['Garment acknowledged', details.garmentAccepted], ['AI stream received', details.streamReceived],
+                            ['Video playback started', details.playing],
+                        ].map(([label, done]) => <div key={label}><dt>{label}</dt><dd>{done ? 'Yes' : 'Not confirmed'}</dd></div>)}
+                        <div><dt>Queue position reported</dt><dd>{details.queuePosition ?? 'None reported'}</dd></div>
+                        <div><dt>Camera video bytes sent</dt><dd>{details.bytesSent ?? 'Not reported'}</dd></div>
+                        <div><dt>AI frames received / decoded</dt><dd>{details.framesReceived ?? '?'} / {details.framesDecoded ?? '?'}</dd></div></dl>
+                        <p>Last attempt only. Missing counters do not prove a network failure. These details contain no tokens or camera images.</p>
+                    </details>
                     {configured === false && <div className="setup-note"><strong>Setup or account access needed</strong><p>Sign in and ask the shop administrator to enable this demo. The API key belongs in server settings only.</p><a href="https://platform.decart.ai" target="_blank" rel="noopener noreferrer">Decart Platform</a><button className="outline full" onClick={check}>Check connection again</button></div>}
                     <label className="consent"><input type="checkbox" checked={consent} disabled={phase !== 'idle'} onChange={e=>setConsent(e.target.checked)}/><span>I agree to send my camera video and garment image to Decart for this trial. API credits may be used. <a href="https://docs.platform.decart.ai/resources/privacy-policy" target="_blank" rel="noopener noreferrer">Privacy information</a></span></label>
                     <button className="primary full" disabled={!configured || !consent || cooldown > 0 || phase !== 'idle'} onClick={start}>{phase === 'idle' ? (cooldown > 0 ? `Try again in ${cooldown}s` : 'Start 30-second try-on') : 'Session in progress'}</button>
-                    <button className="outline full stop" disabled={phase === 'idle'} onClick={()=>{setHasError(false);stop();}}>Stop &amp; turn camera off</button><p className="micro">No microphone. Stops when you leave this tab.</p>
+                    <button className="outline full stop" disabled={phase === 'idle'} onClick={()=>{setHasError(false);stop();}}>Stop &amp; turn camera off</button><p className="micro">30 seconds includes connection and processing. No microphone. Stops when you leave this tab.</p>
                 </aside>
             </section>
             <section><div className="sample-head"><h2>Change your look.</h2><p>Anywear samples / Not KD Design products</p></div>

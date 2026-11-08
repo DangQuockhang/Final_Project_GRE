@@ -100,3 +100,19 @@ No real provider session was run for this patch. A missing remote stream may sti
 
 ## Explicit garment acknowledgement
 The frontend now connects first, attaches terminal/error listeners, then awaits session.set({prompt, image, enhance:false}) as shown in the official VTON JavaScript example. Output is hidden until garment acknowledgement and playable video are both observed; a rejected garment ends the trial and stops the camera. This isolates garment submission from transport initialization. Acknowledgement does not prove visual accuracy or that remote frames will arrive. Real provider testing remains outstanding; this patch does not establish the root cause of the reported blank stream.
+
+## Diagnosing a trial without exposing credentials
+Open **Connection details** in the fitting room. It stays available after Stop/timeout and automatically expands on errors. It records whether the image decoded, camera opened, token arrived, SDK connect/publish completed, garment was acknowledged, a remote stream arrived and playback started. Numeric outgoing bytes and incoming/decoded frames are included only when the SDK reports them. No raw SDK objects, IP addresses, session identifiers, images or tokens are copied into the panel.
+
+A queue position appears only if Decart reports one. Missing stats mean **not reported**, not zero and not proof of failure. Zero outgoing bytes suggests checking camera publishing; received frames without decoded frames suggests checking the media/decoder; decoded frames without playback suggests checking the video element. These are diagnostic clues, not a confirmed root cause.
+
+Image URLs are fetched and decoded in the browser (10-second timeout, 5 MB limit) before camera/token creation. Cross-origin failures and invalid images now fail before starting an AI session; upload a local garment instead. Replacement garments use the same validation.
+
+The 30-second local budget still includes token authorization, connection/queue time and processing. It does not restart when frames arrive; provider maxSessionDuration remains 30. This conservative limit can end a slow setup before output appears. Do not extend it, enable retries or turn on paid fast mode without reviewing cost and lifecycle handling.
+
+Connection failures now preserve the original rejection instead of replacing it with a generic disconnected message. Timeouts distinguish missing token, queue/connection, garment acknowledgement and playable video. Provider credit/session-limit reasons are displayed separately. Stop during pending connect still cannot immediately cancel the SDK handshake; any late result is disconnected.
+
+Automated tests use local fixture images/canvas streams and a fake SDK; they do not prove live Decart output. Browser checks support installed Windows Chrome/Edge or Linux Chrome and TRY_ON_TEST_BROWSER. Before a live check, rotate any credential previously exposed in a screenshot. No real AI calls are made by tests.
+
+To pause this feature while developing AI assistant: set TRY_ON_ENABLED=false in your private server configuration, restart the API, and leave existing product/account data unchanged.
+

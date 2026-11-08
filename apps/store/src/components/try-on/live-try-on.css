@@ -17,3 +17,9 @@
 .kd-live-demo .live-samples img{height:150px}
 .kd-live-demo main{padding-bottom:max(28px,env(safe-area-inset-bottom))}
 @media(max-width:600px){.kd-live-demo header{flex-wrap:wrap;gap:16px}.kd-live-demo header nav{display:none}.kd-live-demo .intro,.kd-live-demo .sample-head{align-items:flex-start;flex-direction:column;gap:12px}.kd-live-demo h1{font-size:38px}.kd-live-demo .video-placeholder h2{font-size:22px}.kd-live-demo .video-placeholder{padding:35px 12px 12px}.kd-live-demo .live-layout{gap:20px}}
+.kd-live-demo .connection-details{border:1px solid var(--line);padding:10px;margin:12px 0;font-size:12px;overflow-wrap:anywhere}
+.kd-live-demo .connection-details summary{cursor:pointer;min-height:44px;display:list-item;padding:10px 0;font-weight:600}
+.kd-live-demo .connection-details summary:focus-visible{outline:2px solid var(--olive)}
+.kd-live-demo .connection-details dl{margin:0}.kd-live-demo .connection-details dl>div{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;padding:7px 0;border-top:1px solid var(--line)}
+.kd-live-demo .connection-details dd{margin:0;font-variant-numeric:tabular-nums}.kd-live-demo .connection-details p{line-height:1.5}
+

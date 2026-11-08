@@ -4,7 +4,7 @@ import {spawn} from 'node:child_process';
 import {existsSync,writeFileSync,unlinkSync,mkdtempSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-const chrome=['/usr/bin/google-chrome','/usr/bin/chromium','/usr/bin/chromium-browser'].find(existsSync);
+const chrome=[process.env.TRY_ON_TEST_BROWSER,'C:/Program Files/Google/Chrome/Application/chrome.exe','C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe','/usr/bin/google-chrome','/usr/bin/chromium','/usr/bin/chromium-browser'].filter(Boolean).find(existsSync);
 const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 async function connect(url){
  const socket=new WebSocket(url);let next=0;const pending=new Map();
@@ -19,8 +19,8 @@ test('try-on camera lifecycle, errors and upload work at five viewport widths',{
  const file='apps/store/__try-on-check.html';
  writeFileSync(file,'<!doctype html><html lang="en"><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><div id="root"></div><script type="module" src="/@fs/'+process.cwd().replaceAll('\\','/')+'/tests/try-on-browser.jsx"></script></body></html>',{flag:'wx'});
  const profile=mkdtempSync(join(tmpdir(),'kd-try-on-chrome-'));
- const vite=spawn(process.execPath,['node_modules/vite/bin/vite.js','apps/store','--host','127.0.0.1','--port','5286','--strictPort'],{stdio:'ignore'});
- const browser=spawn(chrome,['--headless','--no-sandbox','--disable-dev-shm-usage','--disable-gpu','--remote-debugging-port=5287','--user-data-dir='+profile,'about:blank'],{stdio:'ignore'});
+ const vite=spawn(process.execPath,['node_modules/vite/bin/vite.js','apps/store','--host','127.0.0.1','--port','5286','--strictPort'],{stdio:'ignore',windowsHide:true});
+ const browser=spawn(chrome,['--headless','--no-sandbox','--disable-dev-shm-usage','--disable-gpu','--remote-debugging-port=5287','--user-data-dir='+profile,'about:blank'],{stdio:'ignore',windowsHide:true});
  try{
   let ready=false;
   for(let i=0;i<80;i++){try{if((await fetch('http://127.0.0.1:5286/__try-on-check.html')).ok&&(await fetch('http://127.0.0.1:5287/json/version')).ok){ready=true;break;}}catch{}await delay(250);}
