@@ -51,6 +51,12 @@ async function run(){
  const input=document.querySelector('input[type=file]');const dt=new DataTransfer();dt.items.add(new File(['bad'],'bad.txt',{type:'text/plain'}));input.files=dt.files;input.dispatchEvent(new Event('change',{bubbles:true}));await wait(60);assert(document.querySelector('[role=alert]').textContent.includes('5 MB'),'invalid upload error');
  assert(document.documentElement.scrollWidth<=innerWidth,'no horizontal overflow');
  await start();const originalNow=Date.now;Date.now=()=>originalNow()+31000;await wait(400);Date.now=originalNow;assert(lastStream.getTracks().every(t=>t.readyState==='ended'),'30 second local cap');
+ cameraMode='wait';await start();const oldCamera=cameraResolve;button('Stop &').click();await wait(30);
+ cameraMode='ok';connectMode='wait';await start();const currentConnect=connectResolve;const mintCount=mints;
+ oldCamera(stream());await wait(60);button('Stop &').click();await wait(30);await start();
+ assert(mints===mintCount,'late cancelled attempt cannot unlock another pending connection');
+ assert(document.querySelector('[role=alert]').textContent.includes('previous connection'),'pending session stays guarded after an older camera resolves');
+ currentConnect(result);await wait(80);connectMode='ok';
  await start();root.unmount();await wait(50);assert(lastStream.getTracks().every(t=>t.readyState==='ended'),'unmount stops camera');
 }
 run().then(()=>{document.body.innerHTML='<output>TRY_ON_CHECKS_PASSED</output>';}).catch(e=>{document.body.innerHTML='<output>TRY_ON_CHECKS_FAILED: '+e.message+'</output>';});

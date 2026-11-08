@@ -134,7 +134,7 @@ export default function LiveTryOn({ token, initialGarment, loadSdk = loadDecart 
             tokenRequest.current = new AbortController();
             const signal = tokenRequest.current.signal;
             let credentialPromise;
-            pendingConnect.current = true;
+            pendingConnect.current = attempt;
             const client = createDecartClient({ telemetry: false, logger: noopLogger, apiKeyProvider: async () => {
                     if (attempt !== generation.current)
                         throw Error('Session cancelled.');
@@ -212,7 +212,7 @@ export default function LiveTryOn({ token, initialGarment, loadSdk = loadDecart 
             setHasError(true);
             const message = e?.name === 'NotAllowedError' ? 'Camera permission was declined. Allow it in your browser to try again.' : providerError(e);
             stop(message);
-        } finally { pendingConnect.current = false; }
+        } finally { if (pendingConnect.current === attempt) pendingConnect.current = false; }
     }
     async function choose(next) {
         if (swapping || phase === 'starting')
