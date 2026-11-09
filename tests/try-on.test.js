@@ -2,7 +2,7 @@ import {createAccountService} from '../server/src/accountRoutes.js';
 import jwt from 'jsonwebtoken';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {registerTryOnRoutes} from '../server/src/tryOn.js';
+import {registerTryOnRoutes,TRY_ON_TIMING} from '../server/src/tryOn.js';
 
 function fixture(settings={},providerError=null){
  const routes={},calls=[];
@@ -18,7 +18,7 @@ function fixture(settings={},providerError=null){
 test('try-on defaults off and does not call provider',async()=>{const f=fixture({DECART_API_KEY:'private-test'});assert.equal((await f.run('get')).body.configured,false);assert.equal((await f.run('post')).code,503);assert.equal(f.calls.length,0);});
 test('missing key is explicit',async()=>{assert.equal((await fixture({TRY_ON_ENABLED:'true'}).run('post')).code,503);});
 test('unapproved origin cannot mint tokens',async()=>{const f=fixture({TRY_ON_ENABLED:'true',DECART_API_KEY:'private-test'});assert.equal((await f.run('post','https://other.example')).code,403);assert.equal(f.calls.length,0);});
-test('client token is model/origin/time scoped and permanent key is not returned',async()=>{const f=fixture({TRY_ON_ENABLED:'true',DECART_API_KEY:'private-test'});const result=await f.run('post');assert.equal(result.body.apiKey,'short-lived-test-token');assert(!JSON.stringify(result.body).includes('private-test'));assert.deepEqual(f.calls[0].limits,{expiresIn:60,allowedModels:['lucy-vton-3.6'],allowedOrigins:['http://localhost:5173'],constraints:{realtime:{maxSessionDuration:30}}});const limited=await f.run('post');assert.equal(limited.code,429);assert(limited.body.retryAfterSeconds>0&&limited.body.retryAfterSeconds<=30);});
+test('client token is model/origin/time scoped and permanent key is not returned',async()=>{const f=fixture({TRY_ON_ENABLED:'true',DECART_API_KEY:'private-test'});const result=await f.run('post');assert.equal(result.body.apiKey,'short-lived-test-token');assert(!JSON.stringify(result.body).includes('private-test'));assert.deepEqual(f.calls[0].limits,{expiresIn:120,allowedModels:['lucy-vton-3.6'],allowedOrigins:['http://localhost:5173'],constraints:{realtime:{maxSessionDuration:90}}});const limited=await f.run('post');assert.equal(limited.code,429);assert(limited.body.retryAfterSeconds>0&&limited.body.retryAfterSeconds<=90);});
 
 for(const [status,expected] of [[401,'API key'],[402,'credits'],[403,'permissions'],[429,'rate limiting'],[500,'could not authorize']]){
  test('provider failure '+status+' is actionable without leaking raw details',async()=>{
@@ -40,4 +40,14 @@ test('try-on uses real account middleware for missing, expired, blocked and revo
   assert.equal(denied?.status,expected);
  }
  assert.equal(calls,0);
+});
+test('readiness and issued tokens share the same setup/live/total timing policy',async()=>{
+ const f=fixture({TRY_ON_ENABLED:'true',DECART_API_KEY:'private-test'});
+ const ready=(await f.run('get')).body,issued=(await f.run('post')).body;
+ assert.deepEqual(TRY_ON_TIMING,{setupSeconds:60,liveSeconds:30,sessionSeconds:90,tokenTtlSeconds:120,cooldownSeconds:90});
+ for(const key of Object.keys(TRY_ON_TIMING)){
+  assert.equal(ready[key],TRY_ON_TIMING[key]);assert.equal(issued[key],TRY_ON_TIMING[key]);
+ }
+ assert.equal(f.calls[0].limits.constraints.realtime.maxSessionDuration,issued.sessionSeconds);
+ assert(f.calls[0].limits.expiresIn>=issued.sessionSeconds,'token also covers later garment uploads');
 });

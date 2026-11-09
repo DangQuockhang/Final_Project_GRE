@@ -1,12 +1,15 @@
 import {createDecartClient} from '@decartai/sdk';
 
+export const TRY_ON_TIMING = Object.freeze({setupSeconds:60,liveSeconds:30,sessionSeconds:90,tokenTtlSeconds:120,cooldownSeconds:90});
+
 export function registerTryOnRoutes(route,{authorize,env=process.env,createClient=createDecartClient}) {
  const recent=new Map();
- const model='lucy-vton-3.6',seconds=30;
+ const model='lucy-vton-3.6';
+ const cooldownMs=TRY_ON_TIMING.cooldownSeconds*1000;
  const enabled=()=>env.TRY_ON_ENABLED==='true';
  const configured=()=>enabled()&&Boolean(env.DECART_API_KEY?.trim());
  route.get('/try-on',authorize,(req,res)=>{
-  res.set('Cache-Control','no-store').json({configured:configured(),model,sessionSeconds:seconds});
+  res.set('Cache-Control','no-store').json({configured:configured(),model,...TRY_ON_TIMING});
  });
  route.post('/try-on',authorize,async(req,res)=>{
   res.set('Cache-Control','no-store');
@@ -15,16 +18,16 @@ export function registerTryOnRoutes(route,{authorize,env=process.env,createClien
   const origins=(env.ALLOWED_ORIGINS||'http://localhost:5173,http://localhost:5174').split(',').map(s=>s.trim());
   if(!origin||!origins.includes(origin))return res.status(403).json({error:'Start the session from the configured storefront.'});
   const id=String(req.user.id),now=Date.now();
-  if(now-(recent.get(id)||0)<30000){
-   const retryAfterSeconds=Math.ceil((30000-(now-recent.get(id)))/1000);
+  if(now-(recent.get(id)||0)<cooldownMs){
+   const retryAfterSeconds=Math.ceil((cooldownMs-(now-recent.get(id)))/1000);
    return res.set('Retry-After',String(retryAfterSeconds)).status(429).json({error:`Please wait ${retryAfterSeconds} seconds before starting another trial.`,retryAfterSeconds});
   }
-  for(const [key,time] of recent)if(now-time>60000)recent.delete(key);
+  for(const [key,time] of recent)if(now-time>cooldownMs)recent.delete(key);
   recent.set(id,now);
   try{
    const client=createClient({apiKey:env.DECART_API_KEY.trim()});
-   const token=await client.tokens.create({expiresIn:60,allowedModels:[model],allowedOrigins:[origin],constraints:{realtime:{maxSessionDuration:seconds}}});
-   return res.json({apiKey:token.apiKey,expiresAt:token.expiresAt,sessionSeconds:seconds});
+   const token=await client.tokens.create({expiresIn:TRY_ON_TIMING.tokenTtlSeconds,allowedModels:[model],allowedOrigins:[origin],constraints:{realtime:{maxSessionDuration:TRY_ON_TIMING.sessionSeconds}}});
+   return res.json({apiKey:token.apiKey,expiresAt:token.expiresAt,...TRY_ON_TIMING});
   }catch(error){
    // Never forward provider bodies: they can contain credentials or request details.
    const status=Number(error?.data?.status);

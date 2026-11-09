@@ -1,6 +1,7 @@
 import React from 'react';
 import { apiBase } from '@kd/catalog';
 import './live-try-on.css';
+import { readTiming, createTrialClock } from './timing';
 import { CAMERA_PUBLISH_OPTIONS, cameraSnapshot, waitForCameraFrames } from './camera';
 import { emptyDiagnostics, safeStats, timeoutMessage, providerError, sessionEndMessage, prepareGarment } from './diagnostics';
 const API = import.meta.env.VITE_API_URL || apiBase;
@@ -35,7 +36,9 @@ export default function LiveTryOn({ token, initialGarment, loadSdk = loadDecart 
     const [phase, setPhase] = useState('idle');
     const [consent, setConsent] = useState(false);
     const [swapping, setSwapping] = useState(false);
-    const [remaining, setRemaining] = useState(30);
+    const [remaining, setRemaining] = useState(60);
+    const [timing, setTiming] = useState(null);
+    const trialClock = useRef(null), attemptTiming = useRef(null);
     const [garment, setGarment] = useState(initialGarment ? { ...initialGarment, preview: initialGarment.image } : { ...samples[0], preview: samples[0].image });
     const localVideo = useRef(null), remoteVideo = useRef(null);
     const session = useRef(null), camera = useRef(null);
@@ -48,6 +51,7 @@ export default function LiveTryOn({ token, initialGarment, loadSdk = loadDecart 
     const stop = useCallback((message = 'Session stopped. Your camera is off.') => {
         generation.current++;
         active.current = false;
+        trialClock.current = null;
         clearTimeout(disconnectTimer.current);
         imageRequest.current?.abort();
         cameraCheck.current?.abort();
@@ -69,6 +73,20 @@ export default function LiveTryOn({ token, initialGarment, loadSdk = loadDecart 
         setSwapping(false);
         setStatus(message);
     }, []);
+    function finishTimedTrial(snapshot) {
+        const limits = attemptTiming.current;
+        setHasError(snapshot.stage !== 'live');
+        stop(snapshot.stage === 'live'
+            ? `${limits.liveSeconds}-second preview complete. Your camera is off.`
+            : timeoutMessage({ ...diagnostics.current, playing: false }, limits.setupSeconds, limits.liveSeconds));
+    }
+    function activateLive() {
+        if (!active.current || !receivedFrames.current || !garmentApplied.current || !trialClock.current) return;
+        if (!trialClock.current.startLive()) { finishTimedTrial(trialClock.current.snapshot()); return; }
+        setRemaining(trialClock.current.snapshot().remaining);
+        setPhase('live');
+        setStatus('Live AI preview. Change a garment below or stop at any time.');
+    }
     async function check() {
         setHasError(false);
         try {
@@ -76,8 +94,10 @@ export default function LiveTryOn({ token, initialGarment, loadSdk = loadDecart 
             const body = await response.json();
             if (!response.ok)
                 throw Error(body.error || 'Connection check failed.');
+            const limits = body.configured ? readTiming(body) : null;
+            setTiming(limits);
             setConfigured(body.configured === true);
-            setStatus(body.configured ? 'API key configured. Ready to start a 30-second trial.' : 'Setup needed: enable try-on and add the Decart API key on the server.');
+            setStatus(body.configured ? `Ready: up to ${limits.setupSeconds}s to prepare, then ${limits.liveSeconds}s of live preview. Keep this tab visible.` : 'Setup needed: enable try-on and add the Decart API key on the server.');
         }
         catch (e) {
             setConfigured(false);
@@ -88,7 +108,7 @@ export default function LiveTryOn({ token, initialGarment, loadSdk = loadDecart 
     useEffect(() => {
         void check();
         const hide = () => { if (document.hidden && active.current)
-            stop('Session stopped because the page is hidden.'); };
+            stop('Session stopped because this tab was hidden. Keep the fitting-room tab visible while preparing and trying on. Camera is off; no automatic restart.'); };
         document.addEventListener('visibilitychange', hide);
         const leave = () => stop();
         window.addEventListener('pagehide', leave);
@@ -97,7 +117,7 @@ export default function LiveTryOn({ token, initialGarment, loadSdk = loadDecart 
     }, [stop, token]);
     async function start() {
         if (pendingConnect.current) { setHasError(true); setStatus('The previous connection is closing. Please wait before starting again.'); return; }
-        if (Date.now() < cooldownUntil.current || active.current || !configured || !consent || document.hidden)
+        if (Date.now() < cooldownUntil.current || active.current || !configured || !timing || !consent || document.hidden)
             return;
         const attempt = ++generation.current;
         active.current = true;
@@ -108,7 +128,8 @@ export default function LiveTryOn({ token, initialGarment, loadSdk = loadDecart 
         setHasError(false);
         setPhase('starting');
         setStatus('Checking the garment photo before starting a paid session.');
-        setRemaining(30);
+        setRemaining(timing.setupSeconds);
+        attemptTiming.current = timing;
         try {
             const { createDecartClient, models, noopLogger } = await loadSdk();
             if (attempt !== generation.current)
@@ -135,9 +156,15 @@ export default function LiveTryOn({ token, initialGarment, loadSdk = loadDecart 
             cameraCheck.current = null;
             record({ cameraFrames: true, ...cameraSnapshot(stream) });
             setStatus('Connecting to Lucy. Your camera preview is shown separately.');
-            // Start the local cap before dialing; receiving another stream must not reset it.
-            const end = Date.now() + 30000;
-            timer.current = setInterval(() => { const left = Math.max(0, Math.ceil((end - Date.now()) / 1000)); setRemaining(left); if (!left) { setHasError(!(receivedFrames.current && garmentApplied.current)); stop(timeoutMessage(diagnostics.current)); } }, 250);
+            // Preparation has its own deadline; the live allowance starts only after
+            // garment ACK and playable remote video. The hard cap never moves.
+            trialClock.current = createTrialClock(timing);
+            timer.current = setInterval(() => {
+                if (attempt !== generation.current || !trialClock.current) return;
+                const snapshot = trialClock.current.snapshot();
+                setRemaining(snapshot.remaining);
+                if (snapshot.expired) finishTimedTrial(snapshot);
+            }, 250);
             tokenRequest.current = new AbortController();
             const signal = tokenRequest.current.signal;
             let credentialPromise;
@@ -146,7 +173,19 @@ export default function LiveTryOn({ token, initialGarment, loadSdk = loadDecart 
                     if (attempt !== generation.current)
                         throw Error('Session cancelled.');
                     // Reuse one short-lived credential for image uploads, never mint automatically again.
-                    credentialPromise ??= fetch(API + '/try-on', { method: 'POST', signal, headers: { Authorization: 'Bearer ' + token } }).then(async res => { const data = await res.json(); if (res.status === 429 || res.ok) { const seconds = res.ok ? 30 : Math.min(300, Math.max(1, Number(data.retryAfterSeconds) || 30)); cooldownUntil.current = Date.now() + seconds * 1000; setCooldown(seconds); } if (!res.ok) throw Error(data.error || 'Could not authorize the AI session.'); return data; });
+                    credentialPromise ??= fetch(API + '/try-on', { method: 'POST', signal, headers: { Authorization: 'Bearer ' + token } }).then(async res => {
+                        const data = await res.json();
+                        if (res.status === 429 || res.ok) {
+                            const seconds = res.ok ? timing.cooldownSeconds : Math.min(300, Math.max(1, Number(data.retryAfterSeconds) || timing.cooldownSeconds));
+                            cooldownUntil.current = Date.now() + seconds * 1000;
+                            setCooldown(seconds);
+                        }
+                        if (!res.ok) throw Error(data.error || 'Could not authorize the AI session.');
+                        const issuedTiming = readTiming(data);
+                        if (Object.keys(timing).some(key => issuedTiming[key] !== timing[key]))
+                            throw Error('Trial limits changed. Refresh the page before starting again.');
+                        return data;
+                    });
                     const data = await credentialPromise;
                     if (attempt !== generation.current)
                         throw Error('Session cancelled.');
@@ -160,7 +199,7 @@ export default function LiveTryOn({ token, initialGarment, loadSdk = loadDecart 
                 onQueuePosition: ({ position }) => {
                     if (attempt !== generation.current || !Number.isFinite(position) || position < 0) return;
                     record({ queuePosition: Math.floor(position) });
-                    setStatus('Decart queue position: ' + Math.floor(position) + '. Waiting within the 30-second limit; no automatic retry.');
+                    setStatus('Decart queue position: ' + Math.floor(position) + `. Waiting within the ${timing.setupSeconds}-second preparation limit; no automatic retry.`);
                 },
                 onRemoteStream: (output) => {
                     if (attempt !== generation.current) { output.getTracks().forEach(t => t.stop()); return; }
@@ -208,10 +247,8 @@ export default function LiveTryOn({ token, initialGarment, loadSdk = loadDecart 
             if (attempt !== generation.current) return;
             garmentApplied.current = true;
             record({ garmentAccepted: true });
-            if (receivedFrames.current) {
-                setPhase('live');
-                setStatus('Live AI preview. Change a garment below or stop at any time.');
-            } else setStatus('Garment accepted by Decart. Waiting for AI video.');
+            if (receivedFrames.current) activateLive();
+            else setStatus('Garment accepted by Decart. Waiting for AI video.');
         }
         catch (e) {
             if (attempt !== generation.current)
@@ -267,7 +304,7 @@ export default function LiveTryOn({ token, initialGarment, loadSdk = loadDecart 
     return <div className="kd-live-demo">
         <header><a className="brand" href="/shop">KD <span>DESIGN</span></a><nav>LIVE FITTING ROOM</nav><a className="back" href="/shop">Back to shop</a></header>
         <main>
-            <div className="intro"><div><div className="eyebrow">POWERED BY DECART LUCY</div><h1>See it on you.</h1><p>A live fitting room, with room to experiment.</p></div><span className="demo-label">30-SECOND API TRIAL</span></div>
+            <div className="intro"><div><div className="eyebrow">POWERED BY DECART LUCY</div><h1>See it on you.</h1><p>A live fitting room, with room to experiment.</p></div><span className="demo-label">{timing?.liveSeconds ?? 30}-SECOND LIVE PREVIEW</span></div>
             <section className="live-layout">
                 <div className="video-area">
                     <div className="output">
@@ -275,11 +312,9 @@ export default function LiveTryOn({ token, initialGarment, loadSdk = loadDecart 
                             if (!active.current || !remoteVideo.current?.srcObject || !remoteVideo.current.videoWidth) return;
                             receivedFrames.current = true;
                             record({ playing: true });
-                            if (!garmentApplied.current) return;
-                            setPhase('live');
-                            setStatus('Live AI preview. Change a garment below or stop at any time.');
+                            activateLive();
                         }} autoPlay playsInline muted aria-label="AI try-on"/>
-                        <div className="video-label">AI try-on {phase !== 'idle' && `/ ${remaining}s`}</div>
+                        <div className="video-label">{phase === 'starting' ? 'Preparing AI' : 'AI try-on'} {phase !== 'idle' && `/ ${remaining}s left`}</div>
                         {phase !== 'live' && <div className="video-placeholder"><h2>{phase === 'starting' ? 'Preparing your look.' : 'Your look comes to life here.'}</h2><p>{phase === 'starting' ? 'Connecting to the AI video stream.' : 'Choose a garment, then start your trial.'}</p></div>}
                     </div>
                     <div className="camera-preview"><video ref={localVideo} autoPlay playsInline muted aria-label="Original camera"/><span>Original camera / No AI</span></div>
@@ -304,9 +339,9 @@ export default function LiveTryOn({ token, initialGarment, loadSdk = loadDecart 
                         <p>Last attempt only. Missing counters do not prove a network failure. These details contain no tokens or camera images.</p>
                     </details>
                     {configured === false && <div className="setup-note"><strong>Setup or account access needed</strong><p>Sign in and ask the shop administrator to enable this demo. The API key belongs in server settings only.</p><a href="https://platform.decart.ai" target="_blank" rel="noopener noreferrer">Decart Platform</a><button className="outline full" onClick={check}>Check connection again</button></div>}
-                    <label className="consent"><input type="checkbox" checked={consent} disabled={phase !== 'idle'} onChange={e=>setConsent(e.target.checked)}/><span>I agree to send my camera video and garment image to Decart for this trial. API credits may be used. <a href="https://docs.platform.decart.ai/resources/privacy-policy" target="_blank" rel="noopener noreferrer">Privacy information</a></span></label>
-                    <button className="primary full" disabled={!configured || !consent || cooldown > 0 || phase !== 'idle'} onClick={start}>{phase === 'idle' ? (cooldown > 0 ? `Try again in ${cooldown}s` : 'Start 30-second try-on') : 'Session in progress'}</button>
-                    <button className="outline full stop" disabled={phase === 'idle'} onClick={()=>{setHasError(false);stop();}}>Stop &amp; turn camera off</button><p className="micro">30 seconds includes connection and processing. No microphone. Stops when you leave this tab.</p>
+                    <label className="consent"><input type="checkbox" checked={consent} disabled={phase !== 'idle'} onChange={e=>setConsent(e.target.checked)}/><span>I agree to send my camera video and garment image to Decart for this trial. Up to {timing?.sessionSeconds ?? 90}s including preparation; API credits may be used while waiting. <a href="https://docs.platform.decart.ai/resources/privacy-policy" target="_blank" rel="noopener noreferrer">Privacy information</a></span></label>
+                    <button className="primary full" disabled={!configured || !consent || cooldown > 0 || phase !== 'idle'} onClick={start}>{phase === 'idle' ? (cooldown > 0 ? `Try again in ${cooldown}s` : 'Start live try-on') : 'Session in progress'}</button>
+                    <button className="outline full stop" disabled={phase === 'idle'} onClick={()=>{setHasError(false);stop();}}>Stop &amp; turn camera off</button><p className="micro">Up to {timing?.setupSeconds ?? 60}s preparation, then {timing?.liveSeconds ?? 30}s preview. Keep this tab visible; switching tabs or minimizing stops the trial. No microphone.</p>
                 </aside>
             </section>
             <section><div className="sample-head"><h2>Change your look.</h2><p>Anywear samples / Not KD Design products</p></div>

@@ -34,7 +34,7 @@ ALLOWED_ORIGINS=http://localhost:5173,http://localhost:5174
 
 Do not commit .env, put this key in VITE_* / frontend / localStorage, or log it. Restart the API after changes. Production origins must be exact HTTPS origins (no trailing slash). Camera access requires HTTPS or localhost; a plain LAN HTTP URL on a phone is insufficient.
 
-To disable: set `TRY_ON_ENABLED=false` and restart the API. New tokens will be refused; existing sessions remain bounded by the provider's 30-second cap.
+To disable: set `TRY_ON_ENABLED=false` and restart the API. New tokens will be refused; existing sessions remain bounded by the provider's 90-second cap.
 
 ## Try the integrated experience
 
@@ -54,9 +54,9 @@ Official SDK pinned to `@decartai/sdk@0.2.14`, model `lucy-vton-3.6`, standard s
 - https://docs.platform.decart.ai/models/realtime/virtual-try-on
 - https://docs.platform.decart.ai/sdks/javascript-realtime
 
-Authenticated `GET /api/try-on` returns configuration readiness only; it does not prove credits/model entitlement. Authenticated `POST /api/try-on` creates a token with `expiresIn:60`, one allowed model, the validated request Origin and `constraints.realtime.maxSessionDuration:30`. Token expiry does not end an existing session; the separate provider constraint does. A local wall-clock countdown begins before connection and is not reset on stream updates.
+Authenticated `GET /api/try-on` returns configuration readiness only; it does not prove credits/model entitlement. Authenticated `POST /api/try-on` creates a token with `expiresIn:120`, one allowed model, the validated request Origin and `constraints.realtime.maxSessionDuration:90`. Token expiry does not end an existing session; the separate provider constraint does. GET and POST both return setupSeconds:60, liveSeconds:30, sessionSeconds:90, tokenTtlSeconds:120 and cooldownSeconds:90. The frontend refuses missing or inconsistent limits (restart an older API after pulling). Preparation starts before token authorization; a separate preview allowance starts once only after garment acknowledgement and playable remote video.
 
-Responses: 401 expired/missing session; 403 blocked account or invalid/missing origin; 429 account cooldown; 503 disabled or missing key; 502 provider failure, with safe `providerStatus` when available. The permanent key and raw provider error bodies are never returned. Rate limiting is a single-process 30-second per-user cooldown; use a shared store and account-level spending limits before a multi-instance/public rollout.
+Responses: 401 expired/missing session; 403 blocked account or invalid/missing origin; 429 account cooldown; 503 disabled or missing key; 502 provider failure, with safe `providerStatus` when available. The permanent key and raw provider error bodies are never returned. Rate limiting is a single-process 90-second per-user cooldown; use a shared store and account-level spending limits before a multi-instance/public rollout.
 
 No automatic connect retries or capacity retries. On reconnect intent, the UI invalidates the attempt and disconnects. One token request is cached per explicit Start; credential callbacks after cancellation are rejected.
 
@@ -93,7 +93,7 @@ Run `npm run dev:store` in a second terminal. No database rollback is needed. To
 
 
 ## Blank AI output diagnostics
-Token HTTP 200 and LiveKit signaling connected do not prove video delivery. The UI now distinguishes connected, stream received, and playable video (playing event with nonzero dimensions). No playable video within the 30-second total budget is an error, not a successful trial. Camera tracks stop on timeout. Start displays an account cooldown; HTTP 429 provides Retry-After and retryAfterSeconds.
+Token HTTP 200 and LiveKit signaling connected do not prove video delivery. The UI now distinguishes connected, stream received, and playable video (playing event with nonzero dimensions). No playable video within the 60-second preparation budget is an error, not a successful trial. Camera tracks stop on timeout. Start displays an account cooldown; HTTP 429 provides Retry-After and retryAfterSeconds.
 
 No real provider session was run for this patch. A missing remote stream may still require network/provider investigation. The SDK cannot directly abort pending connect: camera and token fetch stop immediately; late connections disconnect when resolved. No automatic new trial is started.
 
@@ -108,7 +108,7 @@ A queue position appears only if Decart reports one. Missing stats mean **not re
 
 Image URLs are fetched and decoded in the browser (10-second timeout, 5 MB limit) before camera/token creation. Cross-origin failures and invalid images now fail before starting an AI session; upload a local garment instead. Replacement garments use the same validation.
 
-The 30-second local budget still includes token authorization, connection/queue time and processing. It does not restart when frames arrive; provider maxSessionDuration remains 30. This conservative limit can end a slow setup before output appears. Do not extend it, enable retries or turn on paid fast mode without reviewing cost and lifecycle handling.
+On 2026-11-09, the owner requested more preparation time. The app now allows up to 60 seconds for token authorization, connection/queue time, garment acknowledgement and first playable video. Only then does the 30-second preview begin. Total elapsed time is capped at 90 seconds locally, with a matching 90-second provider maxSessionDuration. Repeated playing events, garment changes and buffering never restart the preview allowance. Tokens last 120 seconds so late garment uploads can use the same credential. No automatic retries, extra tokens or paid fast mode are enabled. Preparation may use credits, and the maximum provider session duration is three times the previous 30-second cap; the consent text states the new limit.
 
 Connection failures now preserve the original rejection instead of replacing it with a generic disconnected message. Timeouts distinguish missing token, queue/connection, garment acknowledgement and playable video. Provider credit/session-limit reasons are displayed separately. Stop during pending connect still cannot immediately cancel the SDK handshake; any late result is disconnected.
 
@@ -118,7 +118,7 @@ To pause this feature while developing AI assistant: set TRY_ON_ENABLED=false in
 
 ## Camera preflight and zero-outgoing-bytes mitigation
 
-The app now checks for two playable local camera frames before requesting a client token. An opened but frozen, muted, ended or unplayable camera fails locally; Stop/hidden-tab cancellation also cancels this check. It has an eight-second local timeout and does not consume a Decart session. The existing 30-second paid-session budget still starts before token authorization and connection.
+The app now checks for two playable local camera frames before requesting a client token. An opened but frozen, muted, ended or unplayable camera fails locally; Stop/hidden-tab cancellation also cancels this check. It has an eight-second local timeout and does not consume a Decart session. The 60-second preparation budget and 90-second total cap start after this local check, before token authorization and connection.
 
 Connect now passes the original camera stream with `mirror:false` and `preferredVideoCodec:'vp8'`. This removes the SDK's generated mirror-track pipeline and changes its default H264 publish preference. The local preview stays mirrored with CSS. SDK-internal encoding/metadata processing still applies. These changes are a compatibility mitigation, not proof that mirroring or H264 caused the reported zero-byte counter.
 
@@ -127,3 +127,12 @@ Connection details adds Camera frames verified, the last sampled track state, mu
 Verification includes camera preflight unit cases and browser lifecycle checks with an injected SDK. A local WebRTC loopback fixture additionally negotiates VP8 and checks actual RTP bytes and decoded frames, using synthetic canvas video and local peers with no external ICE servers. This does not exercise Decart, physical cameras, the SDK's media transport, or the user's network.
 
 After pulling, stop and restart API/storefront. If you choose to run a paid trial, keep the fitting-room tab visible until it ends; switching tabs intentionally stops it. Inspect Connection details afterwards. Send only that panel with Camera frames verified, camera track/muted/enabled, outgoing bytes and incoming/decoded frames. Do not share tokens, environment files, full network exports or raw WebRTC dumps. If bytes remain zero despite verified camera frames, further SDK publishing/encoder/network investigation is needed; purchasing more credits is not a verified fix.
+
+## Testing the separate preparation and preview timers
+
+- Restart both API and store after pulling. The API must report the new timing fields; an old API is rejected with a restart instruction before a trial starts.
+- In an explicitly authorized real trial, stay on the fitting-room tab. It shows Preparing AI with a 60-second countdown, then AI try-on with a separate 30-second countdown only after playable output and garment acknowledgement.
+- No output by the preparation deadline stops camera and session with a stage-specific error. A normal preview expiry is a completion message, not an error.
+- Switching tabs, minimizing, Stop, navigating away and unmount still stop the trial immediately. A hidden-tab stop is distinct from a preparation timeout; more time does not override it.
+- Automated coverage simulates a first frame arriving after 45 seconds, checks 30 seconds of subsequent preview, tests missing video at 60 seconds, and ensures repeated playing/garment updates cannot extend a session beyond 90 seconds. API tests verify the provider constraint and token lifetime.
+- These changes remove the premature 30-second preparation cutoff; they do not establish why the reported SDK outbound counter stayed at zero or guarantee a provider frame. Live Decart output, actual billing and provider-enforced cutoff still require an authorized funded trial. No live AI request was made for this patch.

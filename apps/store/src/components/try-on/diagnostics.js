@@ -16,9 +16,9 @@ export function safeStats(stats) {
     };
 }
 
-export function timeoutMessage(info) {
-    if (info.playing && info.garmentAccepted) return '30-second trial complete. Your camera is off.';
-    const suffix = ' The 30-second limit was reached. The trial was stopped; camera is off. No automatic retry.';
+export function timeoutMessage(info, setupSeconds = 60, liveSeconds = 30) {
+    if (info.playing && info.garmentAccepted) return `${liveSeconds}-second preview complete. Your camera is off.`;
+    const suffix = ` The ${setupSeconds}-second preparation limit was reached. The trial was stopped; camera is off. No automatic retry.`;
     if (!info.tokenReady) return 'Session authorization did not finish.' + suffix;
     if (!info.connected && info.queuePosition !== null) return 'Decart reported a queue, but the connection did not finish.' + suffix;
     if (!info.connected) return 'Decart connection or camera publishing did not finish.' + suffix;

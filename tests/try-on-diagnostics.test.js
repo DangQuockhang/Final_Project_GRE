@@ -18,7 +18,7 @@ test('timeout identifies the incomplete stage without assuming provider overload
     info.framesDecoded = 8;
     assert.match(timeoutMessage(info), /playback did not start/);
     info.playing = true;
-    assert.match(timeoutMessage(info), /trial complete/);
+    assert.match(timeoutMessage(info), /preview complete/);
 });
 
 test('diagnostic snapshot omits addresses, tokens and arbitrary SDK fields', () => {
