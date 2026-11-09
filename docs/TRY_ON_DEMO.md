@@ -116,3 +116,14 @@ Automated tests use local fixture images/canvas streams and a fake SDK; they do 
 
 To pause this feature while developing AI assistant: set TRY_ON_ENABLED=false in your private server configuration, restart the API, and leave existing product/account data unchanged.
 
+## Camera preflight and zero-outgoing-bytes mitigation
+
+The app now checks for two playable local camera frames before requesting a client token. An opened but frozen, muted, ended or unplayable camera fails locally; Stop/hidden-tab cancellation also cancels this check. It has an eight-second local timeout and does not consume a Decart session. The existing 30-second paid-session budget still starts before token authorization and connection.
+
+Connect now passes the original camera stream with `mirror:false` and `preferredVideoCodec:'vp8'`. This removes the SDK's generated mirror-track pipeline and changes its default H264 publish preference. The local preview stays mirrored with CSS. SDK-internal encoding/metadata processing still applies. These changes are a compatibility mitigation, not proof that mirroring or H264 caused the reported zero-byte counter.
+
+Connection details adds Camera frames verified, the last sampled track state, muted/enabled flags, and the selected publish mode. The panel retains a reported queue position after connection, so queue history is not erased. An SDK-reported zero remains a clue rather than proof of a specific network or provider fault.
+
+Verification includes camera preflight unit cases and browser lifecycle checks with an injected SDK. A local WebRTC loopback fixture additionally negotiates VP8 and checks actual RTP bytes and decoded frames, using synthetic canvas video and local peers with no external ICE servers. This does not exercise Decart, physical cameras, the SDK's media transport, or the user's network.
+
+After pulling, stop and restart API/storefront. If you choose to run a paid trial, keep the fitting-room tab visible until it ends; switching tabs intentionally stops it. Inspect Connection details afterwards. Send only that panel with Camera frames verified, camera track/muted/enabled, outgoing bytes and incoming/decoded frames. Do not share tokens, environment files, full network exports or raw WebRTC dumps. If bytes remain zero despite verified camera frames, further SDK publishing/encoder/network investigation is needed; purchasing more credits is not a verified fix.

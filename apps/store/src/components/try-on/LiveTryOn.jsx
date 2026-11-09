@@ -1,6 +1,7 @@
 import React from 'react';
 import { apiBase } from '@kd/catalog';
 import './live-try-on.css';
+import { CAMERA_PUBLISH_OPTIONS, cameraSnapshot, waitForCameraFrames } from './camera';
 import { emptyDiagnostics, safeStats, timeoutMessage, providerError, sessionEndMessage, prepareGarment } from './diagnostics';
 const API = import.meta.env.VITE_API_URL || apiBase;
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -14,7 +15,7 @@ const loadDecart = () => import('@decartai/sdk');
 export default function LiveTryOn({ token, initialGarment, loadSdk = loadDecart }) {
     const diagnostics = useRef(emptyDiagnostics());
     const [details, setDetails] = useState(emptyDiagnostics);
-    const imageRequest = useRef(null), disconnectTimer = useRef(null);
+    const imageRequest = useRef(null), disconnectTimer = useRef(null), cameraCheck = useRef(null);
     function record(values) { diagnostics.current = { ...diagnostics.current, ...values }; setDetails(diagnostics.current); }
     async function loadGarment(image) {
         const controller = new AbortController();
@@ -49,6 +50,7 @@ export default function LiveTryOn({ token, initialGarment, loadSdk = loadDecart 
         active.current = false;
         clearTimeout(disconnectTimer.current);
         imageRequest.current?.abort();
+        cameraCheck.current?.abort();
         const old = session.current;
         session.current = null;
         try { old?.disconnect(); } catch {}
@@ -124,9 +126,14 @@ export default function LiveTryOn({ token, initialGarment, loadSdk = loadDecart 
                 return;
             }
             camera.current = stream;
-            record({ cameraReady: true });
-            if (localVideo.current)
-                localVideo.current.srcObject = stream;
+            record({ cameraReady: true, ...cameraSnapshot(stream) });
+            setStatus('Checking that your camera is producing video.');
+            const controller = new AbortController();
+            cameraCheck.current = controller;
+            await waitForCameraFrames(localVideo.current, stream, controller.signal);
+            if (attempt !== generation.current) return;
+            cameraCheck.current = null;
+            record({ cameraFrames: true, ...cameraSnapshot(stream) });
             setStatus('Connecting to Lucy. Your camera preview is shown separately.');
             // Start the local cap before dialing; receiving another stream must not reset it.
             const end = Date.now() + 30000;
@@ -149,7 +156,7 @@ export default function LiveTryOn({ token, initialGarment, loadSdk = loadDecart 
                     return data.apiKey;
                 } });
             const result = await client.realtime.connect(stream, {
-                model, mirror: 'auto', retries: 0, capacityRetryBudgetMs: 0,
+                model, ...CAMERA_PUBLISH_OPTIONS, retries: 0, capacityRetryBudgetMs: 0,
                 onQueuePosition: ({ position }) => {
                     if (attempt !== generation.current || !Number.isFinite(position) || position < 0) return;
                     record({ queuePosition: Math.floor(position) });
@@ -188,8 +195,8 @@ export default function LiveTryOn({ token, initialGarment, loadSdk = loadDecart 
                 return;
             }
             session.current = result;
-            record({ connected: true, queuePosition: null });
-            result.on('stats', stats => { if (attempt === generation.current) record(safeStats(stats)); });
+            record({ connected: true });
+            result.on('stats', stats => { if (attempt === generation.current) record({ ...safeStats(stats), ...cameraSnapshot(camera.current) }); });
             result.on('error', (error) => { if (attempt === generation.current)
                 { setHasError(true); stop(providerError(error)); } });
             result.on('sessionEnded', event => { if (attempt === generation.current) {
@@ -284,11 +291,14 @@ export default function LiveTryOn({ token, initialGarment, loadSdk = loadDecart 
                         <summary>Connection details</summary>
                         <dl>{[
                             ['Garment photo checked', details.imageReady], ['Camera opened', details.cameraReady],
-                            ['Session token received', details.tokenReady], ['Connection and publishing ready', details.connected],
+                            ['Camera frames verified', details.cameraFrames], ['Session token received', details.tokenReady], ['Connection and publishing ready', details.connected],
                             ['Garment acknowledged', details.garmentAccepted], ['AI stream received', details.streamReceived],
                             ['Video playback started', details.playing],
                         ].map(([label, done]) => <div key={label}><dt>{label}</dt><dd>{done ? 'Yes' : 'Not confirmed'}</dd></div>)}
                         <div><dt>Queue position reported</dt><dd>{details.queuePosition ?? 'None reported'}</dd></div>
+                        <div><dt>Camera track (last sample)</dt><dd>{details.cameraTrack ?? 'Not checked'}</dd></div>
+                        <div><dt>Camera muted / enabled</dt><dd>{details.cameraMuted === null ? '?' : String(details.cameraMuted)} / {details.cameraEnabled === null ? '?' : String(details.cameraEnabled)}</dd></div>
+                        <div><dt>Camera publish mode</dt><dd>Direct / VP8</dd></div>
                         <div><dt>Camera video bytes sent</dt><dd>{details.bytesSent ?? 'Not reported'}</dd></div>
                         <div><dt>AI frames received / decoded</dt><dd>{details.framesReceived ?? '?'} / {details.framesDecoded ?? '?'}</dd></div></dl>
                         <p>Last attempt only. Missing counters do not prove a network failure. These details contain no tokens or camera images.</p>

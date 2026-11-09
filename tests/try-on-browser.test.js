@@ -15,12 +15,12 @@ async function connect(url){
   pending.set(id,{resolve,reject,timer});socket.send(JSON.stringify({id,method,params}));
  })};
 }
-test('try-on camera lifecycle, errors and upload work at five viewport widths',{skip:!chrome,timeout:200000},async()=>{
+test('try-on camera lifecycle, errors and upload work at five viewport widths',{skip:!chrome,timeout:300000},async()=>{
  const file='apps/store/__try-on-check.html';
  writeFileSync(file,'<!doctype html><html lang="en"><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><div id="root"></div><script type="module" src="/@fs/'+process.cwd().replaceAll('\\','/')+'/tests/try-on-browser.jsx"></script></body></html>',{flag:'wx'});
  const profile=mkdtempSync(join(tmpdir(),'kd-try-on-chrome-'));
  const vite=spawn(process.execPath,['node_modules/vite/bin/vite.js','apps/store','--host','127.0.0.1','--port','5286','--strictPort'],{stdio:'ignore',windowsHide:true});
- const browser=spawn(chrome,['--headless','--no-sandbox','--disable-dev-shm-usage','--disable-gpu','--remote-debugging-port=5287','--user-data-dir='+profile,'about:blank'],{stdio:'ignore',windowsHide:true});
+ const browser=spawn(chrome,['--headless','--no-sandbox','--disable-dev-shm-usage','--disable-gpu','--disable-features=WebRtcHideLocalIpsWithMdns','--remote-debugging-port=5287','--user-data-dir='+profile,'about:blank'],{stdio:'ignore',windowsHide:true});
  try{
   let ready=false;
   for(let i=0;i<80;i++){try{if((await fetch('http://127.0.0.1:5286/__try-on-check.html')).ok&&(await fetch('http://127.0.0.1:5287/json/version')).ok){ready=true;break;}}catch{}await delay(250);}
@@ -34,7 +34,7 @@ test('try-on camera lifecycle, errors and upload work at five viewport widths',{
     await cdp.send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});
     await cdp.send('Page.navigate',{url:'http://127.0.0.1:5286/__try-on-check.html?viewport='+width});
     let result='';
-    for(let attempt=0;attempt<140;attempt++){
+    for(let attempt=0;attempt<220;attempt++){
      const evaluation=await cdp.send('Runtime.evaluate',{expression:"document.querySelector('output:not([hidden])')?.textContent || ''",returnByValue:true});
      result=evaluation.result?.value||'';
      if(result.includes('TRY_ON_CHECKS_'))break;

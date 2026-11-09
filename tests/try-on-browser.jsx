@@ -1,4 +1,5 @@
 import React from 'react';
+import { checkCameraLoopback } from './try-on-camera-loopback.js';
 import {createRoot} from 'react-dom/client';
 import LiveTryOn from '../apps/store/src/components/try-on/LiveTryOn.jsx';
 const assert=(value,message)=>{if(!value)throw Error(message);};
@@ -18,6 +19,7 @@ const realFetch=window.fetch.bind(window);
 window.fetch=async(url,init={})=>{if(new URL(url,location.origin).pathname.startsWith('/garments/')){assert(new URL(url,location.origin).origin===location.origin,'only local garment requests');if(imageMode==='broken')return new Response('not an image',{headers:{'content-type':'image/png'}});return realFetch(url,init);}assert(String(url).endsWith('/try-on'),'No external requests');if(init.method==='POST')mints++;return {ok:true,json:async()=>({configured:true,apiKey:'test-ephemeral'})};};
 const result={disconnect(){disconnects++;},on(event,callback){listeners[event]=callback;},async set(input){assert(input.image instanceof Blob,'validated image bytes sent');changes++;if(setMode==='wait')return new Promise(r=>setResolve=r);if(setMode==='reject')throw Error('Garment rejected by provider');}};
 const loadSdk=async()=>({models:{realtime:()=>({width:640,height:480,fps:25})},createDecartClient:config=>({realtime:{connect:async(input,opts)=>{
+ assert(input===lastStream && opts.mirror===false && opts.preferredVideoCodec==='vp8','original camera track published with VP8, no generated mirror track');
  options=opts;assert(!opts.initialState?.image,'garment applied after connecting');await config.apiKeyProvider();assert(opts.retries===0&&opts.capacityRetryBudgetMs===0,'retries disabled');
  if(connectMode==='reject'){opts.onConnectionChange('disconnected');throw Error('Try Again Later: capacity');}
  if(connectMode==='queue'){opts.onQueuePosition({position:4,queueSize:10});return new Promise(r=>connectResolve=r);}
@@ -27,14 +29,18 @@ const loadSdk=async()=>({models:{realtime:()=>({width:640,height:480,fps:25})},c
 const root=createRoot(document.getElementById('root'));
 const render=()=>root.render(<LiveTryOn token="test-user" initialGarment={{name:'Selected black shirt',image:'/garments/sample-2.png'}} loadSdk={loadSdk}/>);
 const button=text=>[...document.querySelectorAll('button')].find(x=>x.textContent.includes(text));
-async function start(){clockOffset+=31000;await wait(300);button('Start 30-second').click();await wait(200);}
+async function start(){clockOffset+=31000;await wait(300);button('Start 30-second').click();await wait(450);}
 async function run(){
+ await checkCameraLoopback(stream(), assert);
  render();await wait(150);
  assert(button('Start 30-second').disabled,'consent required');
  document.querySelector('input[type=checkbox]').click();await wait(50);
  imageMode='broken';await start();assert(document.querySelector('[role=alert]').textContent.includes('cannot be decoded'),'bad image fails before a session');assert(mints===0,'bad image never mints');imageMode='ok';
  cameraMode='deny';await start();assert(document.querySelector('[role=alert]').textContent.includes('permission'),'camera denial inline');assert(mints===0,'no token before camera');
  cameraMode='wait';await start();button('Stop &').click();await wait(30);lastStream=stream();cameraResolve(lastStream);await wait(80);assert(lastStream.getTracks().every(t=>t.readyState==='ended'),'late camera stopped');assert(mints===0,'cancelled camera never mints');
+ cameraMode='ok';const originalPlay=HTMLMediaElement.prototype.play;
+ HTMLMediaElement.prototype.play=function(){return Promise.reject(Error('blocked'));};
+ await start();assert(document.querySelector('[role=alert]').textContent.includes('camera preview'),'local playback failure before billing');assert(mints===0,'no token without camera frames');HTMLMediaElement.prototype.play=originalPlay;
  cameraMode='ok';connectMode='wait';await start();button('Stop &').click();await wait(30);assert(lastStream.getTracks().every(t=>t.readyState==='ended'),'Stop during connect shuts camera');connectResolve(result);await wait(80);assert(disconnects===1,'late session disconnected');
  connectMode='reject';await start();assert(document.querySelector('[role=alert]').textContent.includes('processing slot'),'disconnect callback does not hide capacity rejection');assert(lastStream.getTracks().every(t=>t.readyState==='ended'),'capacity failure stops camera');
  connectMode='queue';await start();assert(document.querySelector('.live-status').textContent.includes('queue position: 4'),'real queue event shown');clockOffset+=31000;await wait(300);assert(document.querySelector('[role=alert]').textContent.includes('reported a queue'),'queue timeout distinct');connectResolve(result);await wait(80);

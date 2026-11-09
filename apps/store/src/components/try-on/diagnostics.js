@@ -1,5 +1,6 @@
 export const emptyDiagnostics = () => ({
-    imageReady: false, cameraReady: false, tokenReady: false, connected: false,
+    imageReady: false, cameraReady: false, cameraFrames: false, tokenReady: false, connected: false,
+    cameraTrack: null, cameraMuted: null, cameraEnabled: null,
     garmentAccepted: false, streamReceived: false, playing: false,
     queuePosition: null, bytesSent: null, framesReceived: null, framesDecoded: null,
 });
