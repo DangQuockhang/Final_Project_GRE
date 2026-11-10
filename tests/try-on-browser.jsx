@@ -14,7 +14,7 @@ Object.defineProperty(navigator,'mediaDevices',{configurable:true,value:{getUser
 window.fetch=async(url,init={})=>{assert(String(url).endsWith('/try-on'),'No external requests');if(init.method==='POST')mints++;return {ok:true,json:async()=>({configured:true,apiKey:'test-ephemeral'})};};
 const result={disconnect(){disconnects++;},on(){},async set(){changes++;}};
 const loadSdk=async()=>({models:{realtime:()=>({width:640,height:480,fps:25})},createDecartClient:config=>({realtime:{connect:async(input,opts)=>{
- options=opts;await config.apiKeyProvider();assert(opts.retries===0&&opts.capacityRetryBudgetMs===0,'retries disabled');
+ options=opts;await config.apiKeyProvider();assert(opts.retries===2&&opts.capacityRetryBudgetMs===15000,'bounded capacity retries enabled');
  if(connectMode==='wait')return new Promise(r=>connectResolve=r);
  opts.onRemoteStream(stream());
  // Signal actual playback independently of the remote stream callback.
