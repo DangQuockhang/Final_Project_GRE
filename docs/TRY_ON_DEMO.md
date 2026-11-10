@@ -56,7 +56,7 @@ Official SDK pinned to `@decartai/sdk@0.2.14`, model `lucy-vton-3.6`, standard s
 - https://docs.platform.decart.ai/models/realtime/virtual-try-on
 - https://docs.platform.decart.ai/sdks/javascript-realtime
 
-Authenticated `GET /api/try-on` returns configuration readiness only; it does not prove credits/model entitlement. Authenticated `POST /api/try-on` creates a token with `expiresIn:60`, one allowed model, the validated request Origin and `constraints.realtime.maxSessionDuration` equal to the server-configured cap (30-300 seconds). Token expiry does not end an existing session; the separate provider constraint does. A local wall-clock countdown begins before connection and is not reset on stream updates.
+Authenticated `GET /api/try-on` returns configuration readiness only; it does not prove credits/model entitlement. Authenticated `POST /api/try-on` creates a token with a bounded TTL of `max(60, sessionSeconds + 30)`, one allowed model, the validated request Origin and `constraints.realtime.maxSessionDuration` equal to the server-configured cap (30-300 seconds). Token expiry does not end an existing session; the separate provider constraint does. A local wall-clock countdown begins before connection and is not reset on stream updates.
 
 Responses: 401 expired/missing session; 403 blocked account or invalid/missing origin; 429 account cooldown; 503 disabled or missing key; 502 provider failure, with safe `providerStatus` when available. The permanent key and raw provider error bodies are never returned. Rate limiting is a single-process 30-second per-user cooldown; use a shared store and account-level spending limits before a multi-instance/public rollout.
 
