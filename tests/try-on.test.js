@@ -25,6 +25,7 @@ test('longer sessions are explicitly configured, still scoped, and advertised to
  assert.equal((await f.run('get')).body.sessionSeconds,120);
  assert.equal((await f.run('post')).body.sessionSeconds,120);
  assert.equal(f.calls[0].limits.constraints.realtime.maxSessionDuration,120);
+ assert.equal(f.calls[0].limits.expiresIn,150);
 });
 test('invalid or excessive session durations retain the safe 30 second default',async()=>{
  for(const invalid of ['0','301','abc','30.5','-10']){
