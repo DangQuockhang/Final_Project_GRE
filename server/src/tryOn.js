@@ -23,7 +23,7 @@ export function registerTryOnRoutes(route,{authorize,env=process.env,createClien
   recent.set(id,now);
   try{
    const client=createClient({apiKey:env.DECART_API_KEY.trim()});
-   const token=await client.tokens.create({expiresIn:60,allowedModels:[model],allowedOrigins:[origin],constraints:{realtime:{maxSessionDuration:seconds}}});
+   const token=await client.tokens.create({expiresIn:Math.max(60,seconds+30),allowedModels:[model],allowedOrigins:[origin],constraints:{realtime:{maxSessionDuration:seconds}}});
    return res.json({apiKey:token.apiKey,expiresAt:token.expiresAt,sessionSeconds:seconds});
   }catch(error){
    // Never forward provider bodies: they can contain credentials or request details.
