@@ -16,7 +16,10 @@ const result={disconnect(){disconnects++;},on(){},async set(){changes++;}};
 const loadSdk=async()=>({models:{realtime:()=>({width:640,height:480,fps:25})},createDecartClient:config=>({realtime:{connect:async(input,opts)=>{
  options=opts;await config.apiKeyProvider();assert(opts.retries===0&&opts.capacityRetryBudgetMs===0,'retries disabled');
  if(connectMode==='wait')return new Promise(r=>connectResolve=r);
- opts.onRemoteStream(stream());return result;
+ opts.onRemoteStream(stream());
+ // Signal actual playback independently of the remote stream callback.
+ document.querySelector('video[aria-label="AI try-on"]')?.dispatchEvent(new Event('playing', {bubbles:true}));
+ return result;
 }}})});
 const root=createRoot(document.getElementById('root'));
 const render=()=>root.render(<LiveTryOn token="test-user" initialGarment={{name:'Selected black shirt',image:'/garments/sample-2.png'}} loadSdk={loadSdk}/>);
@@ -29,7 +32,8 @@ async function run(){
  cameraMode='deny';await start();assert(document.querySelector('[role=alert]').textContent.includes('permission'),'camera denial inline');assert(mints===0,'no token before camera');
  cameraMode='wait';await start();button('Stop &').click();await wait(30);lastStream=stream();cameraResolve(lastStream);await wait(80);assert(lastStream.getTracks().every(t=>t.readyState==='ended'),'late camera stopped');assert(mints===0,'cancelled camera never mints');
  cameraMode='ok';connectMode='wait';await start();button('Stop &').click();await wait(30);assert(lastStream.getTracks().every(t=>t.readyState==='ended'),'Stop during connect shuts camera');connectResolve(result);await wait(80);assert(disconnects===1,'late session disconnected');
- connectMode='ok';await start();assert(document.querySelector('.live-status').textContent.includes('Live AI'),'live only after remote stream');
+ connectMode='ok';await start();assert(document.querySelector('.live-status').textContent.includes('Live AI'),'live only after playback event');
+ assert(document.querySelector('.try-on-diagnostics').textContent.includes('Playing'),'diagnostics confirm actual playback');
  button('Statement knitwear').click();await wait(60);assert(changes===1,'garment updated in same session');assert(document.querySelector('.live-status').textContent.includes('Garment updated'),'change success');
  Object.defineProperty(document,'hidden',{configurable:true,value:true});document.dispatchEvent(new Event('visibilitychange'));await wait(60);assert(lastStream.getTracks().every(t=>t.readyState==='ended'),'hidden stops camera');Object.defineProperty(document,'hidden',{configurable:true,value:false});
  await start();window.dispatchEvent(new Event('pagehide'));await wait(50);assert(lastStream.getTracks().every(t=>t.readyState==='ended'),'pagehide stops camera');
