@@ -29,6 +29,9 @@ export default function LiveTryOn({ token, initialGarment, loadSdk = loadDecart 
     const [streamReceived, setStreamReceived] = useState(false);
     const [playbackReady, setPlaybackReady] = useState(false);
     const [connectionNote, setConnectionNote] = useState('Not connected');
+    const [capacityWait, setCapacityWait] = useState(null);
+    const [sdkVideoFps, setSdkVideoFps] = useState(null);
+    const [networkQuality, setNetworkQuality] = useState('Not reported');
     const [garment, setGarment] = useState(initialGarment ? { ...initialGarment, preview: initialGarment.image } : { ...samples[0], preview: samples[0].image });
     const localVideo = useRef(null), remoteVideo = useRef(null);
     const session = useRef(null), camera = useRef(null);
@@ -100,6 +103,9 @@ export default function LiveTryOn({ token, initialGarment, loadSdk = loadDecart 
         setStreamReceived(false);
         setPlaybackReady(false);
         setConnectionNote('Connecting to Decart');
+        setCapacityWait(null);
+        setSdkVideoFps(null);
+        setNetworkQuality('Not reported');
         try {
             const { createDecartClient, models, noopLogger } = await loadSdk();
             if (attempt !== generation.current)
@@ -149,7 +155,21 @@ export default function LiveTryOn({ token, initialGarment, loadSdk = loadDecart 
                     return data.apiKey;
                 } });
             const result = await client.realtime.connect(stream, {
-                model, mirror: 'auto', retries: 0, capacityRetryBudgetMs: 0,
+                model, mirror: 'auto',
+                // Decart's capacity retry is disabled by retries:0. Allow a short,
+                // bounded wait rather than failing immediately during peak demand.
+                retries: 2, capacityRetryBudgetMs: Math.min(15000, sessionSeconds * 1000 / 2),
+                onCapacityWait: ({ retryAfterMs }) => {
+                    if (attempt !== generation.current) return;
+                    const waitSeconds = Math.max(1, Math.ceil(Number(retryAfterMs || 0) / 1000));
+                    setCapacityWait(waitSeconds);
+                    setStatus(`Decart is at capacity. Trying again in about ${waitSeconds}s (no queue position is provided).`);
+                },
+                onConnectionQuality: (report) => {
+                    if (attempt !== generation.current) return;
+                    if (['good', 'fair', 'poor', 'critical'].includes(report?.quality))
+                        setNetworkQuality(report.quality);
+                },
                 initialState: { prompt: { text: prompt, enhance: false }, image: reference(garment.image) },
                 onRemoteStream: (output) => {
                     if (attempt !== generation.current) { output.getTracks().forEach(t => t.stop()); return; }
@@ -185,6 +205,13 @@ export default function LiveTryOn({ token, initialGarment, loadSdk = loadDecart 
                 return;
             }
             session.current = result;
+            setCapacityWait(null);
+            result.on('stats', (stats) => {
+                if (attempt !== generation.current) return;
+                const fps = stats?.video?.framesPerSecond;
+                if (typeof fps === 'number' && Number.isFinite(fps))
+                    setSdkVideoFps(Math.round(fps * 10) / 10);
+            });
             result.on('connectionChange', (state) => {
                 if (attempt !== generation.current) return;
                 setConnectionNote(`WebRTC: ${String(state).slice(0, 50)}`);
@@ -292,6 +319,9 @@ export default function LiveTryOn({ token, initialGarment, loadSdk = loadDecart 
                         <p>AI video track: {streamReceived ? 'Received' : 'Not received'}</p>
                         <p>Video playback: {playbackReady ? 'Playing' : 'Not confirmed'}</p>
                         <p>Connection: {connectionNote}</p>
+                        <p>Decart capacity wait: {capacityWait === null ? 'None reported' : `Retrying in ~${capacityWait}s`}</p>
+                        <p>SDK video FPS: {sdkVideoFps === null ? 'Not reported' : sdkVideoFps}</p>
+                        <p>Network quality: {networkQuality}</p>
                         <small>No credentials, camera images or session identifiers are displayed.</small>
                     </details>
                     {streamReceived && !playbackReady && <button className="outline full" onClick={() => {
