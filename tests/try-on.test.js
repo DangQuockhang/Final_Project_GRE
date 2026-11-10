@@ -20,6 +20,19 @@ test('missing key is explicit',async()=>{assert.equal((await fixture({TRY_ON_ENA
 test('unapproved origin cannot mint tokens',async()=>{const f=fixture({TRY_ON_ENABLED:'true',DECART_API_KEY:'private-test'});assert.equal((await f.run('post','https://other.example')).code,403);assert.equal(f.calls.length,0);});
 test('client token is model/origin/time scoped and permanent key is not returned',async()=>{const f=fixture({TRY_ON_ENABLED:'true',DECART_API_KEY:'private-test'});const result=await f.run('post');assert.equal(result.body.apiKey,'short-lived-test-token');assert(!JSON.stringify(result.body).includes('private-test'));assert.deepEqual(f.calls[0].limits,{expiresIn:60,allowedModels:['lucy-vton-3.6'],allowedOrigins:['http://localhost:5173'],constraints:{realtime:{maxSessionDuration:30}}});assert.equal((await f.run('post')).code,429);});
 
+test('longer sessions are explicitly configured, still scoped, and advertised to the client',async()=>{
+ const f=fixture({TRY_ON_ENABLED:'true',DECART_API_KEY:'private-test',TRY_ON_SESSION_SECONDS:'120'});
+ assert.equal((await f.run('get')).body.sessionSeconds,120);
+ assert.equal((await f.run('post')).body.sessionSeconds,120);
+ assert.equal(f.calls[0].limits.constraints.realtime.maxSessionDuration,120);
+});
+test('invalid or excessive session durations retain the safe 30 second default',async()=>{
+ for(const invalid of ['0','301','abc','30.5','-10']){
+  const f=fixture({TRY_ON_ENABLED:'true',DECART_API_KEY:'private-test',TRY_ON_SESSION_SECONDS:invalid});
+  assert.equal((await f.run('get')).body.sessionSeconds,30);
+ }
+});
+
 for(const [status,expected] of [[401,'API key'],[402,'credits'],[403,'permissions'],[429,'rate limiting'],[500,'could not authorize']]){
  test('provider failure '+status+' is actionable without leaking raw details',async()=>{
   const f=fixture({TRY_ON_ENABLED:'true',DECART_API_KEY:'private-test'},{data:{status},message:'private-test sensitive-provider-body'});
