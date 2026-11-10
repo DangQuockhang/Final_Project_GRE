@@ -2,7 +2,10 @@ import {createDecartClient} from '@decartai/sdk';
 
 export function registerTryOnRoutes(route,{authorize,env=process.env,createClient=createDecartClient}) {
  const recent=new Map();
- const model='lucy-vton-3.6',seconds=30;
+ const model='lucy-vton-3.6';
+ // Optional longer sessions for a funded account; invalid/unbounded values fail closed.
+ const requestedSeconds=Number(env.TRY_ON_SESSION_SECONDS);
+ const seconds=Number.isInteger(requestedSeconds)&&requestedSeconds>=30&&requestedSeconds<=300?requestedSeconds:30;
  const enabled=()=>env.TRY_ON_ENABLED==='true';
  const configured=()=>enabled()&&Boolean(env.DECART_API_KEY?.trim());
  route.get('/try-on',authorize,(req,res)=>{
