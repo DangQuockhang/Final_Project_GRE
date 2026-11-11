@@ -1,3 +1,6 @@
+import {registerTryOnRoutes} from './tryOn.js';
+import {registerMembershipRoutes} from './membership.js';
+import {registerOrderLifecycle} from './orderLifecycle.js';
 import {requireJwtSecret} from './authConfig.js';
 import {registerCustomerOrders} from './customerOrderRoutes.js';
 import {orderItemsJson} from './orderQueries.js';
@@ -38,7 +41,10 @@ const {authorize,registerRoutes:registerAccountRoutes}=createAccountService({poo
 function admin(req,res,next){if(req.user?.role!=='admin')return fail(res,'Chỉ Admin được truy cập.',403);next();}
 route.get('/health',wrap(async(req,res)=>{await query('SELECT 1');res.json({ok:true,service:'kd-api'});}));
 registerAccountRoutes(route);
+registerTryOnRoutes(route,{authorize});
 registerCustomerOrders(route,{pool,authorize});
+registerMembershipRoutes(route,{pool,authorize});
+registerOrderLifecycle(route,{pool,authorize,admin});
 
 route.get('/brands',wrap(async(req,res)=>{const r=await query(`SELECT b.*,COALESCE((SELECT json_object_agg(g.category,g.image_url) FROM brand_size_guides g WHERE g.brand_id=b.id),'{}'::json) AS size_guides FROM brands b ORDER BY b.name`);res.json(r.rows);}));
 route.post('/brands',authorize,admin,wrap(async(req,res)=>{
@@ -632,7 +638,7 @@ route.get('/admin/dashboard',authorize,admin,wrap(async(req,res)=>{
 }));
 route.get('/admin/orders',authorize,admin,wrap(async(req,res)=>{
  const values=[],conditions=[];
- for(const [key,column,allowed] of [['id','o.id',null],['status','o.status',['PENDING','CONFIRMED','SHIPPED','DELIVERED','CANCELLED']],['payment_status','o.payment_status',['UNPAID','AWAITING_TRANSFER','PAID','REFUND_PENDING']]]){
+ for(const [key,column,allowed] of [['id','o.id',null],['status','o.status',['PENDING','CONFIRMED','SHIPPED','DELIVERED','CANCELLED','RETURNED']],['payment_status','o.payment_status',['UNPAID','AWAITING_TRANSFER','PAID','REFUND_PENDING','REFUNDED']]]){
   const value=req.query[key];if(value===undefined)continue;
   if(allowed?!allowed.includes(value):!isId(value))return fail(res,'Invalid order filter.');
   values.push(value);conditions.push(column+'=$'+values.length);
@@ -640,32 +646,6 @@ route.get('/admin/orders',authorize,admin,wrap(async(req,res)=>{
  const r=await query(`SELECT o.*,u.email,${orderItemsJson} AS items FROM orders o
  JOIN users u ON u.id=o.user_id ${conditions.length?'WHERE '+conditions.join(' AND '):''}
  ORDER BY o.created_at DESC,o.id DESC LIMIT 100`,values);res.json(r.rows);
-}));
-route.patch('/admin/orders/:id/payment',authorize,admin,wrap(async(req,res)=>{
- if(!isId(req.params.id)||req.body.status!=='PAID')return fail(res,'Invalid payment update.');
- const result=await query(`UPDATE orders SET payment_status='PAID' WHERE id=$1
- AND payment_method='BANK_TRANSFER' AND payment_status='AWAITING_TRANSFER'
- RETURNING *`,[req.params.id]);
- if(!result.rowCount)return fail(res,'Only awaiting bank transfers can be marked paid.',409);
- res.json(result.rows[0]);
-}));
-route.patch('/admin/orders/:id/status',authorize,admin,wrap(async(req,res)=>{
- const next=req.body.status;if(!['CONFIRMED','SHIPPED','DELIVERED','CANCELLED'].includes(next)||!isId(req.params.id))return fail(res,'Trạng thái không hợp lệ.');
- const allowed={PENDING:['CONFIRMED','CANCELLED'],CONFIRMED:['SHIPPED','CANCELLED'],SHIPPED:['DELIVERED'],DELIVERED:[],CANCELLED:[]};
- const c=await pool.connect();try{
- await c.query('BEGIN');const result=await c.query('SELECT * FROM orders WHERE id=$1 FOR UPDATE',[req.params.id]);const o=result.rows[0];
- if(!o){const e=new Error('Không tìm thấy đơn.');e.status=404;throw e;}
- if(!allowed[o.status].includes(next)){const e=new Error('Chuyển trạng thái không hợp lệ.');e.status=409;throw e;}
- if(next==='CONFIRMED'&&o.payment_method==='BANK_TRANSFER'&&o.payment_status!=='PAID'){
-  const e=new Error('Confirm incoming bank transfer before confirming this order.');e.status=409;throw e;
- }
- if(next==='CANCELLED'){
-  const lines=await c.query('SELECT variant_id,quantity FROM order_items WHERE order_id=$1',[o.id]);
-  for(const line of lines.rows) await c.query('UPDATE product_variants SET stock=stock+$1 WHERE id=$2',[line.quantity,line.variant_id]);
- }
- const payment=next==='CANCELLED'&&o.payment_status==='PAID'?'REFUND_PENDING':o.payment_status;
- const r=await c.query('UPDATE orders SET status=$1,payment_status=$2 WHERE id=$3 RETURNING *',[next,payment,o.id]);await c.query('COMMIT');res.json(r.rows[0]);
- }catch(e){await c.query('ROLLBACK');throw e;}finally{c.release();}
 }));
 
 app.use((req,res)=>fail(res,'API endpoint không tồn tại.',404));

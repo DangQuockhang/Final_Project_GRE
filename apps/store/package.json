@@ -15,7 +15,8 @@
     "react-router-dom": "^7.0.0",
     "lucide-react": "^0.468.0",
     "@kd/catalog": "*",
-    "framer-motion": "^12.23.12"
+    "framer-motion": "^12.23.12",
+    "@decartai/sdk": "0.2.14"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^5.0.0",

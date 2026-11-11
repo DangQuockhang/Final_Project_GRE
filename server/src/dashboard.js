@@ -16,15 +16,15 @@ export async function loadDashboard(pool,value){
    WITH periods AS (SELECT 'current' AS period,$1::timestamptz AS a,$2::timestamptz AS b
     UNION ALL SELECT 'previous',$3::timestamptz,$4::timestamptz)
    SELECT t.period,count(o.id)::int AS orders,
-    count(o.id) FILTER(WHERE o.status!='CANCELLED')::int AS valid_orders,
-    count(DISTINCT o.user_id) FILTER(WHERE o.status!='CANCELLED')::int AS customers,
-    COALESCE(sum(o.total) FILTER(WHERE o.status!='CANCELLED'),0)::float8 AS order_value,
-    COALESCE(sum(o.total) FILTER(WHERE o.status!='CANCELLED' AND o.payment_status='PAID'),0)::float8 AS paid_value
+    count(o.id) FILTER(WHERE o.status NOT IN ('CANCELLED','RETURNED'))::int AS valid_orders,
+    count(DISTINCT o.user_id) FILTER(WHERE o.status NOT IN ('CANCELLED','RETURNED'))::int AS customers,
+    COALESCE(sum(o.total) FILTER(WHERE o.status NOT IN ('CANCELLED','RETURNED')),0)::float8 AS order_value,
+    COALESCE(sum(o.total) FILTER(WHERE o.status NOT IN ('CANCELLED','RETURNED') AND o.payment_status='PAID'),0)::float8 AS paid_value
    FROM periods t LEFT JOIN orders o ON o.created_at>=t.a AND o.created_at<t.b GROUP BY t.period`,params);
   const trend=await c.query(`
    SELECT to_char(d.day,'YYYY-MM-DD') AS day,
     count(o.id)::int AS orders,
-    COALESCE(sum(o.total) FILTER(WHERE o.status!='CANCELLED' AND o.payment_status='PAID'),0)::float8 AS paid_value
+    COALESCE(sum(o.total) FILTER(WHERE o.status NOT IN ('CANCELLED','RETURNED') AND o.payment_status='PAID'),0)::float8 AS paid_value
    FROM generate_series(($1::timestamptz AT TIME ZONE 'Asia/Ho_Chi_Minh')::date,
     ($2::timestamptz AT TIME ZONE 'Asia/Ho_Chi_Minh')::date,'1 day') AS d(day)
    LEFT JOIN orders o ON (o.created_at AT TIME ZONE 'Asia/Ho_Chi_Minh')::date=d.day::date
@@ -35,7 +35,7 @@ export async function loadDashboard(pool,value){
   const operations=(await c.query(`SELECT
    (SELECT count(*)::int FROM orders WHERE status='PENDING') AS pending,
    (SELECT count(*)::int FROM orders WHERE status='CONFIRMED') AS to_ship,
-   (SELECT count(*)::int FROM orders WHERE payment_status='AWAITING_TRANSFER' AND status!='CANCELLED') AS awaiting_transfer,
+   (SELECT count(*)::int FROM orders WHERE payment_status='AWAITING_TRANSFER' AND status NOT IN ('CANCELLED','RETURNED')) AS awaiting_transfer,
    (SELECT count(*)::int FROM orders WHERE payment_status='REFUND_PENDING') AS refunds,
    (SELECT count(*)::int FROM products WHERE status='active') AS active_products,
    (SELECT count(*)::int FROM products WHERE status='draft') AS draft_products,
@@ -51,7 +51,7 @@ export async function loadDashboard(pool,value){
    sum(i.quantity)::int AS units,sum(i.quantity*i.unit_price::bigint)::float8 AS value
    FROM order_items i JOIN orders o ON o.id=i.order_id JOIN product_variants v ON v.id=i.variant_id
    JOIN products p ON p.id=v.product_id
-   WHERE o.created_at >= $1 AND o.created_at < $2 AND o.status!='CANCELLED'
+   WHERE o.created_at >= $1 AND o.created_at < $2 AND o.status NOT IN ('CANCELLED','RETURNED')
    GROUP BY p.id ORDER BY units DESC,value DESC,p.id LIMIT 5`,[w.start,w.end]);
   const recent=await c.query(`SELECT id,order_code,recipient,total,status,payment_status,created_at
    FROM orders ORDER BY created_at DESC,id DESC LIMIT 6`);
