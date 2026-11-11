@@ -1,24 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { emptyDiagnostics, safeStats, timeoutMessage, providerError, sessionEndMessage } from '../apps/store/src/components/try-on/diagnostics.js';
+import { emptyDiagnostics, safeStats, waitingMessage, providerError, sessionEndMessage } from '../apps/store/src/components/try-on/diagnostics.js';
 
-test('timeout identifies the incomplete stage without assuming provider overload', () => {
+test('waiting notices identify the stage without claiming a timeout or stopping', () => {
     const info = emptyDiagnostics();
-    assert.match(timeoutMessage(info), /authorization/);
-    info.tokenReady = true;
-    assert.match(timeoutMessage(info), /connection or camera publishing/);
-    info.queuePosition = 3;
-    assert.match(timeoutMessage(info), /reported a queue/);
-    info.connected = true;
-    assert.match(timeoutMessage(info), /acknowledge/);
-    info.garmentAccepted = true;
-    assert.match(timeoutMessage(info), /No playable AI video/);
-    info.bytesSent = 0;
-    assert.match(timeoutMessage(info), /No outgoing/);
-    info.framesDecoded = 8;
-    assert.match(timeoutMessage(info), /playback did not start/);
-    info.playing = true;
-    assert.match(timeoutMessage(info), /preview complete/);
+    assert.match(waitingMessage(info), /authorization/);
+    info.tokenReady = true; assert.match(waitingMessage(info), /connection or camera publishing/);
+    info.queuePosition = 3; assert.match(waitingMessage(info), /reported a queue/);
+    info.connected = true; assert.match(waitingMessage(info), /acknowledge/);
+    info.garmentAccepted = true; assert.match(waitingMessage(info), /playable AI video/);
+    info.bytesSent = 0; assert.match(waitingMessage(info), /zero outgoing/);
+    assert.match(waitingMessage(info), /session is still open/);
 });
 
 test('diagnostic snapshot omits addresses, tokens and arbitrary SDK fields', () => {

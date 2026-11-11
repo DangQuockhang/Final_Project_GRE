@@ -1,138 +1,96 @@
-# KD Design: Live Virtual Try-On demo
+# KD Design live try-on
 
-Integrated into `feature/customer-membership-sprint-2` with owner approval on 2026-11-06. Backup: `backup/before-live-tryon-2026-11-06` at `4d498f5d765a4716967348a9b8c0debb98613599`. No database changes or seed required.
+Integrated into the existing product page and authenticated storefront on branch `feature/customer-membership-sprint-2`. UI language: English. No database migration is required.
 
-## Update and run
+## Start locally
 
-Preserve any local edits before switching branches (commit them or use `git stash push -u`). Never reset or clean your working tree to install this demo.
-
-```powershell
-cd D:/KD-Design-Starter/KD-Design-Starter
-git status
-git fetch origin
-git switch feature/customer-membership-sprint-2
-git pull --ff-only origin feature/customer-membership-sprint-2
-npm ci
-npm run dev:api
-```
-
-If the local branch does not exist, use `git switch --track origin/feature/customer-membership-sprint-2` instead. In another terminal in the same folder:
-
-```powershell
-npm run dev:store
-```
-
-## Private server configuration
-
-Create a key in https://platform.decart.ai under API Keys. Check credits and Lucy Virtual Try-On access there. Never paste the key into chat. Add these settings to your existing **server/.env** locally or your deployment secret manager; preserve your existing database/JWT settings:
+Keep the permanent key only in private server configuration, never in VITE variables, Git or screenshots:
 
 ```dotenv
 TRY_ON_ENABLED=true
-DECART_API_KEY=REPLACE_LOCALLY_WITH_PRIVATE_KEY
+DECART_API_KEY=your_private_key
 ALLOWED_ORIGINS=http://localhost:5173,http://localhost:5174
 ```
 
-Do not commit .env, put this key in VITE_* / frontend / localStorage, or log it. Restart the API after changes. Production origins must be exact HTTPS origins (no trailing slash). Camera access requires HTTPS or localhost; a plain LAN HTTP URL on a phone is insufficient.
-
-To disable: set `TRY_ON_ENABLED=false` and restart the API. New tokens will be refused; existing sessions remain bounded by the provider's 90-second cap.
-
-## Try the integrated experience
-
-1. Sign in to KD Design, open a product with photos and choose a color.
-2. Click **TRY ON LIVE**. The selected color's image is passed to `/try-on`; otherwise the first product photo is used. Sign in before opening the link to preserve this selection.
-3. Use the product photo, a clearly labelled Anywear sample, or upload JPG/PNG/WebP up to 5 MB.
-4. Read the consent text and actively press Start. Only then is camera access requested and a token minted. Camera and garment media go directly to Decart, not the KD database. No microphone is requested.
-5. Compare **Original camera** and **AI try-on**. Change garments without starting another session. Stop turns off all local camera tracks. Hidden tabs, page exit and unmount stop the trial too.
-
-The feature never fakes AI success. An absent key/disabled feature, camera denial, expired login, invalid origin, provider refusal or network failure is shown in the fitting room. Only a remote video stream produces the live state.
-
-## API / SDK contract
-
-Official SDK pinned to `@decartai/sdk@0.2.14`, model `lucy-vton-3.6`, standard speed. Rechecked against official documentation on 2026-11-04:
-
-- https://docs.platform.decart.ai/getting-started/client-tokens
-- https://docs.platform.decart.ai/models/realtime/virtual-try-on
-- https://docs.platform.decart.ai/sdks/javascript-realtime
-
-Authenticated `GET /api/try-on` returns configuration readiness only; it does not prove credits/model entitlement. Authenticated `POST /api/try-on` creates a token with `expiresIn:120`, one allowed model, the validated request Origin and `constraints.realtime.maxSessionDuration:90`. Token expiry does not end an existing session; the separate provider constraint does. GET and POST both return setupSeconds:60, liveSeconds:30, sessionSeconds:90, tokenTtlSeconds:120 and cooldownSeconds:90. The frontend refuses missing or inconsistent limits (restart an older API after pulling). Preparation starts before token authorization; a separate preview allowance starts once only after garment acknowledgement and playable remote video.
-
-Responses: 401 expired/missing session; 403 blocked account or invalid/missing origin; 429 account cooldown; 503 disabled or missing key; 502 provider failure, with safe `providerStatus` when available. The permanent key and raw provider error bodies are never returned. Rate limiting is a single-process 90-second per-user cooldown; use a shared store and account-level spending limits before a multi-instance/public rollout.
-
-No automatic connect retries or capacity retries. On reconnect intent, the UI invalidates the attempt and disconnects. One token request is cached per explicit Start; credential callbacks after cancellation are rejected.
-
-SDK 0.2.14 does not expose AbortSignal on realtime.connect. Stop immediately stops camera tracks and aborts the token request; if connect is already pending, its eventual result is disconnected and another Start is blocked until it settles. Provider-side signaling may persist until that settlement or the provider cap. This is not a promise of immediate billing cancellation during a pending handshake.
-
-## Verification
-
-```sh
-npm test
-npm run build
-node --test tests/try-on.test.js tests/try-on-browser.test.js
-```
-
-Provider tests use stubs (no API key/credits). They cover token restrictions, missing config/origin, cooldown, 401/402/403/429/500 provider failures without secret disclosure, and the existing account authorization middleware (missing/expired/blocked/revoked sessions).
-
-Browser fixture uses canvas streams and an injected SDK only in the test harness. It covers consent, denied/late camera permission, Stop during pending connect, late session cleanup, garment change, invalid upload, hidden tab, page exit, unmount, local expiry and layout at 360/390/768/1024/1440px. Linux Chrome runner is used in CI. No actual customer photos or credentials are used in tests.
-
-Manual checks still required with the owner's explicit permission and funded key: real Decart model entitlement/credits errors, output quality, provider-enforced cutoff, mobile Safari/Android camera behavior, and product-image CORS. If a product image cannot be fetched cross-origin, upload a garment file instead. Do not add an arbitrary server-side image proxy.
-
-The AI preview is not a physical fit/size guarantee. Existing Anywear sample assets are reused for this demo; verify licensing before a public commercial rollout.
-
-## Return to the previous version
-
-Stop API and storefront before installing dependencies (Windows otherwise locks esbuild.exe). Preserve uncommitted changes first. To inspect/run the previous version without rewriting history:
+Get your key from https://platform.decart.ai and check model access and credits there. Rotate any key previously exposed in a screenshot. This file contains placeholders only; no configuration file is changed automatically.
 
 ```powershell
-git fetch origin
-git switch backup/before-live-tryon-2026-11-06
-npm ci
+git switch feature/customer-membership-sprint-2
+git pull --ff-only origin feature/customer-membership-sprint-2
 npm run dev:api
 ```
 
-Run `npm run dev:store` in a second terminal. No database rollback is needed. To remove the feature from the working branch itself, revert the single integration commit, then push normally; do not reset or force-push shared history.
+In another terminal in the same folder:
 
+```powershell
+npm run dev:store -- --force
+```
 
-## Blank AI output diagnostics
-Token HTTP 200 and LiveKit signaling connected do not prove video delivery. The UI now distinguishes connected, stream received, and playable video (playing event with nonzero dimensions). No playable video within the 60-second preparation budget is an error, not a successful trial. Camera tracks stop on timeout. Start displays an account cooldown; HTTP 429 provides Retry-After and retryAfterSeconds.
+Stop old dev servers first. Dependencies did not change in this update. For a fresh checkout, run `npm ci` while dev servers are stopped (Windows can otherwise lock esbuild.exe).
 
-No real provider session was run for this patch. A missing remote stream may still require network/provider investigation. The SDK cannot directly abort pending connect: camera and token fetch stop immediately; late connections disconnect when resolved. No automatic new trial is started.
+## Session duration: manual Stop
 
+At the owner's request, there is no application setup timeout, live preview countdown or `maxSessionDuration` token constraint. The display shows elapsed time. At 45 seconds without output, a diagnostic notice explains the pending stage but does not disconnect the session.
 
-## Explicit garment acknowledgement
-The frontend now connects first, attaches terminal/error listeners, then awaits session.set({prompt, image, enhance:false}) as shown in the official VTON JavaScript example. Output is hidden until garment acknowledgement and playable video are both observed; a rejected garment ends the trial and stops the camera. This isolates garment submission from transport initialization. Acknowledgement does not prove visual accuracy or that remote frames will arrive. Real provider testing remains outstanding; this patch does not establish the root cause of the reported blank stream.
+Credits may be consumed during preparation and throughout the session. There is no application spending cap. Decart can still end a session for service/account limits or insufficient credits; removing our timer cannot override those. This is not a promise of unlimited service.
 
-## Diagnosing a trial without exposing credentials
-Open **Connection details** in the fitting room. It stays available after Stop/timeout and automatically expands on errors. It records whether the image decoded, camera opened, token arrived, SDK connect/publish completed, garment was acknowledged, a remote stream arrived and playback started. Numeric outgoing bytes and incoming/decoded frames are included only when the SDK reports them. No raw SDK objects, IP addresses, session identifiers, images or tokens are copied into the panel.
+Stop, hidden tab, pagehide, navigation/unmount and provider failure still shut down camera tracks and the session. Keep the fitting-room tab visible while testing; opening WebRTC Internals in another tab intentionally stops the trial. Stop during pending SDK connect stops local tracks immediately, aborts authorization and disconnects any late result; SDK 0.2.14 does not support aborting an in-flight handshake. Another Start stays guarded until it settles. No automatic connection retries or paid fast mode.
 
-A queue position appears only if Decart reports one. Missing stats mean **not reported**, not zero and not proof of failure. Zero outgoing bytes suggests checking camera publishing; received frames without decoded frames suggests checking the media/decoder; decoded frames without playback suggests checking the video element. These are diagnostic clues, not a confirmed root cause.
+## API and credentials
 
-Image URLs are fetched and decoded in the browser (10-second timeout, 5 MB limit) before camera/token creation. Cross-origin failures and invalid images now fail before starting an AI session; upload a local garment instead. Replacement garments use the same validation.
+Official SDK `@decartai/sdk@0.2.14`, model `lucy-vton-3.6`.
 
-On 2026-11-09, the owner requested more preparation time. The app now allows up to 60 seconds for token authorization, connection/queue time, garment acknowledgement and first playable video. Only then does the 30-second preview begin. Total elapsed time is capped at 90 seconds locally, with a matching 90-second provider maxSessionDuration. Repeated playing events, garment changes and buffering never restart the preview allowance. Tokens last 120 seconds so late garment uploads can use the same credential. No automatic retries, extra tokens or paid fast mode are enabled. Preparation may use credits, and the maximum provider session duration is three times the previous 30-second cap; the consent text states the new limit.
+- Authenticated GET /api/try-on returns readiness plus sessionMode:manual-stop, tokenTtlSeconds:300, cooldownSeconds:30. Readiness does not establish credits/model access.
+- Authenticated POST /api/try-on validates exact Origin and requests a short-lived token restricted to that origin and model, with expiresIn:300 and no duration constraint.
+- Token expiry prevents new connections, not an established session. The frontend caches the token and refreshes it only when an active SDK operation needs it near expiry, for example changing a garment after five minutes. This does not start a new AI session. No background credential refresh.
+- Issuance retains a 30-second per-account cooldown. This limits requests, not session duration. For multiple API instances use a shared rate-limit store before public rollout.
+- Errors: 401 missing/expired login, 403 blocked account or invalid Origin, 429 issuance cooldown, 503 disabled/missing key, 502 safe provider error. No permanent key or raw provider response is returned.
+- The frontend rejects the older bounded-session API policy with a restart instruction.
 
-Connection failures now preserve the original rejection instead of replacing it with a generic disconnected message. Timeouts distinguish missing token, queue/connection, garment acknowledgement and playable video. Provider credit/session-limit reasons are displayed separately. Stop during pending connect still cannot immediately cancel the SDK handshake; any late result is disconnected.
+Official references:
+https://docs.platform.decart.ai/getting-started/client-tokens
+https://docs.platform.decart.ai/sdks/javascript-realtime
+https://docs.platform.decart.ai/models/realtime/virtual-try-on
 
-Automated tests use local fixture images/canvas streams and a fake SDK; they do not prove live Decart output. Browser checks support installed Windows Chrome/Edge or Linux Chrome and TRY_ON_TEST_BROWSER. Before a live check, rotate any credential previously exposed in a screenshot. No real AI calls are made by tests.
+## Missing video and the development worker fix
 
-To pause this feature while developing AI assistant: set TRY_ON_ENABLED=false in your private server configuration, restart the API, and leave existing product/account data unchanged.
+HTTP 200, connection-ready and garment ACK do not prove that camera video is being sent or AI output exists. In the reported capture, local camera frames were verified but SDK outgoing bytes stayed zero and no AI stream was reported.
 
-## Camera preflight and zero-outgoing-bytes mitigation
+We reproduced a specific development packaging failure: Vite's optimized SDK contained a relative frame-metadata-worker.js URL pointing into .vite/deps, where that worker was absent. The real SDK worker failed its init acknowledgement. Store Vite now excludes @decartai/sdk from dependency pre-bundling so its worker URL is resolved from the package, while separately pre-bundling p-retry and its CommonJS dependencies. The fix does not alter SDK internals or disable encoded-frame processing. Restart Vite with --force after pulling to discard old optimized dependencies.
 
-The app now checks for two playable local camera frames before requesting a client token. An opened but frozen, muted, ended or unplayable camera fails locally; Stop/hidden-tab cancellation also cancels this check. It has an eight-second local timeout and does not consume a Decart session. The 60-second preparation budget and 90-second total cap start after this local check, before token authorization and connection.
+Automated worker regression uses the real SDK with synthetic video, a test-only credential and a blocked WebSocket constructor. It verifies that the worker loads and acknowledges init without calling Decart. This reproduces a local bug consistent with the zero-byte symptom; only a real authorized session can confirm that it fixes the user's machine.
 
-Connect now passes the original camera stream with `mirror:false` and `preferredVideoCodec:'vp8'`. This removes the SDK's generated mirror-track pipeline and changes its default H264 publish preference. The local preview stays mirrored with CSS. SDK-internal encoding/metadata processing still applies. These changes are a compatibility mitigation, not proof that mirroring or H264 caused the reported zero-byte counter.
+The app checks JPG/PNG/WebP garments up to 5 MB and two playable camera frames before requesting a token. Camera preflight and image-load timeouts are local checks, not AI session duration limits. Video is sent unmirrored with VP8; the local preview is mirrored with CSS. Garment changes await provider acknowledgement. Never substitute original camera video for the AI result.
 
-Connection details adds Camera frames verified, the last sampled track state, muted/enabled flags, and the selected publish mode. The panel retains a reported queue position after connection, so queue history is not erased. An SDK-reported zero remains a clue rather than proof of a specific network or provider fault.
+Connection details contains safe stage flags and numeric counters, not tokens, addresses or photos. Missing counters mean not reported. Send a screenshot of this panel after Stop if output remains absent; do not send raw network exports or environment files.
 
-Verification includes camera preflight unit cases and browser lifecycle checks with an injected SDK. A local WebRTC loopback fixture additionally negotiates VP8 and checks actual RTP bytes and decoded frames, using synthetic canvas video and local peers with no external ICE servers. This does not exercise Decart, physical cameras, the SDK's media transport, or the user's network.
+## Phone UI/UX preview over Wi-Fi
 
-After pulling, stop and restart API/storefront. If you choose to run a paid trial, keep the fitting-room tab visible until it ends; switching tabs intentionally stops it. Inspect Connection details afterwards. Send only that panel with Camera frames verified, camera track/muted/enabled, outgoing bytes and incoming/decoded frames. Do not share tokens, environment files, full network exports or raw WebRTC dumps. If bytes remain zero despite verified camera frames, further SDK publishing/encoder/network investigation is needed; purchasing more credits is not a verified fix.
+1. Connect phone and PC to the same trusted Wi-Fi. Keep the PC awake.
+2. Run `npm run dev:api`.
+3. In a second terminal run `npm run dev:store:lan`.
+4. Open the **Network** URL Vite prints, such as http://192.168.1.10:5173, on the phone. Use the real address printed on your computer, not this example and not localhost.
+5. If Windows asks, allow Node on the private network. If unreachable, check the PC's Wi-Fi IPv4 with `ipconfig`, firewall port 5173 and router client isolation.
 
-## Testing the separate preparation and preview timers
+LAN mode overrides VITE_API_URL with /api for this run and proxies /api and /media to the PC's local API at 127.0.0.1:4000. It does not edit any .env file or relax authentication/origin checks. Existing ordinary development/API configuration is unchanged. All services retain existing login/authorization. Do not expose the dev server with router port forwarding.
 
-- Restart both API and store after pulling. The API must report the new timing fields; an old API is rejected with a restart instruction before a trial starts.
-- In an explicitly authorized real trial, stay on the fitting-room tab. It shows Preparing AI with a 60-second countdown, then AI try-on with a separate 30-second countdown only after playable output and garment acknowledgement.
-- No output by the preparation deadline stops camera and session with a stage-specific error. A normal preview expiry is a completion message, not an error.
-- Switching tabs, minimizing, Stop, navigating away and unmount still stop the trial immediately. A hidden-tab stop is distinct from a preparation timeout; more time does not override it.
-- Automated coverage simulates a first frame arriving after 45 seconds, checks 30 seconds of subsequent preview, tests missing video at 60 seconds, and ensures repeated playing/garment updates cannot extend a session beyond 90 seconds. API tests verify the provider constraint and token lifetime.
-- These changes remove the premature 30-second preparation cutoff; they do not establish why the reported SDK outbound counter stayed at zero or guarantee a provider frame. Live Decart output, actual billing and provider-enforced cutoff still require an authorized funded trial. No live AI request was made for this patch.
+HTTP over the LAN supports UI/UX inspection, products and account flows; it does **not** provide a secure camera context. Mobile live camera requires a trusted HTTPS URL. Use an HTTPS deployment or a trusted local HTTPS setup, proxy API/media through that same origin, and explicitly add that exact HTTPS origin to server ALLOWED_ORIGINS before minting try-on tokens. Do not use wildcard origins, a frontend key or browser security bypasses. No public tunnel is created by these scripts.
+
+To stop sharing, Ctrl+C the LAN dev server. No router changes are required.
+
+## Verification and limits
+
+```powershell
+npm test
+npm run build
+```
+
+Coverage: missing key, authentication/blocked/revoked sessions, exact Origin, rate limiting, provider failures, unbounded-session token policy, on-demand token refresh and cancellation, worker asset load, local WebRTC VP8 transfer, missing camera frames, Stop during pending connect, long waits and sessions beyond ten minutes, replacement garments, upload rejection, hidden tab/page exit/unmount, and five viewport widths (360/390/768/1024/1440). LAN tests proxy to a temporary local API and preserve the phone's Origin/auth header; media URL tests retain same-origin paths.
+
+No paid AI calls or physical phone-camera sessions are run automatically. Actual Decart output, credits/billing, the user's Wi-Fi and mobile camera behavior require an authorized manual check. A passing synthetic test is not a claim that real try-on output is verified.
+
+## Disable or roll back
+
+Set TRY_ON_ENABLED=false privately and restart the API to refuse new tokens. With no duration cap, disabling issuance does not forcibly terminate an already active provider session: press Stop or close the fitting-room page too.
+
+Use git revert on the update commit to undo it without rewriting shared history. To inspect the pre-feature version, use branch backup/before-live-tryon-2026-11-06. Preserve any uncommitted work before changing branches. No database rollback is needed.

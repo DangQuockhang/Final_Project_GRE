@@ -18,6 +18,7 @@
     "build": "npm run build -w @kd/store && npm run build -w @kd/studio",
     "dev:gallery": "npm run dev -w @kd/store -- --open /gallery-demo.html",
     "db:rollback:accounts": "npm run db:rollback:accounts -w @kd/api",
-    "db:rollback:membership": "npm run db:rollback:membership -w @kd/api"
+    "db:rollback:membership": "npm run db:rollback:membership -w @kd/api",
+    "dev:store:lan": "npm run dev -w @kd/store -- --mode lan --host 0.0.0.0 --port 5173 --strictPort"
   }
 }

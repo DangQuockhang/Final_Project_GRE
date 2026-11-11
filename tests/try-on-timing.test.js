@@ -1,42 +1,27 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createTrialClock, readTiming } from '../apps/store/src/components/try-on/timing.js';
+import { readTiming, createSessionTokenProvider } from '../apps/store/src/components/try-on/timing.js';
 import { TRY_ON_TIMING } from '../server/src/tryOn.js';
 
-test('old or invalid API limits fail closed instead of promising a longer preview', () => {
+test('manual-stop UI refuses an old time-limited API policy', () => {
     assert.deepEqual(readTiming(TRY_ON_TIMING), TRY_ON_TIMING);
-    for (const patch of [{ sessionSeconds: 30 }, { setupSeconds: NaN }, { liveSeconds: 0 }, { sessionSeconds: 300 }, { tokenTtlSeconds: 60 }, { cooldownSeconds: 30 }])
-        assert.throws(() => readTiming({ ...TRY_ON_TIMING, ...patch }), /Restart the API/);
-    assert.throws(() => readTiming({ sessionSeconds: 30 }), /outdated/);
+    assert.throws(() => readTiming({setupSeconds:60,liveSeconds:30,sessionSeconds:90}), /Restart the API/);
+});
+test('long sessions reuse a token and refresh only on demand before expiry', async () => {
+    let now=0,calls=0,active=true;
+    const get=createSessionTokenProvider(async()=>({...TRY_ON_TIMING,apiKey:'test-'+(++calls)}),()=>active,()=>now);
+    assert.equal(await get(),'test-1');assert.equal(await get(),'test-1');
+    now=280000;assert.equal(await get(),'test-1');
+    now=290000;assert.deepEqual(await Promise.all([get(),get()]),['test-2','test-2']);assert.equal(calls,2);
+    now=600000;assert.equal(calls,2,'no timer refresh without an operation');
+    active=false;await assert.rejects(get(),/cancelled/);assert.equal(calls,2);
+});
+test('Stop rejects a late credential result and expired credentials', async () => {
+    let resolve,active=true;
+    const get=createSessionTokenProvider(()=>new Promise(r=>resolve=r),()=>active,()=>100000);
+    const result=get();await Promise.resolve();active=false;resolve({...TRY_ON_TIMING,apiKey:'test'});
+    await assert.rejects(result,/cancelled/);
+    const expired=createSessionTokenProvider(async()=>({...TRY_ON_TIMING,apiKey:'test',expiresAt:new Date(90000).toISOString()}),()=>true,()=>100000);
+    await assert.rejects(expired(),/expired/);
 });
 
-test('45-second preparation leaves 30 seconds of preview', () => {
-    let now = 0;
-    const clock = createTrialClock(TRY_ON_TIMING, () => now);
-    now = 45000;
-    assert.deepEqual(clock.snapshot(), { stage: 'setup', remaining: 15, expired: false });
-    assert.equal(clock.startLive(), true);
-    assert.equal(clock.snapshot().remaining, 30);
-    now = 74999; assert.equal(clock.snapshot().expired, false);
-    now = 75000; assert.equal(clock.snapshot().expired, true);
-});
-
-test('missing AI output expires at 60 seconds and late frames cannot restart it', () => {
-    let now = 0;
-    const clock = createTrialClock(TRY_ON_TIMING, () => now);
-    now = 60000;
-    assert.equal(clock.snapshot().expired, true);
-    assert.equal(clock.startLive(), false);
-    assert.equal(clock.snapshot().stage, 'setup');
-});
-
-test('buffering, garment changes and repeated playing never extend the total cap', () => {
-    let now = 0;
-    const clock = createTrialClock(TRY_ON_TIMING, () => now);
-    now = 59999; clock.startLive();
-    now = 80000; clock.startLive();
-    assert.equal(clock.snapshot().remaining, 10);
-    now = 90000;
-    assert.equal(clock.snapshot().expired, true);
-    assert.equal(clock.startLive(), false);
-});

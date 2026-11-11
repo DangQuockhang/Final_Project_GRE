@@ -1,6 +1,6 @@
 import {createDecartClient} from '@decartai/sdk';
 
-export const TRY_ON_TIMING = Object.freeze({setupSeconds:60,liveSeconds:30,sessionSeconds:90,tokenTtlSeconds:120,cooldownSeconds:90});
+export const TRY_ON_TIMING = Object.freeze({sessionMode:'manual-stop',tokenTtlSeconds:300,cooldownSeconds:30});
 
 export function registerTryOnRoutes(route,{authorize,env=process.env,createClient=createDecartClient}) {
  const recent=new Map();
@@ -26,7 +26,7 @@ export function registerTryOnRoutes(route,{authorize,env=process.env,createClien
   recent.set(id,now);
   try{
    const client=createClient({apiKey:env.DECART_API_KEY.trim()});
-   const token=await client.tokens.create({expiresIn:TRY_ON_TIMING.tokenTtlSeconds,allowedModels:[model],allowedOrigins:[origin],constraints:{realtime:{maxSessionDuration:TRY_ON_TIMING.sessionSeconds}}});
+   const token=await client.tokens.create({expiresIn:TRY_ON_TIMING.tokenTtlSeconds,allowedModels:[model],allowedOrigins:[origin]});
    return res.json({apiKey:token.apiKey,expiresAt:token.expiresAt,...TRY_ON_TIMING});
   }catch(error){
    // Never forward provider bodies: they can contain credentials or request details.

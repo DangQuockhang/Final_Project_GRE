@@ -18,7 +18,7 @@ function fixture(settings={},providerError=null){
 test('try-on defaults off and does not call provider',async()=>{const f=fixture({DECART_API_KEY:'private-test'});assert.equal((await f.run('get')).body.configured,false);assert.equal((await f.run('post')).code,503);assert.equal(f.calls.length,0);});
 test('missing key is explicit',async()=>{assert.equal((await fixture({TRY_ON_ENABLED:'true'}).run('post')).code,503);});
 test('unapproved origin cannot mint tokens',async()=>{const f=fixture({TRY_ON_ENABLED:'true',DECART_API_KEY:'private-test'});assert.equal((await f.run('post','https://other.example')).code,403);assert.equal(f.calls.length,0);});
-test('client token is model/origin/time scoped and permanent key is not returned',async()=>{const f=fixture({TRY_ON_ENABLED:'true',DECART_API_KEY:'private-test'});const result=await f.run('post');assert.equal(result.body.apiKey,'short-lived-test-token');assert(!JSON.stringify(result.body).includes('private-test'));assert.deepEqual(f.calls[0].limits,{expiresIn:120,allowedModels:['lucy-vton-3.6'],allowedOrigins:['http://localhost:5173'],constraints:{realtime:{maxSessionDuration:90}}});const limited=await f.run('post');assert.equal(limited.code,429);assert(limited.body.retryAfterSeconds>0&&limited.body.retryAfterSeconds<=90);});
+test('client token is model/origin/time scoped and permanent key is not returned',async()=>{const f=fixture({TRY_ON_ENABLED:'true',DECART_API_KEY:'private-test'});const result=await f.run('post');assert.equal(result.body.apiKey,'short-lived-test-token');assert(!JSON.stringify(result.body).includes('private-test'));assert.deepEqual(f.calls[0].limits,{expiresIn:300,allowedModels:['lucy-vton-3.6'],allowedOrigins:['http://localhost:5173']});const limited=await f.run('post');assert.equal(limited.code,429);assert(limited.body.retryAfterSeconds>0&&limited.body.retryAfterSeconds<=30);});
 
 for(const [status,expected] of [[401,'API key'],[402,'credits'],[403,'permissions'],[429,'rate limiting'],[500,'could not authorize']]){
  test('provider failure '+status+' is actionable without leaking raw details',async()=>{
@@ -41,13 +41,13 @@ test('try-on uses real account middleware for missing, expired, blocked and revo
  }
  assert.equal(calls,0);
 });
-test('readiness and issued tokens share the same setup/live/total timing policy',async()=>{
+test('readiness and tokens use manual-stop policy without a provider duration cap',async()=>{
  const f=fixture({TRY_ON_ENABLED:'true',DECART_API_KEY:'private-test'});
  const ready=(await f.run('get')).body,issued=(await f.run('post')).body;
- assert.deepEqual(TRY_ON_TIMING,{setupSeconds:60,liveSeconds:30,sessionSeconds:90,tokenTtlSeconds:120,cooldownSeconds:90});
+ assert.deepEqual(TRY_ON_TIMING,{sessionMode:'manual-stop',tokenTtlSeconds:300,cooldownSeconds:30});
  for(const key of Object.keys(TRY_ON_TIMING)){
   assert.equal(ready[key],TRY_ON_TIMING[key]);assert.equal(issued[key],TRY_ON_TIMING[key]);
  }
- assert.equal(f.calls[0].limits.constraints.realtime.maxSessionDuration,issued.sessionSeconds);
- assert(f.calls[0].limits.expiresIn>=issued.sessionSeconds,'token also covers later garment uploads');
+ assert.equal(f.calls[0].limits.constraints,undefined);
+ assert.equal(f.calls[0].limits.expiresIn,issued.tokenTtlSeconds);
 });

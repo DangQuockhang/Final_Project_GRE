@@ -16,16 +16,14 @@ export function safeStats(stats) {
     };
 }
 
-export function timeoutMessage(info, setupSeconds = 60, liveSeconds = 30) {
-    if (info.playing && info.garmentAccepted) return `${liveSeconds}-second preview complete. Your camera is off.`;
-    const suffix = ` The ${setupSeconds}-second preparation limit was reached. The trial was stopped; camera is off. No automatic retry.`;
-    if (!info.tokenReady) return 'Session authorization did not finish.' + suffix;
-    if (!info.connected && info.queuePosition !== null) return 'Decart reported a queue, but the connection did not finish.' + suffix;
-    if (!info.connected) return 'Decart connection or camera publishing did not finish.' + suffix;
-    if (!info.garmentAccepted) return 'Decart did not acknowledge the selected garment.' + suffix;
-    if (info.framesDecoded > 0 && !info.playing) return 'AI frames were decoded, but video playback did not start.' + suffix;
-    if (info.bytesSent === 0) return 'No outgoing camera video bytes were reported.' + suffix;
-    return 'No playable AI video arrived after the garment was accepted.' + suffix;
+export function waitingMessage(info) {
+    const suffix = ' The session is still open with no app time limit. Credits may be used while waiting. Use Stop to end it.';
+    if (!info.tokenReady) return 'Still waiting for session authorization.' + suffix;
+    if (!info.connected && info.queuePosition !== null) return 'Decart reported a queue. Still waiting for your connection.' + suffix;
+    if (!info.connected) return 'Still waiting for Decart connection or camera publishing.' + suffix;
+    if (!info.garmentAccepted) return 'Still waiting for Decart to acknowledge the garment.' + suffix;
+    if (info.bytesSent === 0) return 'The SDK reports zero outgoing video bytes. Check the SDK worker and your connection.' + suffix;
+    return 'Decart has not returned playable AI video yet.' + suffix;
 }
 
 export function providerError(error) {
@@ -81,3 +79,4 @@ export async function prepareGarment(image, signal) {
     } finally { URL.revokeObjectURL(url); }
     return blob;
 }
+

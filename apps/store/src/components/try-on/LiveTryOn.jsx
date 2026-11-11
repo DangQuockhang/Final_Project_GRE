@@ -1,9 +1,9 @@
 import React from 'react';
 import { apiBase } from '@kd/catalog';
 import './live-try-on.css';
-import { readTiming, createTrialClock } from './timing';
+import { readTiming, createSessionTokenProvider } from './timing';
 import { CAMERA_PUBLISH_OPTIONS, cameraSnapshot, waitForCameraFrames } from './camera';
-import { emptyDiagnostics, safeStats, timeoutMessage, providerError, sessionEndMessage, prepareGarment } from './diagnostics';
+import { emptyDiagnostics, safeStats, waitingMessage, providerError, sessionEndMessage, prepareGarment } from './diagnostics';
 const API = import.meta.env.VITE_API_URL || apiBase;
 import { useCallback, useEffect, useRef, useState } from 'react';
 const samples = [
@@ -36,9 +36,8 @@ export default function LiveTryOn({ token, initialGarment, loadSdk = loadDecart 
     const [phase, setPhase] = useState('idle');
     const [consent, setConsent] = useState(false);
     const [swapping, setSwapping] = useState(false);
-    const [remaining, setRemaining] = useState(60);
+    const [elapsed, setElapsed] = useState(0);
     const [timing, setTiming] = useState(null);
-    const trialClock = useRef(null), attemptTiming = useRef(null);
     const [garment, setGarment] = useState(initialGarment ? { ...initialGarment, preview: initialGarment.image } : { ...samples[0], preview: samples[0].image });
     const localVideo = useRef(null), remoteVideo = useRef(null);
     const session = useRef(null), camera = useRef(null);
@@ -51,7 +50,6 @@ export default function LiveTryOn({ token, initialGarment, loadSdk = loadDecart 
     const stop = useCallback((message = 'Session stopped. Your camera is off.') => {
         generation.current++;
         active.current = false;
-        trialClock.current = null;
         clearTimeout(disconnectTimer.current);
         imageRequest.current?.abort();
         cameraCheck.current?.abort();
@@ -73,19 +71,10 @@ export default function LiveTryOn({ token, initialGarment, loadSdk = loadDecart 
         setSwapping(false);
         setStatus(message);
     }, []);
-    function finishTimedTrial(snapshot) {
-        const limits = attemptTiming.current;
-        setHasError(snapshot.stage !== 'live');
-        stop(snapshot.stage === 'live'
-            ? `${limits.liveSeconds}-second preview complete. Your camera is off.`
-            : timeoutMessage({ ...diagnostics.current, playing: false }, limits.setupSeconds, limits.liveSeconds));
-    }
     function activateLive() {
-        if (!active.current || !receivedFrames.current || !garmentApplied.current || !trialClock.current) return;
-        if (!trialClock.current.startLive()) { finishTimedTrial(trialClock.current.snapshot()); return; }
-        setRemaining(trialClock.current.snapshot().remaining);
+        if (!active.current || !receivedFrames.current || !garmentApplied.current) return;
         setPhase('live');
-        setStatus('Live AI preview. Change a garment below or stop at any time.');
+        setStatus('Live AI preview. No app time limit. Use Stop to end the session.');
     }
     async function check() {
         setHasError(false);
@@ -97,7 +86,7 @@ export default function LiveTryOn({ token, initialGarment, loadSdk = loadDecart 
             const limits = body.configured ? readTiming(body) : null;
             setTiming(limits);
             setConfigured(body.configured === true);
-            setStatus(body.configured ? `Ready: up to ${limits.setupSeconds}s to prepare, then ${limits.liveSeconds}s of live preview. Keep this tab visible.` : 'Setup needed: enable try-on and add the Decart API key on the server.');
+            setStatus(body.configured ? 'Ready. No app time limit. Keep this tab visible and use Stop when finished.' : 'Setup needed: enable try-on and add the Decart API key on the server.');
         }
         catch (e) {
             setConfigured(false);
@@ -128,8 +117,7 @@ export default function LiveTryOn({ token, initialGarment, loadSdk = loadDecart 
         setHasError(false);
         setPhase('starting');
         setStatus('Checking the garment photo before starting a paid session.');
-        setRemaining(timing.setupSeconds);
-        attemptTiming.current = timing;
+        setElapsed(0);
         try {
             const { createDecartClient, models, noopLogger } = await loadSdk();
             if (attempt !== generation.current)
@@ -156,50 +144,41 @@ export default function LiveTryOn({ token, initialGarment, loadSdk = loadDecart 
             cameraCheck.current = null;
             record({ cameraFrames: true, ...cameraSnapshot(stream) });
             setStatus('Connecting to Lucy. Your camera preview is shown separately.');
-            // Preparation has its own deadline; the live allowance starts only after
-            // garment ACK and playable remote video. The hard cap never moves.
-            trialClock.current = createTrialClock(timing);
+            const startedAt = Date.now();
+            let waitingNoticeShown = false;
             timer.current = setInterval(() => {
-                if (attempt !== generation.current || !trialClock.current) return;
-                const snapshot = trialClock.current.snapshot();
-                setRemaining(snapshot.remaining);
-                if (snapshot.expired) finishTimedTrial(snapshot);
-            }, 250);
+                if (attempt !== generation.current) return;
+                const seconds = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
+                setElapsed(seconds);
+                if (seconds >= 45 && !waitingNoticeShown && !(receivedFrames.current && garmentApplied.current)) {
+                    waitingNoticeShown = true;
+                    setStatus(waitingMessage(diagnostics.current));
+                }
+            }, 1000);
             tokenRequest.current = new AbortController();
             const signal = tokenRequest.current.signal;
-            let credentialPromise;
             pendingConnect.current = attempt;
-            const client = createDecartClient({ telemetry: false, logger: noopLogger, apiKeyProvider: async () => {
-                    if (attempt !== generation.current)
-                        throw Error('Session cancelled.');
-                    // Reuse one short-lived credential for image uploads, never mint automatically again.
-                    credentialPromise ??= fetch(API + '/try-on', { method: 'POST', signal, headers: { Authorization: 'Bearer ' + token } }).then(async res => {
-                        const data = await res.json();
-                        if (res.status === 429 || res.ok) {
-                            const seconds = res.ok ? timing.cooldownSeconds : Math.min(300, Math.max(1, Number(data.retryAfterSeconds) || timing.cooldownSeconds));
-                            cooldownUntil.current = Date.now() + seconds * 1000;
-                            setCooldown(seconds);
-                        }
-                        if (!res.ok) throw Error(data.error || 'Could not authorize the AI session.');
-                        const issuedTiming = readTiming(data);
-                        if (Object.keys(timing).some(key => issuedTiming[key] !== timing[key]))
-                            throw Error('Trial limits changed. Refresh the page before starting again.');
-                        return data;
-                    });
-                    const data = await credentialPromise;
-                    if (attempt !== generation.current)
-                        throw Error('Session cancelled.');
-                    if (typeof data.apiKey !== 'string' || !data.apiKey)
-                        throw Error('The server returned an invalid session token.');
-                    record({ tokenReady: true });
-                    return data.apiKey;
-                } });
+            const apiKeyProvider = createSessionTokenProvider(async () => {
+                const res = await fetch(API + '/try-on', { method: 'POST', signal, headers: { Authorization: 'Bearer ' + token } });
+                const data = await res.json();
+                if (res.status === 429 || res.ok) {
+                    const seconds = res.ok ? timing.cooldownSeconds : Math.min(300, Math.max(1, Number(data.retryAfterSeconds) || timing.cooldownSeconds));
+                    cooldownUntil.current = Date.now() + seconds * 1000;
+                    setCooldown(seconds);
+                }
+                if (!res.ok) throw Error(data.error || 'Could not authorize the AI session.');
+                const issuedTiming = readTiming(data);
+                if (Object.keys(timing).some(key => issuedTiming[key] !== timing[key])) throw Error('Session policy changed. Refresh the page before starting again.');
+                if (attempt === generation.current) record({ tokenReady: true });
+                return data;
+            }, () => attempt === generation.current);
+            const client = createDecartClient({ telemetry: false, logger: noopLogger, apiKeyProvider });
             const result = await client.realtime.connect(stream, {
                 model, ...CAMERA_PUBLISH_OPTIONS, retries: 0, capacityRetryBudgetMs: 0,
                 onQueuePosition: ({ position }) => {
                     if (attempt !== generation.current || !Number.isFinite(position) || position < 0) return;
                     record({ queuePosition: Math.floor(position) });
-                    setStatus('Decart queue position: ' + Math.floor(position) + `. Waiting within the ${timing.setupSeconds}-second preparation limit; no automatic retry.`);
+                    setStatus('Decart queue position: ' + Math.floor(position) + '. No app time limit. Use Stop to leave the queue; no automatic retry.');
                 },
                 onRemoteStream: (output) => {
                     if (attempt !== generation.current) { output.getTracks().forEach(t => t.stop()); return; }
@@ -304,7 +283,7 @@ export default function LiveTryOn({ token, initialGarment, loadSdk = loadDecart 
     return <div className="kd-live-demo">
         <header><a className="brand" href="/shop">KD <span>DESIGN</span></a><nav>LIVE FITTING ROOM</nav><a className="back" href="/shop">Back to shop</a></header>
         <main>
-            <div className="intro"><div><div className="eyebrow">POWERED BY DECART LUCY</div><h1>See it on you.</h1><p>A live fitting room, with room to experiment.</p></div><span className="demo-label">{timing?.liveSeconds ?? 30}-SECOND LIVE PREVIEW</span></div>
+            <div className="intro"><div><div className="eyebrow">POWERED BY DECART LUCY</div><h1>See it on you.</h1><p>A live fitting room, with room to experiment.</p></div><span className="demo-label">LIVE PREVIEW · STOP WHEN FINISHED</span></div>
             <section className="live-layout">
                 <div className="video-area">
                     <div className="output">
@@ -314,7 +293,7 @@ export default function LiveTryOn({ token, initialGarment, loadSdk = loadDecart 
                             record({ playing: true });
                             activateLive();
                         }} autoPlay playsInline muted aria-label="AI try-on"/>
-                        <div className="video-label">{phase === 'starting' ? 'Preparing AI' : 'AI try-on'} {phase !== 'idle' && `/ ${remaining}s left`}</div>
+                        <div className="video-label">{phase === 'starting' ? 'Preparing AI' : 'AI try-on'} {phase !== 'idle' && `/ ${Math.floor(elapsed / 60)}:${String(elapsed % 60).padStart(2, '0')} elapsed`}</div>
                         {phase !== 'live' && <div className="video-placeholder"><h2>{phase === 'starting' ? 'Preparing your look.' : 'Your look comes to life here.'}</h2><p>{phase === 'starting' ? 'Connecting to the AI video stream.' : 'Choose a garment, then start your trial.'}</p></div>}
                     </div>
                     <div className="camera-preview"><video ref={localVideo} autoPlay playsInline muted aria-label="Original camera"/><span>Original camera / No AI</span></div>
@@ -339,9 +318,9 @@ export default function LiveTryOn({ token, initialGarment, loadSdk = loadDecart 
                         <p>Last attempt only. Missing counters do not prove a network failure. These details contain no tokens or camera images.</p>
                     </details>
                     {configured === false && <div className="setup-note"><strong>Setup or account access needed</strong><p>Sign in and ask the shop administrator to enable this demo. The API key belongs in server settings only.</p><a href="https://platform.decart.ai" target="_blank" rel="noopener noreferrer">Decart Platform</a><button className="outline full" onClick={check}>Check connection again</button></div>}
-                    <label className="consent"><input type="checkbox" checked={consent} disabled={phase !== 'idle'} onChange={e=>setConsent(e.target.checked)}/><span>I agree to send my camera video and garment image to Decart for this trial. Up to {timing?.sessionSeconds ?? 90}s including preparation; API credits may be used while waiting. <a href="https://docs.platform.decart.ai/resources/privacy-policy" target="_blank" rel="noopener noreferrer">Privacy information</a></span></label>
+                    <label className="consent"><input type="checkbox" checked={consent} disabled={phase !== 'idle'} onChange={e=>setConsent(e.target.checked)}/><span>I agree to send my camera video and garment image to Decart for this trial. There is no app time limit. Credits may be used while waiting and throughout the session until I stop or leave this page. <a href="https://docs.platform.decart.ai/resources/privacy-policy" target="_blank" rel="noopener noreferrer">Privacy information</a></span></label>
                     <button className="primary full" disabled={!configured || !consent || cooldown > 0 || phase !== 'idle'} onClick={start}>{phase === 'idle' ? (cooldown > 0 ? `Try again in ${cooldown}s` : 'Start live try-on') : 'Session in progress'}</button>
-                    <button className="outline full stop" disabled={phase === 'idle'} onClick={()=>{setHasError(false);stop();}}>Stop &amp; turn camera off</button><p className="micro">Up to {timing?.setupSeconds ?? 60}s preparation, then {timing?.liveSeconds ?? 30}s preview. Keep this tab visible; switching tabs or minimizing stops the trial. No microphone.</p>
+                    <button className="outline full stop" disabled={phase === 'idle'} onClick={()=>{setHasError(false);stop();}}>Stop &amp; turn camera off</button><p className="micro">No app time limit. Decart may still end the session for service or account limits. Switching tabs or minimizing stops the trial. No microphone.</p>
                 </aside>
             </section>
             <section><div className="sample-head"><h2>Change your look.</h2><p>Anywear samples / Not KD Design products</p></div>
