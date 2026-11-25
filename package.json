@@ -12,6 +12,7 @@
     "dev:store": "npm run dev -w @kd/store",
     "dev:studio": "npm run dev -w @kd/studio",
     "dev:api": "npm run dev -w @kd/api",
+    "db:check": "npm run db:check -w @kd/api",
     "db:init": "npm run db:init -w @kd/api",
     "db:seed": "npm run db:seed -w @kd/api",
     "test": "node --test tests/*.test.js",

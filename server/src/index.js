@@ -1,4 +1,5 @@
 import {registerTryOnRoutes} from './tryOn.js';
+import {databaseHealthHandler} from './databaseHealth.js';
 import {registerMembershipRoutes} from './membership.js';
 import {registerOrderLifecycle} from './orderLifecycle.js';
 import {requireJwtSecret} from './authConfig.js';
@@ -39,7 +40,7 @@ const validSale=(value,price)=>value===null||(Number.isSafeInteger(Number(value)
 
 const {authorize,registerRoutes:registerAccountRoutes}=createAccountService({pool,secret:JWT_SECRET});
 function admin(req,res,next){if(req.user?.role!=='admin')return fail(res,'Chỉ Admin được truy cập.',403);next();}
-route.get('/health',wrap(async(req,res)=>{await query('SELECT 1');res.json({ok:true,service:'kd-api'});}));
+route.get('/health',databaseHealthHandler(query));
 registerAccountRoutes(route);
 registerTryOnRoutes(route,{authorize});
 registerCustomerOrders(route,{pool,authorize});

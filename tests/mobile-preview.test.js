@@ -6,10 +6,13 @@ import config from '../apps/store/vite.config.js';
 import { productImageUrl } from '../packages/catalog/media.js';
 
 test('LAN preview proxies API and media without rewriting the browser origin', async () => {
-    const lan = config({ mode: 'lan' }), normal = config({ mode: 'development' });
+    const lan = config({ mode: 'lan', command: 'serve' });
+    const normal = config({ mode: 'development', command: 'serve' });
     assert.equal(lan.define['import.meta.env.VITE_API_URL'], '"/api"');
     assert.equal(lan.server.proxy['/api'].target, 'http://127.0.0.1:4000');
-    assert.equal(normal.define, undefined, 'normal development keeps existing API settings');
+    assert.equal(normal.define['import.meta.env.VITE_API_URL'], '"/api"', 'local development ignores stale LAN IPs');
+    assert.equal(config({ mode: 'remote', command: 'serve' }).define, undefined);
+    assert.equal(config({ mode: 'production', command: 'build' }).define, undefined);
     assert(lan.optimizeDeps.exclude.includes('@decartai/sdk'));
     let received;
     const api = createHttpServer((req, res) => {

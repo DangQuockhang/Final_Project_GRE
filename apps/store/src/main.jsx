@@ -43,18 +43,9 @@ import './styles/white-background.css';
 import './styles/home-products.css';
 import AdminPage from './pages/admin/AdminPage.jsx';
 
+import {createApiRequest} from './utils/apiRequest.js';
 const API=import.meta.env.VITE_API_URL||apiBase;
-const request=async(path,{method='GET',body,token,signal,keepalive=false}={})=>{
- const multipart=typeof FormData!=='undefined'&&body instanceof FormData;
- const res=await fetch(`${API}${path}`,{method,signal,keepalive,headers:{...(body&&!multipart?{'Content-Type':'application/json'}:{}),...(token?{Authorization:`Bearer ${token}`}:{})},body:multipart?body:body?JSON.stringify(body):undefined});
- const data=await res.json().catch(()=>({}));
- if(!res.ok){
-  const error=Object.assign(new Error(data.error||'Unable to complete this request. Please try again.'),{status:res.status,code:data.code,errors:data.errors||{}});
-  if(token&&(res.status===401||data.code==='ACCOUNT_BLOCKED'))window.dispatchEvent(new CustomEvent('kd-session-expired',{detail:{token,message:error.message}}));
-  throw error;
- }
- return data;
-};
+const request=createApiRequest(API,{onSessionExpired:detail=>window.dispatchEvent(new CustomEvent('kd-session-expired',{detail}))});
 const authContext=createContext(null),cartContext=createContext(null),catalogContext=createContext(null);
 const useAuth=()=>useContext(authContext),useCart=()=>useContext(cartContext),useCatalog=()=>useContext(catalogContext);
 
