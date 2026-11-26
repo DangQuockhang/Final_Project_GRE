@@ -125,6 +125,9 @@ git push -u origin feature/real-product-images
 
 Git is **not** a substitute for PostgreSQL backups.
 
+Cloud PostgreSQL setup, isolated connection checks and safe cutover:
+[`docs/CLOUD_POSTGRES.md`](docs/CLOUD_POSTGRES.md).
+
 ## Useful commands
 
 | Command | Task |

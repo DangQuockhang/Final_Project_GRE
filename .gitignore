@@ -8,3 +8,10 @@ coverage/
 
 # Binary uploads are backed up separately from Git
 server/uploads/
+
+# Database exports, recovery evidence and cloud credentials stay off Git
+backups/
+recovery-audit/
+*.dump
+*.backup
+server/certs/
