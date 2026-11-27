@@ -2,7 +2,7 @@ import {orderItemsJson} from './orderQueries.js';
 const PAGE_SIZE=10;
 export function customerOrderFilter(query={}){
  const raw=query.page??'1',status=query.status??'all';
- if(typeof raw!=='string'||!/^[1-9][0-9]{0,6}$/.test(raw)||typeof status!=='string'||!['all','PENDING','CONFIRMED','SHIPPED','DELIVERED','CANCELLED'].includes(status)){
+ if(typeof raw!=='string'||!/^[1-9][0-9]{0,6}$/.test(raw)||typeof status!=='string'||!['all','PENDING','CONFIRMED','SHIPPED','DELIVERED','CANCELLED','RETURNED'].includes(status)){
   const error=new Error('Trang hoặc trạng thái đơn hàng không hợp lệ.');error.status=400;error.code='VALIDATION_ERROR';throw error;
  }
  return {page:Number(raw),status};

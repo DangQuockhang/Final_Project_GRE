@@ -63,11 +63,11 @@ export default function AdminPage({user,token,request,refreshCatalog,onLogout}){
   return()=>{live=false;};
  },[tab,days,revision,api]);
  function report(message){setError(message);setNotice('');}
- async function perform(operation,successMessage='Saved successfully.'){
+ async function perform(operation,successMessage='Saved successfully.',options={}){
   if(lock.current)return false;
   lock.current=true;setBusy(true);setError('');setNotice('');
   try{await operation();await refreshCatalog();setRevision(n=>n+1);setNotice(successMessage);return true;}
-  catch(e){setError(e.message||'Không thể lưu thay đổi.');return false;}
+  catch(e){if(options.onError)options.onError(e);else setError(e.message||'Unable to save changes.');return false;}
   finally{lock.current=false;setBusy(false);}
  }
  function navigate(next,options={}){

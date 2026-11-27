@@ -1,10 +1,10 @@
 import React from 'react';
 import {Link} from 'react-router-dom';
 export default function SavedAddressNotice({state}){
- if(state.loading)return <p className="kd-checkout-address-note" role="status">Đang tải địa chỉ đã lưu…</p>;
- if(state.error)return <div className="kd-checkout-address-note" role="status"><p>{state.error}</p><button type="button" onClick={state.retry}>Thử lại</button></div>;
+ if(state.loading)return <p className="kd-checkout-address-note" role="status">Loading saved address…</p>;
+ if(state.error)return <div className="kd-checkout-address-note" role="status"><p>{state.error}</p><button type="button" onClick={state.retry}>Try again</button></div>;
  return <div className="kd-checkout-address-note">
-  <p>{state.saved?'Bạn có thể dùng địa chỉ mặc định hoặc sửa thông tin cho riêng đơn hàng này.':'Bạn có thể lưu một địa chỉ mặc định trong Tài khoản để đặt hàng nhanh hơn.'}</p>
-  <div>{state.saved&&<button type="button" onClick={state.applySaved}>Dùng địa chỉ mặc định</button>}<Link to="/account?tab=address">Quản lý địa chỉ</Link></div>
+  <p>{state.saved?'Use your default address or edit it for this order.':'Save a default address in your account for faster checkout.'}</p>
+  <div>{state.saved&&<button type="button" onClick={state.applySaved}>Use default address</button>}<Link to="/account?tab=address">Manage addresses</Link></div>
  </div>;
 }

@@ -40,7 +40,10 @@ Start PostgreSQL:
 docker compose up -d
 ```
 
-Initialize and seed (only once; safe to rerun seed for missing example items):
+Initialize and seed only a **new, intentionally empty demo database**. If this
+project previously contained your products, first follow
+[API/database recovery checks](docs/API_DATABASE_TROUBLESHOOTING.md); do not seed
+or replace the database while investigating missing data.
 
 ```powershell
 npm run db:init
@@ -63,6 +66,11 @@ Visit:
 - **Admin:** http://localhost:5173/login — use the admin credentials you configured in `server/.env` **before** running `npm run db:seed`.
 
 Without Docker/PostgreSQL, you can still preview both frontends using **fictional fallback data** after `npm install`, but authentication, product CRUD, stock changes and checkout require API + DB.
+
+For an existing store, run `npm run db:check` to check the connection and required
+schema without changing data. Local `npm run dev:store` proxies API/media requests
+through Vite so changing Wi-Fi does not require a new API IP in `.env`.
+See [API/database troubleshooting](docs/API_DATABASE_TROUBLESHOOTING.md).
 
 ## Demo walkthrough
 
@@ -116,6 +124,9 @@ git push -u origin feature/real-product-images
 ```
 
 Git is **not** a substitute for PostgreSQL backups.
+
+Cloud PostgreSQL setup, isolated connection checks and safe cutover:
+[`docs/CLOUD_POSTGRES.md`](docs/CLOUD_POSTGRES.md).
 
 ## Useful commands
 

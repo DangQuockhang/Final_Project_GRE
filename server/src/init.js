@@ -1,3 +1,4 @@
+import {migrateMembership} from './membershipMigration.js';
 import {migrateAccountFoundation} from './accountMigration.js';
 import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
@@ -9,6 +10,7 @@ try{
   await client.query(readFileSync(fileURLToPath(new URL('../sql/'+file,import.meta.url)),'utf8'));
  }
  await migrateAccountFoundation(client);
+ await migrateMembership(client);
  await client.query('COMMIT');console.log('Database schema initialized.');
 }catch(error){if(client)await client.query('ROLLBACK');console.error(error.message);process.exitCode=1;}
 finally{client?.release();await pool.end();}

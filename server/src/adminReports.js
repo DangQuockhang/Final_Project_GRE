@@ -1,7 +1,7 @@
 import {dashboardWindow} from './dashboard.js';
 const PAGE_SIZE=25;
-const orderStates=['all','PENDING','CONFIRMED','SHIPPED','DELIVERED','CANCELLED'];
-const paymentStates=['all','UNPAID','AWAITING_TRANSFER','PAID','REFUND_PENDING'];
+const orderStates=['all','PENDING','CONFIRMED','SHIPPED','DELIVERED','CANCELLED','RETURNED'];
+const paymentStates=['all','UNPAID','AWAITING_TRANSFER','PAID','REFUND_PENDING','REFUNDED'];
 const invalid=message=>{const error=new Error(message);error.status=400;throw error;};
 function choice(query,key,values,fallback){
  const value=query[key]??fallback;
@@ -39,7 +39,7 @@ export function reportQuery(kind,query={},now=new Date()){
    "(SELECT COALESCE(sum(quantity),0)::int FROM order_items WHERE order_id=o.id) AS item_count FROM orders o JOIN users u ON u.id=o.user_id";
   sort=choice(query,'sort',['newest','oldest'],'newest')==='newest'?'created_at DESC,id DESC':'created_at,id';
   summary="count(*)::int AS total,count(*) FILTER(WHERE status='PENDING')::int AS pending,"+
-   "count(*) FILTER(WHERE payment_status='AWAITING_TRANSFER' AND status!='CANCELLED')::int AS awaiting_transfer";
+   "count(*) FILTER(WHERE payment_status='AWAITING_TRANSFER' AND status NOT IN ('CANCELLED','RETURNED'))::int AS awaiting_transfer";
  }else if(kind==='inventory'){
   where.push("p.status='active'");
   const filter=choice(query,'filter',['attention','all','sold_out','low_stock','in_stock'],'attention');
@@ -69,7 +69,7 @@ export function reportQuery(kind,query={},now=new Date()){
    "count(*) FILTER(WHERE status='active' AND variant_count=0)::int AS missing_skus";
  }else{
   const days=choice(query,'days',['7','30','90'],'30');range=dashboardWindow(days,now);
-  where.push('o.created_at>='+bind(range.start)+' AND o.created_at<'+bind(range.end),"o.status!='CANCELLED'");
+  where.push('o.created_at>='+bind(range.start)+' AND o.created_at<'+bind(range.end),"o.status NOT IN ('CANCELLED','RETURNED')");
   match(['p.name','b.name']);
   source="SELECT p.id AS product_id,p.name,b.name AS brand_name,p.image_url,p.status,"+
    "sum(i.quantity)::int AS units,count(DISTINCT o.id)::int AS order_count,"+

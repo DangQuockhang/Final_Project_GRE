@@ -3,7 +3,7 @@ import {useLocation,useSearchParams} from 'react-router-dom';
 import {Search,ArrowRight,ChevronLeft,ChevronRight,PackageSearch,AlertCircle} from 'lucide-react';
 import {money} from '@kd/catalog';
 const titles={orders:'Orders',inventory:'Stock watchlist','best-sellers':'Best-selling products','catalog-health':'Catalog health'};
-const statusNames={PENDING:'Pending',CONFIRMED:'Confirmed',SHIPPED:'Shipped',DELIVERED:'Delivered',CANCELLED:'Cancelled',active:'Active',draft:'Draft',archived:'Archived',UNPAID:'Unpaid',AWAITING_TRANSFER:'Awaiting transfer',PAID:'Paid',REFUND_PENDING:'Refund pending'};
+const statusNames={PENDING:'Pending',CONFIRMED:'Confirmed',SHIPPED:'Shipped',DELIVERED:'Delivered',CANCELLED:'Cancelled',RETURNED:'Returned',active:'Active',draft:'Draft',archived:'Archived',UNPAID:'Unpaid',AWAITING_TRANSFER:'Awaiting transfer',PAID:'Paid',REFUND_PENDING:'Refund pending',REFUNDED:'Refunded'};
 const date=value=>new Date(value).toLocaleString('en-GB',{timeZone:'Asia/Ho_Chi_Minh',dateStyle:'medium',timeStyle:'short'});
 const number=value=>new Intl.NumberFormat('en').format(value||0);
 function Badge({value}){return <span className={'kd-ops-badge '+String(value).toLowerCase().replaceAll(' ','-')}>{statusNames[value]||value}</span>;}
@@ -48,8 +48,8 @@ export default function AdminReportPage({kind,api,revision,onNavigate}){
   <div className="kd-report-toolbar">
    <label className="kd-report-search"><Search size={18} aria-hidden="true"/><input type="search" maxLength={120} aria-label={'Search '+titles[kind]} placeholder={kind==='orders'?'Order code, customer, email or phone…':kind==='inventory'?'Product, brand, SKU, color or size…':'Product or brand…'} value={search} onChange={event=>setSearch(event.target.value)}/></label>
    {kind==='orders'&&<>
-    <Filter label="Order status" value={params.get('status')||'all'} options={[['all','All statuses'],...options(['PENDING','CONFIRMED','SHIPPED','DELIVERED','CANCELLED'])]} onChange={value=>select('status',value)}/>
-    <Filter label="Payment status" value={params.get('payment_status')||'all'} options={[['all','All payments'],...options(['UNPAID','AWAITING_TRANSFER','PAID','REFUND_PENDING'])]} onChange={value=>select('payment_status',value)}/>
+    <Filter label="Order status" value={params.get('status')||'all'} options={[['all','All statuses'],...options(['PENDING','CONFIRMED','SHIPPED','DELIVERED','CANCELLED','RETURNED'])]} onChange={value=>select('status',value)}/>
+    <Filter label="Payment status" value={params.get('payment_status')||'all'} options={[['all','All payments'],...options(['UNPAID','AWAITING_TRANSFER','PAID','REFUND_PENDING','REFUNDED'])]} onChange={value=>select('payment_status',value)}/>
     <Filter label="Method" value={params.get('payment_method')||'all'} options={[['all','All methods'],['COD','Cash on delivery'],['BANK_TRANSFER','Bank transfer']]} onChange={value=>select('payment_method',value)}/>
    </>}
    {kind==='inventory'&&<Filter label="Stock level" value={filter} options={[['attention','Needs attention (0–3)'],['sold_out','Sold out'],['low_stock','Low stock (1–3)'],['in_stock','In stock (4+)'],['all','All active SKUs']]} onChange={value=>select('filter',value)}/>}

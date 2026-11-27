@@ -128,7 +128,7 @@ ALTER TABLE orders ALTER COLUMN payment_method TYPE VARCHAR(20);
 ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_payment_method_check;
 ALTER TABLE orders ADD CONSTRAINT orders_payment_method_check CHECK (payment_method IN ('COD','BANK_TRANSFER'));
 ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_payment_status_check;
-ALTER TABLE orders ADD CONSTRAINT orders_payment_status_check CHECK(payment_status IN ('UNPAID','AWAITING_TRANSFER','PAID','REFUND_PENDING'));
+ALTER TABLE orders ADD CONSTRAINT orders_payment_status_check CHECK(payment_status IN ('UNPAID','AWAITING_TRANSFER','PAID','REFUND_PENDING','REFUNDED'));
 
 ALTER TABLE order_items ADD COLUMN IF NOT EXISTS image_url TEXT;
 ALTER TABLE order_items ADD COLUMN IF NOT EXISTS product_slug TEXT;

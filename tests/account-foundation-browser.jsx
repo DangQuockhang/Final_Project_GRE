@@ -41,7 +41,7 @@ async function request(path,{method='GET',body}={}){
   if(method==='PUT'){
    counts.save++;
    if(saveFailure){saveFailure=false;throw Error('Kết nối tạm thời bị gián đoạn, hãy thử lưu lại.');}
-   address={...body,updated_at:'2026-11-01T00:00:00Z'};return {address,message:'Đã lưu địa chỉ mặc định.'};
+   address={...body,updated_at:'2026-11-01T00:00:00Z'};return {address,message:'Default address saved.'};
   }
   if(method==='DELETE'){counts.remove++;address=null;return {address:null,message:'Đã xóa địa chỉ mặc định.'};}
  }
@@ -80,58 +80,58 @@ if(import.meta.env.DEV){
   try{
    assert(window.innerWidth===Number(new URLSearchParams(window.location.search).get('viewport')),'Browser must use the requested viewport width');
    mount('address','/account?tab=address',account);
-   await until(()=>button('Thử lại'),'address load error');await click('Thử lại');
+   await until(()=>button('Try again'),'address load error');await click('Try again');
    await until(()=>document.getElementById('account-address-recipient'),'address form');
    fit('Address');
-   assert(document.querySelector('.kd-account-card header p').textContent.includes('chưa lưu'),'Helpful address empty state');
+   assert(document.querySelector('.kd-account-card header p').textContent.includes('No saved address'),'Helpful address empty state');
    assert(parseFloat(getComputedStyle(document.getElementById('account-address-phone')).fontSize)>=16,'Mobile delivery input is at least 16px');
-   assert(button('Lưu địa chỉ').getBoundingClientRect().height>=44,'Save target at least 44px');
+   assert(button('Save address').getBoundingClientRect().height>=44,'Save target at least 44px');
    await fill('account-address-phone','abcdefghi');await submit();
    assert(counts.save===0&&document.getElementById('account-address-phone-error'),'Invalid phone never reaches API');
    await fill('account-address-phone',originalAddress.phone);await fill('account-address-address',originalAddress.address);
    await submit();assert(counts.save===1,'First save attempted');
    assert(document.querySelector('[role="alert"]')?.textContent.includes('gián đoạn'),'Save failure has a message');
    assert(document.getElementById('account-address-address').value===originalAddress.address,'Failed save retains typed address');
-   await submit();await until(()=>button('Xóa địa chỉ'),'saved address');
-   assert(document.querySelector('[role="status"]')?.textContent.includes('Đã lưu'),'Save announces success');
-   await click('Xóa địa chỉ');assert(counts.remove===0,'Cancel deletion keeps saved address');
-   confirmed=true;await click('Xóa địa chỉ');assert(counts.remove===1&&!button('Xóa địa chỉ'),'Confirmed deletion clears default address');
+   await submit();await until(()=>button('Remove address'),'saved address');
+   assert(document.querySelector('[role="status"]')?.textContent.includes('Default address saved'),'Save announces success');
+   await click('Remove address');assert(counts.remove===0,'Cancel deletion keeps saved address');
+   confirmed=true;await click('Remove address');assert(counts.remove===1&&!button('Remove address'),'Confirmed deletion clears default address');
    await fill('account-address-address',originalAddress.address);await submit();
-   await click('Đơn hàng');await until(()=>document.querySelector('.kd-order-card'),'history');
+   await click('Orders');await until(()=>document.querySelector('.kd-order-card'),'history');
    fit('Order history');
    assert(document.querySelector('.kd-order-card').textContent.includes(order.order_code),'Payment configuration failure does not hide orders');
-   assert(document.querySelector('.kd-customer-orders').textContent.includes('vẫn được hiển thị'),'Payment failure is explained separately');
-   await click('Trang sau');await until(()=>document.querySelector('.kd-order-card h3')?.textContent.includes('000000000052'),'next page');
+   assert(document.querySelector('.kd-customer-orders').textContent.includes('still shown'),'Payment failure is explained separately');
+   await click('Next');await until(()=>document.querySelector('.kd-order-card h3')?.textContent.includes('000000000052'),'next page');
    assert(document.querySelector('#foundation-location').textContent.includes('page=2'),'Pagination stored in URL');
    orderFailure=true;
-   const filter=document.querySelector('[aria-label="Lọc trạng thái đơn hàng"]');filter.value='DELIVERED';filter.dispatchEvent(new Event('change',{bubbles:true}));
-   await until(()=>button('Thử tải đơn hàng'),'history failure');
+   const filter=document.querySelector('[aria-label="Filter order status"]');filter.value='DELIVERED';filter.dispatchEvent(new Event('change',{bubbles:true}));
+   await until(()=>button('Retry orders'),'history failure');
    assert(!document.querySelector('.kd-customer-orders-empty'),'An API error is not presented as empty history');
-   await click('Thử tải đơn hàng');await until(()=>document.querySelector('.kd-order-card'),'history retry');
+   await click('Retry orders');await until(()=>document.querySelector('.kd-order-card'),'history retry');
    assert(!document.querySelector('#foundation-location').textContent.includes('page=2'),'Changing status resets page');
-   const select=document.querySelector('[aria-label="Lọc trạng thái đơn hàng"]');select.value='CANCELLED';select.dispatchEvent(new Event('change',{bubbles:true}));
-   await until(()=>button('Xem tất cả đơn hàng'),'filtered empty state');
-   await click('Xem tất cả đơn hàng');await until(()=>document.querySelector('.kd-order-card'),'reset history filter');
+   const select=document.querySelector('[aria-label="Filter order status"]');select.value='CANCELLED';select.dispatchEvent(new Event('change',{bubbles:true}));
+   await until(()=>button('View all orders'),'filtered empty state');
+   await click('View all orders');await until(()=>document.querySelector('.kd-order-card'),'reset history filter');
    mount('checkout','/checkout',<CheckoutHarness/>);
    await until(()=>document.querySelector('#foundation-location')?.dataset.boot==='checkout'&&document.getElementById('checkout-test-address')?.value===originalAddress.address,'checkout prefill');
    fit('Checkout delivery');
    assert(document.getElementById('checkout-test-phone').value===originalAddress.phone,'Default phone prefilled');
-   await fill('checkout-test-address','Địa chỉ riêng cho đơn hàng này, TP.HCM');
+   await fill('checkout-test-address','Address riêng cho đơn hàng này, TP.HCM');
    assert(address.address===originalAddress.address,'Checkout edits do not overwrite saved address');
-   await click('Dùng địa chỉ mặc định');assert(document.getElementById('checkout-test-address').value===originalAddress.address,'Explicit restore of saved address');
+   await click('Use default address');assert(document.getElementById('checkout-test-address').value===originalAddress.address,'Explicit restore of saved address');
    slowAddress=true;mount('slow','/checkout',<CheckoutHarness/>);
    await until(()=>document.querySelector('#foundation-location')?.dataset.boot==='slow'&&slowResolve,'slow default-address request');
-   await fill('checkout-test-recipient','Người nhận tự nhập');await fill('checkout-test-address','Địa chỉ khách tự nhập trước khi API trả về');
+   await fill('checkout-test-recipient','Người nhận tự nhập');await fill('checkout-test-address','Address khách tự nhập trước khi API trả về');
    slowResolve();await wait();
    assert(document.getElementById('checkout-test-recipient').value==='Người nhận tự nhập','Late response preserves edited recipient');
-   assert(document.getElementById('checkout-test-address').value==='Địa chỉ khách tự nhập trước khi API trả về','Late response preserves edited address');
+   assert(document.getElementById('checkout-test-address').value==='Address khách tự nhập trước khi API trả về','Late response preserves edited address');
    fit('Slow checkout');
    addressFailure=true;mount('failed-checkout','/checkout',<CheckoutHarness/>);
-   await until(()=>document.querySelector('#foundation-location')?.dataset.boot==='failed-checkout'&&button('Thử lại'),'checkout error');
+   await until(()=>document.querySelector('#foundation-location')?.dataset.boot==='failed-checkout'&&button('Try again'),'checkout error');
    assert(document.getElementById('checkout-test-phone').value===user.phone,'Profile phone remains available when address fetch fails');
-   await fill('checkout-test-address','Địa chỉ nhập tay vẫn dùng được, TP.HCM');
-   await click('Thử lại');await until(()=>button('Dùng địa chỉ mặc định'),'checkout retry');
-   assert(document.getElementById('checkout-test-address').value==='Địa chỉ nhập tay vẫn dùng được, TP.HCM','Retry does not replace user input');
+   await fill('checkout-test-address','Address nhập tay vẫn dùng được, TP.HCM');
+   await click('Try again');await until(()=>button('Use default address'),'checkout retry');
+   assert(document.getElementById('checkout-test-address').value==='Address nhập tay vẫn dùng được, TP.HCM','Retry does not replace user input');
    const output=document.createElement('output');output.textContent='FOUNDATION_CHECKS_PASSED';document.body.append(output);
   }catch(error){const output=document.createElement('output');output.textContent='FOUNDATION_CHECKS_FAILED: '+error.message;document.body.append(output);}
   finally{window.confirm=originalConfirm;}

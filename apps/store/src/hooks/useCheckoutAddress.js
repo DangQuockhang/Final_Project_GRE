@@ -11,7 +11,7 @@ export default function useCheckoutAddress({user,token,request}){
    const fallback={recipient:user.name||'',phone:user.phone||'',address:''},values=data.address||fallback;
    // A slow response must never replace delivery information already typed by the shopper.
    setForm(old=>Object.fromEntries(['recipient','phone','address'].map(key=>[key,dirty.current.has(key)?old[key]:values[key]||''])));
-  }).catch(e=>{if(live&&e.name!=='AbortError')setError('Chưa tải được địa chỉ đã lưu. Bạn có thể nhập địa chỉ bên dưới hoặc thử lại.');})
+  }).catch(e=>{if(live&&e.name!=='AbortError')setError('Unable to load your saved address. Enter it manually below or try again.');})
    .finally(()=>{if(live)setLoading(false);});
   return()=>{live=false;controller.abort();};
  },[token,request,retry,user.name,user.phone]);

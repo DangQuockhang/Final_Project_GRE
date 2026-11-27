@@ -1,0 +1,26 @@
+.kd-order-dialog-backdrop{position:fixed;inset:0;z-index:2000;display:grid;place-items:center;padding:16px;background:#15251ecc}
+.kd-order-dialog{box-sizing:border-box;max-width:540px;width:100%;max-height:calc(100dvh - 32px);overflow:auto;padding:24px;background:#fff;color:#1c1b19;border:1px solid #cbd4c8;border-radius:8px;font:15px/1.6 Inter,system-ui,sans-serif;overscroll-behavior:contain}
+.kd-order-dialog *{box-sizing:border-box}
+.kd-order-dialog header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.kd-order-dialog header span{font-size:11px;color:#596657;overflow-wrap:anywhere}
+.kd-order-dialog h2{font-size:22px;line-height:1.35;margin:6px 0 12px;font-weight:600}
+.kd-order-dialog button{min-height:44px;min-width:44px;padding:10px 14px;cursor:pointer;border:1px solid #b9c6b5;background:#fff;border-radius:6px;color:#294833;font:inherit}
+.kd-order-dialog header button{padding:9px;flex-shrink:0;display:grid;place-items:center}
+.kd-order-dialog p{overflow-wrap:anywhere}
+.kd-order-dialog form>label{display:grid;gap:7px;margin-top:18px;font-weight:500}
+.kd-order-dialog input:not([type=checkbox]),.kd-order-dialog textarea{width:100%;min-width:0;min-height:44px;padding:10px;border:1px solid #99a795;border-radius:6px;background:#fff;color:#1c1b19;font:16px/1.5 Inter,system-ui,sans-serif}
+.kd-order-dialog textarea{resize:vertical}
+.kd-order-dialog .kd-order-action-check{display:flex;align-items:flex-start;gap:12px;cursor:pointer;min-height:44px;font-weight:400}
+.kd-order-action-check input{width:20px;height:20px;margin:3px 0 0;flex-shrink:0;accent-color:#335c43}
+.kd-order-dialog footer{display:flex;justify-content:flex-end;gap:10px;margin-top:24px;padding-bottom:env(safe-area-inset-bottom)}
+.kd-order-dialog .kd-order-action-confirm{background:#294d36;border-color:#294d36;color:#fff}
+.kd-order-dialog button:disabled{opacity:.65;cursor:wait}
+.kd-order-action-error{padding:10px;background:#f8eeeb;color:#8b3328;border-left:3px solid #a84939}
+.kd-order-dialog :focus-visible{outline:2px solid #294d36;outline-offset:3px}
+.kd-order-audit ol{list-style:none;margin:20px 0 0;padding:0}
+.kd-order-audit li{border-top:1px solid #d8ddd6;padding:16px 0}
+.kd-order-audit li>span{display:block;font-size:12px;color:#53624e}
+.kd-order-audit li p{margin:6px 0}
+.kd-order-audit-loading{min-height:100px;background:#f5f6f2;padding:20px}
+.kd-order-status-returned{background:#e9edf0;color:#394e5a}
+@media(max-width:600px){.kd-order-dialog-backdrop{padding:12px}.kd-order-dialog{padding:18px;max-height:calc(100dvh - 24px)}.kd-order-dialog footer{display:grid;grid-template-columns:1fr 1fr}.kd-order-admin-controls{flex-wrap:wrap}.kd-order-admin-controls button{white-space:normal;text-align:left}}

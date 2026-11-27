@@ -1,3 +1,4 @@
+import {checkMembershipOrders} from './membership-orders.ci.js';
 import {checkAccountFoundation} from './account-foundation.ci.js';
 import {checkAdminReports} from './admin-reports.ci.js';
 import {checkProductDuplicates} from './duplicate-product.ci.js';
@@ -618,6 +619,7 @@ test('Admin permissions and COD stock transactions against disposable PostgreSQL
   }finally{await dashboardDb.end();}
   await checkProductDuplicates(base,token,brands[0].id);
   await checkAdminReports(base,token,user.data.token,user.data.user.id,brands[0].id);
+  await checkMembershipOrders(base,token,brands[0].id);
   await accountChecks(base,mail);
   await checkAccountFoundation(base,brands[0].id);
  }finally{server.kill();mail.server.closeAllConnections();await new Promise(resolve=>mail.server.close(resolve));}

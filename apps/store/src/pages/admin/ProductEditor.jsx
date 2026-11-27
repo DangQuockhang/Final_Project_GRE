@@ -1,3 +1,5 @@
+import {createPortal} from 'react-dom';
+import '../../styles/editor-errors.css';
 import ProductGallery from '../../components/product/ProductGallery.jsx';
 import ProductDetailsEditor from '../../components/admin/ProductDetailsEditor.jsx';
 import React,{useEffect,useMemo,useRef,useState} from 'react';
@@ -27,7 +29,23 @@ const initialColors=p=>{
 };
 export default function ProductEditor({product,duplicateSource=null,duplicateToken='',brands,collections=[],api,perform,busy,report:reportToAdmin,onCancel,resolvePhotoUrl=null}){
  const [saveError,setSaveError]=useState('');
- const report=message=>{setSaveError(message);reportToAdmin?.(message);};
+ const editorRef=useRef(null),errorRef=useRef(null),errorTimer=useRef(null);
+ const [errorTarget,setErrorTarget]=useState(null);
+ const report=(message,element=document.activeElement)=>{
+  clearTimeout(errorTimer.current);
+  const target=editorRef.current?.contains(element)?element.closest('label,.kd-quick-sku-row,.kd-quick-step,.kd-quick-grid'):null;
+  setErrorTarget(target);setSaveError(message);
+  errorTimer.current=setTimeout(()=>{setSaveError('');setErrorTarget(null);},5000);
+ };
+ useEffect(()=>()=>clearTimeout(errorTimer.current),[]);
+ useEffect(()=>{
+  if(!saveError)return;
+  errorTarget?.classList.add('kd-editor-invalid');
+  const frame=requestAnimationFrame(()=>errorRef.current?.scrollIntoView?.({block:'nearest',behavior:'auto'}));
+  return()=>{cancelAnimationFrame(frame);errorTarget?.classList.remove('kd-editor-invalid');};
+ },[saveError,errorTarget]);
+ const localPerform=(operation,message)=>perform(operation,message,{onError:error=>report(error.message||'Unable to save changes. Please try again.')});
+ const localError=saveError?<p ref={errorRef} className="kd-editor-inline-error" role="alert">{saveError}</p>:null;
  const duplicated=useMemo(()=>duplicateSource?duplicateProduct(duplicateSource,duplicateToken):null,[duplicateSource,duplicateToken]);
  const reference=duplicateSource||product;
  const [detailBlocks,setDetailBlocks]=useState(()=>{
@@ -123,9 +141,9 @@ export default function ProductEditor({product,duplicateSource=null,duplicateTok
   setRows(old=>[...old,row]);
   setColors(old=>old.some(color=>normal(color.name)===normal(row.color))?old:[...old,{name:row.color,hex:row.color_hex||'#758073'}]);
  }
- function setColorMode(checked){
+ function setColorMode(checked,control){
   if(!checked&&hasMultipleColors(rows)){
-   report('This product still has more than one SKU color. Remove the unwanted color SKU rows first, then turn off color choices.');
+   report('This product still has more than one SKU color. Remove the unwanted color SKU rows first, then turn off color choices.',control);
    return;
   }
   if(checked&&!colors.length)setColors([{...shades[0]}]);
@@ -221,9 +239,9 @@ export default function ProductEditor({product,duplicateSource=null,duplicateTok
   saving.current=true;
   setWorking(true);
   try{
-   const ok=await perform(async()=>{
+   const ok=await localPerform(async()=>{
     try{return await api(product?'/admin/products/'+product.id+'/bundle':'/admin/products/bundle',{method:product?'PATCH':'POST',body:form});}
-    catch(error){setSaveError(error.message||'Không thể lưu sản phẩm. Vui lòng thử lại.');throw error;}
+    catch(error){report(error.message||'Unable to save this product. Please try again.');throw error;}
    },
     'Product, sizes, photos, cover and size guide saved.'+
      (data.product_type?' Product Type: '+data.product_type+'.':'')+
@@ -238,7 +256,7 @@ export default function ProductEditor({product,duplicateSource=null,duplicateTok
  const oldCover=(!removeCover&&!deletedImages.some(id=>product?.images?.find(image=>image.id===id)?.image_url===product?.image_url))?product?.image_url:null;
  const draftCover=pendingUrl||(chosenExisting?photoUrl(chosenExisting.image_url):oldCover?photoUrl(oldCover):null)|| (orderedGallery[0]?photoUrl(orderedGallery[0].image_url):urls[0]?.url);
  const previewImages=[...new Set([draftCover,...orderedGallery.map(image=>photoUrl(image.image_url)),...urls.map(x=>x.url)].filter(Boolean))];
- return <form onSubmit={save} onPaste={paste} className="kd-quick-editor">
+ return <form ref={editorRef} onInvalid={e=>{e.preventDefault();report(e.target.validationMessage,e.target);}} onSubmit={save} onPaste={paste} className="kd-quick-editor">
   <fieldset disabled={busy||working} style={{border:0,padding:0,margin:0,minWidth:0}}>
   <div className="kd-quick-title"><div><span>PRODUCT WORKSPACE</span><h3>{product?'Edit '+product.name:duplicated?'Duplicate '+duplicateSource.name:'New product — one step'}</h3>
    <p>{duplicated?'A new independent draft. Details and sizes copied; stock reset to zero, new SKUs assigned. Select new photos before publishing.':'Details, color and size inventory, and photos — save together.'}</p>
@@ -263,7 +281,7 @@ export default function ProductEditor({product,duplicateSource=null,duplicateTok
     </div>
    </div>
    <label className="kd-optional-color-switch">
-    <input type="checkbox" checked={multipleColors} onChange={e=>setColorMode(e.target.checked)}/>
+    <input type="checkbox" checked={multipleColors} onChange={e=>setColorMode(e.target.checked,e.currentTarget)}/>
     <span><strong>Offer multiple color choices</strong><small>Optional — turn on for Black, Red, Gray or other selectable colors.</small></span>
    </label>
    {multipleColors?<div className="kd-optional-color-panel">
@@ -370,10 +388,10 @@ export default function ProductEditor({product,duplicateSource=null,duplicateTok
     disabled={busy||working}
     report={report}
   />
-  {saveError&&<p className="message-error" role="alert">{saveError}</p>}
+  {errorTarget?createPortal(localError,errorTarget):localError}
   <div className="kd-quick-save"><button className="button button-dark" type="submit" disabled={busy||working||!brands.length}><Save size={18}/>{working?'SAVING…':'SAVE'}</button><span>{duplicated?'This copy is a separate product. All copied sizes start with zero stock; photos are not shared with the original.': 'New products default to Draft. Order-linked SKU history is protected; confirmed unreferenced SKU removals are applied on Save.'}</span></div>
   </fieldset>
-  {quickBrandOpen&&<QuickAddBrand brands={brands} api={api} perform={perform} busy={busy||working} report={report}
+  {quickBrandOpen&&<QuickAddBrand brands={brands} api={api} perform={localPerform} busy={busy||working} report={report}
    onCreated={id=>set('brand_id',id)} onClose={closeQuickBrand}/>}
  </form>;
 }

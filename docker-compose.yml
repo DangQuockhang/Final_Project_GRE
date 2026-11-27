@@ -9,5 +9,9 @@ services:
       - "5433:5432"
     volumes:
       - kd_pgdata:/var/lib/postgresql/data
+# volumes:
+#   kd_pgdata:
 volumes:
   kd_pgdata:
+    external: true
+    name: kd-desgin-starter_kd_pgdata
