@@ -94,7 +94,7 @@ function Providers({children}){
  return <authContext.Provider value={auth}><catalogContext.Provider value={{products,brands,collections,online,loading,refresh}}><cartContext.Provider value={cartValue}>{children}</cartContext.Provider></catalogContext.Provider></authContext.Provider>
 }
 function Header(){const {count}=useCart(),{user}=useAuth(),{brands,collections}=useCatalog();return <Navbar count={count} user={user} brands={brands} collections={collections}/> }
-function Layout({children,catalog=false}){const {online,loading,refresh}=useCatalog(),{logoutWarning,dismissLogoutWarning}=useAuth();return <><Header/>{logoutWarning&&<div className="kd-logout-warning" role="status"><span>{logoutWarning}</span><button type="button" onClick={dismissLogoutWarning} aria-label="Dismiss sign-out notice">x</button></div>}{!loading&&!online&&<div className="demo-banner" role="alert">Unable to load the store catalog. <button type="button" onClick={refresh}>Try again</button></div>}<main>{catalog&&(loading||!online)?<section className="kd-missing" role="status"><h1>{loading?'Loading catalog.':'Catalog unavailable'}</h1><p>{loading?'Please wait while we load the store.':'Please try again to load products.'}</p></section>:children}</main><Footer/></>}
+function Layout({children,catalog=false}){const {online,loading,refresh}=useCatalog(),{logoutWarning,dismissLogoutWarning}=useAuth();return <><Header/>{logoutWarning&&<div className="kd-logout-warning" role="status"><span>{logoutWarning}</span><button type="button" onClick={dismissLogoutWarning} aria-label="Dismiss sign-out notice">×</button></div>}{!loading&&!online&&<div className="demo-banner" role="alert">Unable to load the store catalog. <button type="button" onClick={refresh}>Try again</button></div>}<main>{catalog&&(loading||!online)?<section className="kd-missing" role="status"><h1>{loading?'Loading catalog…':'Catalog unavailable'}</h1><p>{loading?'Please wait while we load the store.':'Please try again to load products.'}</p></section>:children}</main><Footer/></>}
 function Home(){const {products,brands}=useCatalog();return <Layout catalog><HomePage products={products} brands={brands}/></Layout>}
 function Shop(){const {products,brands,collections}=useCatalog();return <Layout catalog><ShopPage products={products} brands={brands} collections={collections}/></Layout>}
 function Brands(){const {brands,products}=useCatalog();return <Layout catalog><BrandsPage brands={brands} products={products}/></Layout>}
@@ -154,7 +154,7 @@ function Cart(){
 function Login(){const {login}=useAuth();return <Layout><AuthPage request={request} onLogin={login}/></Layout>}
 function ForgotPassword(){return <Layout><PasswordRecoveryPage key="forgot" request={request}/></Layout>}
 function ResetPassword(){const {logout}=useAuth();return <Layout><PasswordRecoveryPage key="reset" request={request} reset onReset={logout}/></Layout>}
-function RequireAuth({children,admin=false}){const {user,authLoading,sessionExpired}=useAuth();if(authLoading)return <div className="kd-account-skeleton" role="status">Checking your account.</div>;if(!user)return <Navigate to={sessionExpired?'/login?sessionExpired=1':'/login'} replace/>;if(admin&&user.role!=='admin')return <Navigate to="/account" replace/>;return children}
+function RequireAuth({children,admin=false}){const {user,authLoading,sessionExpired}=useAuth();if(authLoading)return <div className="kd-account-skeleton" role="status">Checking your account…</div>;if(!user)return <Navigate to={sessionExpired?'/login?sessionExpired=1':'/login'} replace/>;if(admin&&user.role!=='admin')return <Navigate to="/account" replace/>;return children}
 function Account(){const {user,token,updateUser,logout}=useAuth();return <Layout><CustomerAccountPage user={user} token={token} request={request} onUser={updateUser} onLogout={logout} orders={<OrderHistory/>}/></Layout>}
 function OrderHistory(){const {token}=useAuth();return <CustomerOrders token={token} request={request}/>;}
 function Checkout(){
@@ -215,14 +215,14 @@ function Checkout(){
       <input type="radio" name="kd-payment" value="BANK_TRANSFER" checked={paymentMethod==='BANK_TRANSFER'}
        disabled={!paymentConfig?.bank_transfer?.enabled} onChange={()=>setPaymentMethod('BANK_TRANSFER')}/>
       <Wallet size={21}/><span><strong>Bank transfer</strong>
-       <small>{paymentConfig?.bank_transfer?.enabled?'Transfer after placing the order � verification required':'Unavailable until the store configures bank details'}</small></span>
+       <small>{paymentConfig?.bank_transfer?.enabled?'Transfer after placing the order · verification required':'Unavailable until the store configures bank details'}</small></span>
      </label>
      {paymentMethod==='BANK_TRANSFER'&&paymentConfig?.bank_transfer?.enabled&&
-      <p className="kd-payment-help">Bank: {paymentConfig.bank_transfer.bank} � Beneficiary: {paymentConfig.bank_transfer.name}. Your unique order reference and account details will appear after checkout. No automatic payment collection occurs.</p>}
+      <p className="kd-payment-help">Bank: {paymentConfig.bank_transfer.bank} · Beneficiary: {paymentConfig.bank_transfer.name}. Your unique order reference and account details will appear after checkout. No automatic payment collection occurs.</p>}
     </fieldset>
     {error&&<div className="message-error" role="alert">{error}</div>}
     <button type="submit" className="button button-dark full-width kd-checkout-place-order" disabled={busy}>
-     {busy?'PROCESSING.':'PLACE ORDER'} <ArrowRight size={19}/>
+     {busy?'PROCESSING…':'PLACE ORDER'} <ArrowRight size={19}/>
     </button>
     <p className="kd-checkout-demo-note">This checkout is under development. Use test information until your store is ready for real customer orders.</p>
    </form>
@@ -239,7 +239,7 @@ function Checkout(){
        <div className="kd-checkout-line-details">
         <small>{product.brand_name}</small>
         <Link to={'/product/'+product.slug}>{product.name}</Link>
-        <div className="kd-checkout-variant">Size: {entry.variant.size}{color?' � '+color:''} <span>x {entry.quantity}</span></div>
+        <div className="kd-checkout-variant">Size: {entry.variant.size}{color?' · '+color:''} <span>× {entry.quantity}</span></div>
         {discount&&<del>{money(product.price)}</del>}
         <strong>{money(unit*entry.quantity)}</strong>
        </div>
@@ -264,7 +264,7 @@ function OrderSuccess(){
    {order.payment_method==='BANK_TRANSFER'&&config?.bank_transfer?.enabled?
     <div className="kd-bank-instructions">
      <strong>Transfer the order amount to:</strong>
-     <span>{config.bank_transfer.bank} � {config.bank_transfer.name}</span>
+     <span>{config.bank_transfer.bank} · {config.bank_transfer.name}</span>
      <span>Account: {config.bank_transfer.account}</span>
      <span>Amount: {money(order.total)}</span>
      <span>Reference: {order.order_code}</span>
